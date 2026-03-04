@@ -1,0 +1,1 @@
+public class Voter extends Participant{}

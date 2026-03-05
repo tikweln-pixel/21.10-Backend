@@ -1,27 +1,18 @@
-package com.votify.entity;
-
-import jakarta.persistence.*;
+package com.votify.dto;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "time_windows")
-public class TimeWindow {
+public class TimeWindowDto {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
     private LocalDateTime startTime;
-
-    @Column(nullable = false)
     private LocalDateTime endTime;
 
-    public TimeWindow() {
+    public TimeWindowDto() {
     }
 
-    public TimeWindow(LocalDateTime startTime, LocalDateTime endTime) {
+    public TimeWindowDto(Long id, LocalDateTime startTime, LocalDateTime endTime) {
+        this.id = id;
         this.startTime = startTime;
         this.endTime = endTime;
     }

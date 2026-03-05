@@ -1,0 +1,51 @@
+package com.votify.service;
+
+import com.votify.dto.EventDto;
+import com.votify.entity.Event;
+import com.votify.persistence.EventRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class EventService {
+
+    private final EventRepository eventRepository;
+
+    public EventService(EventRepository eventRepository) {
+        this.eventRepository = eventRepository;
+    }
+
+    public List<EventDto> findAll() {
+        return eventRepository.findAll().stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public EventDto findById(Long id) {
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
+        return toDto(event);
+    }
+
+    public EventDto create(EventDto dto) {
+        Event event = new Event(dto.getName());
+        return toDto(eventRepository.save(event));
+    }
+
+    public EventDto update(Long id, EventDto dto) {
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
+        event.setName(dto.getName());
+        return toDto(eventRepository.save(event));
+    }
+
+    public void delete(Long id) {
+        eventRepository.deleteById(id);
+    }
+
+    private EventDto toDto(Event event) {
+        return new EventDto(event.getId(), event.getName());
+    }
+}

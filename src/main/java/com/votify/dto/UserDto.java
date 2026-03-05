@@ -1,26 +1,16 @@
-package com.votify.entity;
+package com.votify.dto;
 
-import jakarta.persistence.*;
+public class UserDto {
 
-@Entity
-@Table(name = "users")
-@Inheritance(strategy = InheritanceType.JOINED)
-public class User {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
     private String name;
-
-    @Column(unique = true, nullable = false)
     private String email;
 
-    public User() {
+    public UserDto() {
     }
 
-    public User(String name, String email) {
+    public UserDto(Long id, String name, String email) {
+        this.id = id;
         this.name = name;
         this.email = email;
     }

@@ -1,22 +1,15 @@
-package com.votify.entity;
+package com.votify.dto;
 
-import jakarta.persistence.*;
+public class EventDto {
 
-@Entity
-@Table(name = "categories")
-public class Category {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false)
     private String name;
 
-    public Category() {
+    public EventDto() {
     }
 
-    public Category(String name) {
+    public EventDto(Long id, String name) {
+        this.id = id;
         this.name = name;
     }
 

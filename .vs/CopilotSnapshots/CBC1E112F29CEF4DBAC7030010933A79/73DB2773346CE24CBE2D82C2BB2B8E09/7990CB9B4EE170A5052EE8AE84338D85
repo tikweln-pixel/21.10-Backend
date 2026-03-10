@@ -1,4 +1,4 @@
-package com.votify.service;
+﻿package com.votify.service;
 
 import com.votify.dto.CategoryDto;
 import com.votify.entity.Category;
@@ -47,7 +47,6 @@ public class CategoryService {
         category.setEvent(event);
         category.setTimeInitial(dto.getTimeInitial());
         category.setTimeFinal(dto.getTimeFinal());
-        category.setReminderMinutes(dto.getReminderMinutes());
         return toDto(categoryRepository.save(category));
     }
 
@@ -67,7 +66,6 @@ public class CategoryService {
         category.setName(dto.getName());
         category.setTimeInitial(dto.getTimeInitial());
         category.setTimeFinal(dto.getTimeFinal());
-        category.setReminderMinutes(dto.getReminderMinutes());
         return toDto(categoryRepository.save(category));
     }
 
@@ -77,7 +75,7 @@ public class CategoryService {
 
     private CategoryDto toDto(Category category) {
         Long eventId = category.getEvent() != null ? category.getEvent().getId() : null;
-        return new CategoryDto(category.getId(), category.getName(), category.getTimeInitial(), category.getTimeFinal(), eventId, category.getReminderMinutes());
+        return new CategoryDto(category.getId(), category.getName(), category.getTimeInitial(), category.getTimeFinal(), eventId);
     }
 
     private void validateCategoryTimesWithinEvent(Event event, Date start, Date end) {

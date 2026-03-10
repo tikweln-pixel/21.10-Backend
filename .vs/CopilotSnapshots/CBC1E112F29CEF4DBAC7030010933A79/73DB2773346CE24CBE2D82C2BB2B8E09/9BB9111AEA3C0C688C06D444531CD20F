@@ -1,4 +1,4 @@
-package com.votify.entity;
+﻿package com.votify.entity;
 
 import jakarta.persistence.*;
 import java.util.Date;
@@ -66,14 +66,6 @@ public class Category {
 
     public void setTimeFinal(Date timeFinal) {
         this.timeFinal = timeFinal;
-    }
-
-    public Integer getReminderMinutes() {
-        return reminderMinutes;
-    }
-
-    public void setReminderMinutes(Integer reminderMinutes) {
-        this.reminderMinutes = reminderMinutes;
     }
 
     public Event getEvent() {

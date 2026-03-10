@@ -5,8 +5,10 @@
     "\\src\\main",
     "\\src\\main\\java",
     "\\src\\main\\java\\com",
-    "\\src\\main\\java\\com\\votify"
+    "\\src\\main\\java\\com\\votify",
+    "\\src\\main\\java\\com\\votify\\controller",
+    "\\src\\main\\java\\com\\votify\\dto",
+    "\\src\\main\\java\\com\\votify\\service"
   ],
-  "SelectedNode": "\\src\\main\\java\\com\\votify\\controller",
   "PreviewInSolutionExplorer": false
 }

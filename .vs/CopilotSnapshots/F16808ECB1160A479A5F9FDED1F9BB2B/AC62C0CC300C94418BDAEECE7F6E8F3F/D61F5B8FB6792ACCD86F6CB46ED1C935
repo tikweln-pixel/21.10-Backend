@@ -1,11 +1,10 @@
-package com.votify.service;
+﻿package com.votify.service;
 
 import com.votify.dto.EventDto;
 import com.votify.entity.Event;
 import com.votify.persistence.EventRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,8 +31,6 @@ public class EventService {
 
     public EventDto create(EventDto dto) {
         Event event = new Event(dto.getName());
-        event.setTimeInitial(dto.getTimeInitial());
-        event.setTimeFinal(dto.getTimeFinal());
         return toDto(eventRepository.save(event));
     }
 
@@ -41,8 +38,6 @@ public class EventService {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
         event.setName(dto.getName());
-        event.setTimeInitial(dto.getTimeInitial());
-        event.setTimeFinal(dto.getTimeFinal());
         return toDto(eventRepository.save(event));
     }
 
@@ -51,20 +46,14 @@ public class EventService {
     }
 
     private EventDto toDto(Event event) {
-        return new EventDto(event.getId(), event.getName(), event.getTimeInitial(), event.getTimeFinal());
+        return new EventDto(event.getId(), event.getName());
     }
 
-    public EventDto setTimeInitial(Long id, Date timeInitial) {
-        Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
-        event.setTimeInitial(timeInitial);
-        return toDto(eventRepository.save(event));
+    public setTimeInitial(Date timeInitial){
+        
     }
 
-    public EventDto setTimeFinal(Long id, Date timeFinal) {
-        Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
-        event.setTimeFinal(timeFinal);
-        return toDto(eventRepository.save(event));
+    public setTimeFinal(Date timeFinal){
+    
     }
 }

@@ -39,6 +39,12 @@ public class EventController {
         return ResponseEntity.status(HttpStatus.CREATED).body(eventService.create(request));
     }
 
+    @PostMapping("/by-organizer")
+    public ResponseEntity<EventDto> createByOrganizer(@RequestBody EventDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventService.createForOrganizer(dto.getOrganizerId(), dto));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<EventDto> update(@PathVariable Long id, @RequestBody EventDto dto) {
         return ResponseEntity.ok(eventService.update(id, dto));

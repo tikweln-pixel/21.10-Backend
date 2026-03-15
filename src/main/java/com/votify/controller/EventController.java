@@ -30,7 +30,8 @@ public class EventController {
 
     @PostMapping
     public ResponseEntity<EventDto> create(@RequestBody EventDto dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(eventService.create(dto));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventService.createForOrganizer(dto.getOrganizerId(), dto));
     }
 
     @PutMapping("/{id}")

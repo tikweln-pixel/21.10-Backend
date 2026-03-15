@@ -8,16 +8,17 @@ public class EventDto {
     private String name;
     private Date timeInitial;
     private Date timeFinal;
+    private Long organizerId;
 
     public EventDto() {
     }
 
-    public EventDto(Long id, String name, Date timeInitial, Date timeFinal) {
-        //prueba de comentario
+    public EventDto(Long id, String name, Date timeInitial, Date timeFinal, Long organizerId) {
         this.id = id;
         this.name = name;
         this.timeInitial = timeInitial;
         this.timeFinal = timeFinal;
+        this.organizerId = organizerId;
     }
 
     public Long getId() {
@@ -50,5 +51,13 @@ public class EventDto {
 
     public void setTimeFinal(Date timeFinal) {
         this.timeFinal = timeFinal;
+    }
+
+    public Long getOrganizerId() {
+        return organizerId;
+    }
+
+    public void setOrganizerId(Long organizerId) {
+        this.organizerId = organizerId;
     }
 }

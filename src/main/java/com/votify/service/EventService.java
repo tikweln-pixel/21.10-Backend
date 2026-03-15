@@ -2,7 +2,9 @@ package com.votify.service;
 
 import com.votify.dto.EventDto;
 import com.votify.entity.Event;
+import com.votify.entity.User;
 import com.votify.persistence.EventRepository;
+import com.votify.persistence.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -13,9 +15,11 @@ import java.util.stream.Collectors;
 public class EventService {
 
     private final EventRepository eventRepository;
+    private final UserRepository userRepository;
 
-    public EventService(EventRepository eventRepository) {
+    public EventService(EventRepository eventRepository, UserRepository userRepository) {
         this.eventRepository = eventRepository;
+        this.userRepository = userRepository;
     }
 
     public List<EventDto> findAll() {
@@ -30,10 +34,11 @@ public class EventService {
         return toDto(event);
     }
 
-    public EventDto create(EventDto dto) {
-        Event event = new Event(dto.getName());
-        event.setTimeInitial(dto.getTimeInitial());
-        event.setTimeFinal(dto.getTimeFinal());
+    public EventDto createForOrganizer(Long organizerId, EventDto dto) {
+        User organizer = userRepository.findById(organizerId)
+                .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + organizerId));
+
+        Event event = organizer.createEvent(dto.getName(), dto.getTimeInitial(), dto.getTimeFinal());
         return toDto(eventRepository.save(event));
     }
 
@@ -43,6 +48,11 @@ public class EventService {
         event.setName(dto.getName());
         event.setTimeInitial(dto.getTimeInitial());
         event.setTimeFinal(dto.getTimeFinal());
+        if (dto.getOrganizerId() != null) {
+            User organizer = userRepository.findById(dto.getOrganizerId())
+                    .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + dto.getOrganizerId()));
+            event.setOrganizer(organizer);
+        }
         return toDto(eventRepository.save(event));
     }
 
@@ -51,7 +61,8 @@ public class EventService {
     }
 
     private EventDto toDto(Event event) {
-        return new EventDto(event.getId(), event.getName(), event.getTimeInitial(), event.getTimeFinal());
+        Long organizerId = event.getOrganizer() != null ? event.getOrganizer().getId() : null;
+        return new EventDto(event.getId(), event.getName(), event.getTimeInitial(), event.getTimeFinal(), organizerId);
     }
 
     public EventDto setTimeInitial(Long id, Date timeInitial) {

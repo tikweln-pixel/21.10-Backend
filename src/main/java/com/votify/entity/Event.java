@@ -3,6 +3,7 @@ package com.votify.entity;
 import jakarta.persistence.*;
 
 import java.util.Date;
+import java.util.List;
 
 @Entity
 @Table(name = "events")
@@ -22,6 +23,13 @@ public class Event {
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "time_final")
     private Date timeFinal;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "organizer_id", nullable = false)
+    private User organizer;
+
+    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Project> projects;
 
     public Event() {
     }
@@ -60,5 +68,21 @@ public class Event {
 
     public void setTimeFinal(Date timeFinal) {
         this.timeFinal = timeFinal;
+    }
+
+    public User getOrganizer() {
+        return organizer;
+    }
+
+    public void setOrganizer(User organizer) {
+        this.organizer = organizer;
+    }
+
+    public List<Project> getProjects() {
+        return projects;
+    }
+
+    public void setProjects(List<Project> projects) {
+        this.projects = projects;
     }
 }

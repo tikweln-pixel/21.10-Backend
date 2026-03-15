@@ -2,6 +2,8 @@ package com.votify.entity;
 
 import jakarta.persistence.*;
 
+import java.util.Date;
+
 @Entity
 @Table(name = "users")
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -47,5 +49,13 @@ public class User {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public Event createEvent(String name, Date timeInitial, Date timeFinal) {
+        Event event = new Event(name);
+        event.setTimeInitial(timeInitial);
+        event.setTimeFinal(timeFinal);
+        event.setOrganizer(this);
+        return event;
     }
 }

@@ -13,11 +13,16 @@ public class Category {
     @Column(nullable = false)
     private String name;
 
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "event_id", nullable = false)
+    private Event event;
+
     public Category() {
     }
 
-    public Category(String name) {
+    public Category(String name, Event event) {
         this.name = name;
+        this.event = event;
     }
 
     public Long getId() {
@@ -34,5 +39,13 @@ public class Category {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Event getEvent() {
+        return event;
+    }
+
+    public void setEvent(Event event) {
+        this.event = event;
     }
 }

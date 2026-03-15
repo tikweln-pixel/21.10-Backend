@@ -2,6 +2,9 @@ package com.votify.entity;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "events")
 public class Event {
@@ -12,6 +15,9 @@ public class Event {
 
     @Column(nullable = false)
     private String name;
+
+    @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Category> categories = new ArrayList<>();
 
     public Event() {
     }
@@ -34,5 +40,13 @@ public class Event {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public List<Category> getCategories() {
+        return categories;
+    }
+
+    public void setCategories(List<Category> categories) {
+        this.categories = categories;
     }
 }

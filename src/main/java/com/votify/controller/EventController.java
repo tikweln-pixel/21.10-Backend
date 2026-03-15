@@ -1,6 +1,8 @@
 package com.votify.controller;
 
-import com.votify.dto.EventDto;
+import com.votify.dto.*;
+import com.votify.service.CategoryService;
+import com.votify.service.EventParticipationService;
 import com.votify.service.EventService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,9 +15,13 @@ import java.util.List;
 public class EventController {
 
     private final EventService eventService;
+    private final EventParticipationService eventParticipationService;
+    private final CategoryService categoryService;
 
-    public EventController(EventService eventService) {
+    public EventController(EventService eventService, EventParticipationService eventParticipationService, CategoryService categoryService) {
         this.eventService = eventService;
+        this.eventParticipationService = eventParticipationService;
+        this.categoryService = categoryService;
     }
 
     @GetMapping
@@ -29,8 +35,8 @@ public class EventController {
     }
 
     @PostMapping
-    public ResponseEntity<EventDto> create(@RequestBody EventDto dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(eventService.create(dto));
+    public ResponseEntity<EventDto> create(@RequestBody CreateEventRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(eventService.create(request));
     }
 
     @PutMapping("/{id}")
@@ -41,6 +47,73 @@ public class EventController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         eventService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{eventId}/categories")
+    public ResponseEntity<List<CategoryDto>> getCategories(@PathVariable Long eventId) {
+        return ResponseEntity.ok(categoryService.findByEventId(eventId));
+    }
+
+    @PostMapping("/{eventId}/categories")
+    public ResponseEntity<CategoryDto> addCategory(@PathVariable Long eventId, @RequestBody CreateCategoryRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.createForEvent(eventId, request.getName()));
+    }
+
+    @PostMapping("/{eventId}/participations")
+    public ResponseEntity<EventParticipationDto> registerParticipation(
+            @PathVariable Long eventId,
+            @RequestBody RegisterParticipationRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventParticipationService.registerParticipation(
+                        eventId, request.getUserId(), request.getCategoryId(), request.getRole()));
+    }
+
+    @GetMapping("/{eventId}/participations")
+    public ResponseEntity<List<EventParticipationDto>> getParticipations(@PathVariable Long eventId) {
+        return ResponseEntity.ok(eventParticipationService.getParticipationsByEvent(eventId));
+    }
+
+    @GetMapping("/{eventId}/categories/{categoryId}/participations")
+    public ResponseEntity<List<EventParticipationDto>> getParticipationsByCategory(
+            @PathVariable Long eventId, @PathVariable Long categoryId) {
+        return ResponseEntity.ok(eventParticipationService.getParticipationsByEventAndCategory(eventId, categoryId));
+    }
+
+    @GetMapping("/{eventId}/categories/{categoryId}/competitors")
+    public ResponseEntity<List<EventParticipationDto>> getCompetitors(
+            @PathVariable Long eventId, @PathVariable Long categoryId) {
+        return ResponseEntity.ok(eventParticipationService.getCompetitorsByEventAndCategory(eventId, categoryId));
+    }
+
+    @GetMapping("/{eventId}/categories/{categoryId}/voters")
+    public ResponseEntity<List<EventParticipationDto>> getVoters(
+            @PathVariable Long eventId, @PathVariable Long categoryId) {
+        return ResponseEntity.ok(eventParticipationService.getVotersByEventAndCategory(eventId, categoryId));
+    }
+
+    @PostMapping("/{eventId}/competitors")
+    public ResponseEntity<EventParticipationDto> registerCompetitor(
+            @PathVariable Long eventId,
+            @RequestBody RegisterCompetitorRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventParticipationService.registerCompetitor(eventId, request.getUserId(), request.getCategoryId()));
+    }
+
+    @PostMapping("/{eventId}/voters")
+    public ResponseEntity<EventParticipationDto> registerVoter(
+            @PathVariable Long eventId,
+            @RequestBody RegisterCompetitorRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventParticipationService.registerVoter(eventId, request.getUserId(), request.getCategoryId()));
+    }
+
+    @DeleteMapping("/{eventId}/participations")
+    public ResponseEntity<Void> removeParticipation(
+            @PathVariable Long eventId,
+            @RequestParam Long userId,
+            @RequestParam Long categoryId) {
+        eventParticipationService.removeParticipation(eventId, userId, categoryId);
         return ResponseEntity.noContent().build();
     }
 }

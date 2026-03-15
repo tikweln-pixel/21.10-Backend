@@ -46,6 +46,18 @@ public class ProjectService {
         return toDto(saved);
     }
 
+    public ProjectDto createForParticipantInEvent(Long participantId, Long eventId, ProjectDto dto) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+
+        Competitor competitor = competitorRepository.findById(participantId)
+                .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + participantId));
+
+        Project project = competitor.createProjectForEvent(dto.getName(), dto.getDescription(), event);
+        Project saved = projectRepository.save(project);
+        return toDto(saved);
+    }
+
     public ProjectDto addCompetitor(Long projectId, Long competitorId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));

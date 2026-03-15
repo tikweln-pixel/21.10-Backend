@@ -14,7 +14,6 @@ public class EventDto {
 
     public EventDto(Long id, String name, Date timeInitial, Date timeFinal) {
         //prueba de comentario
-
         this.id = id;
         this.name = name;
         this.timeInitial = timeInitial;

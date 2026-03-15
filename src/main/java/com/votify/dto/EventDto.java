@@ -12,11 +12,6 @@ public class EventDto {
     public EventDto() {
     }
 
-    public EventDto(Long id, String name) {
-        this.id = id;
-        this.name = name;
-    }
-
     public EventDto(Long id, String name, Date timeInitial, Date timeFinal) {
         this.id = id;
         this.name = name;

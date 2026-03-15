@@ -1,6 +1,7 @@
 package com.votify.entity;
 
 import jakarta.persistence.*;
+
 import java.util.Date;
 
 @Entity

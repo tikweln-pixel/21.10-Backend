@@ -1,6 +1,8 @@
 package com.votify.controller;
 
+import com.votify.dto.CategoryCriterionPointsDto;
 import com.votify.dto.CategoryDto;
+import com.votify.entity.VotingType;
 import com.votify.service.CategoryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,9 @@ public class CategoryController {
     public CategoryController(CategoryService categoryService) {
         this.categoryService = categoryService;
     }
+
+    //  CRUD básico                                                         
+
 
     @GetMapping
     public ResponseEntity<List<CategoryDto>> getAll() {
@@ -41,6 +46,64 @@ public class CategoryController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         categoryService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    //   Definir Categorías: tipo de votación                      
+   
+     // Asigna el tipo de votación a una categoría.
+     
+     //JURY_EXPERT  → Votacion_Jurado_Exp (diagrama de clases)
+     //POPULAR_VOTE → Voto_Popular        (diagrama de clases)
+ 
+    @PutMapping("/{id}/voting-type")
+    public ResponseEntity<CategoryDto> setVotingType(
+            @PathVariable Long id,
+            @RequestParam VotingType type) {
+        return ResponseEntity.ok(categoryService.setVotingType(id, type));
+    }
+
+
+    //  Req. 4 – Configurar Puntos: puntos por criterio por categoría    
+   
+     * Obtiene la configuración de puntos por criterio de una categoría
+     */
+    @GetMapping("/{id}/criterion-points")
+    public ResponseEntity<List<CategoryCriterionPointsDto>> getCriterionPoints(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getCriterionPoints(id));
+    }
+
+    /**
+     * Actualiza (o crea) los puntos máximos de un criterio concreto en la categoría.
+     * El cuerpo lleva { "maxPoints": <valor> }.
+     */
+    @PutMapping("/{id}/criterion-points/{criterionId}")
+    public ResponseEntity<CategoryCriterionPointsDto> setCriterionPoints(
+            @PathVariable Long id,
+            @PathVariable Long criterionId,
+            @RequestBody CategoryCriterionPointsDto dto) {
+        return ResponseEntity.ok(categoryService.setCriterionPoints(id, criterionId, dto.getMaxPoints()));
+    }
+
+    /**
+     * Reemplaza toda la configuración de puntos de una categoría de golpe.
+     * Usado cuando el organizador pulsa "Aceptar" en la pantalla de sliders.
+     */
+    @PutMapping("/{id}/criterion-points/bulk")
+    public ResponseEntity<List<CategoryCriterionPointsDto>> setCriterionPointsBulk(
+            @PathVariable Long id,
+            @RequestBody List<CategoryCriterionPointsDto> dtos) {
+        return ResponseEntity.ok(categoryService.setCriterionPointsBulk(id, dtos));
+    }
+
+    /**
+     * Elimina la configuración de puntos de un criterio concreto en la categoría.
+     */
+    @DeleteMapping("/{id}/criterion-points/{criterionId}")
+    public ResponseEntity<Void> deleteCriterionPoints(
+            @PathVariable Long id,
+            @PathVariable Long criterionId) {
+        categoryService.deleteCriterionPoints(id, criterionId);
         return ResponseEntity.noContent().build();
     }
 }

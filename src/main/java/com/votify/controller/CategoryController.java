@@ -20,7 +20,7 @@ public class CategoryController {
         this.categoryService = categoryService;
     }
 
-    //  CRUD básico                                                         
+    //  CRUD básico
 
 
     @GetMapping
@@ -49,13 +49,13 @@ public class CategoryController {
         return ResponseEntity.noContent().build();
     }
 
-    //   Definir Categorías: tipo de votación                      
-   
+    //   Definir Categorías: tipo de votación
+
      // Asigna el tipo de votación a una categoría.
-     
+
      //JURY_EXPERT  → Votacion_Jurado_Exp (diagrama de clases)
      //POPULAR_VOTE → Voto_Popular        (diagrama de clases)
- 
+
     @PutMapping("/{id}/voting-type")
     public ResponseEntity<CategoryDto> setVotingType(
             @PathVariable Long id,
@@ -64,8 +64,8 @@ public class CategoryController {
     }
 
 
-    //  Req. 4 – Configurar Puntos: puntos por criterio por categoría    
-   
+    //  Req. 4 – Configurar Puntos: puntos por criterio por categoría
+
     /**
      * Obtiene la configuración de puntos por criterio de una categoría
      */

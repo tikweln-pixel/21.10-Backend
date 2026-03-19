@@ -38,7 +38,7 @@ public class CategoryService {
         this.criterionPointsRepository = criterionPointsRepository;
     }
 
-    //  CRUD básico                                                        
+    //  CRUD básico
 
 
     public List<CategoryDto> findAll() {
@@ -108,7 +108,7 @@ public class CategoryService {
         categoryRepository.deleteById(id);
     }
 
-    //  Req. 5 – Definir Categorías: tipo de votación                      
+    //  Req. 5 – Definir Categorías: tipo de votación
     //JURY_EXPERT  → Votacion_Jurado_Exp (diagrama de clases)
     //POPULAR_VOTE → Voto_Popular        (diagrama de clases)
 
@@ -120,10 +120,10 @@ public class CategoryService {
         return toDto(categoryRepository.save(category));
     }
 
-    //  Req. 4 – Configurar Puntos: puntos por criterio por categoría      //
-    
-   //Devuelve la lista de puntos configurados por criterio para una categoría.
-     
+    //  Req. 4 – Configurar Puntos: puntos por criterio por categoría
+
+    //Devuelve la lista de puntos configurados por criterio para una categoría.
+
     public List<CategoryCriterionPointsDto> getCriterionPoints(Long categoryId) {
         if (!categoryRepository.existsById(categoryId)) {
             throw new RuntimeException("Category not found with id: " + categoryId);
@@ -133,15 +133,13 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
- 
-     //Crea o actualiza los puntos máximos de un criterio concreto dentro de una categoría.
-    //Si ya existía un registro para ese par (categoría, criterio), se actualiza.
-     //Si no existía, se crea uno nuevo.
-     
-     /**
-     * @param categoryId  ID de la categoría
-     * @param criterionId ID del criterio (Innovación, Calidad Técnica, Presentación…)
-     * @param maxPoints   Puntos máximos a asignar (valor del slider en la UI)
+    /**
+     * Crea o actualiza los puntos maximos de un criterio concreto dentro de una categoria.
+     * Si ya existia un registro para ese par (categoria, criterio), se actualiza.
+     * Si no existia, se crea uno nuevo.
+     * @param categoryId  ID de la categoria
+     * @param criterionId ID del criterio (Innovacion, Calidad Tecnica, Presentacion)
+     * @param maxPoints   Puntos maximos a asignar (valor del slider en la UI)
      */
     @Transactional
     public CategoryCriterionPointsDto setCriterionPoints(Long categoryId, Long criterionId, Integer maxPoints) {
@@ -163,15 +161,13 @@ public class CategoryService {
 
         return toCriterionPointsDto(criterionPointsRepository.save(points));
     }
-     //Reemplaza toda la configuración de puntos de una categoría de una vez.
-   
-     /**
-     * "Configuración de puntos – Puntos Por Categoría".
-     *
-     * @param categoryId  ID de la categoría
+
+    /**
+     * Reemplaza toda la configuracion de puntos de una categoria de una vez.
+     * Usado cuando el organizador pulsa "Aceptar" en la pantalla de sliders.
+     * @param categoryId  ID de la categoria
      * @param pointsDtos  Lista de pares (criterionId, maxPoints) a guardar
      */
-
     @Transactional
     public List<CategoryCriterionPointsDto> setCriterionPointsBulk(Long categoryId,
                                                                     List<CategoryCriterionPointsDto> pointsDtos) {
@@ -193,9 +189,8 @@ public class CategoryService {
         return saved.stream().map(this::toCriterionPointsDto).collect(Collectors.toList());
     }
 
-    
-     // Elimina la configuración de puntos de un criterio concreto en una categoría.
-     
+    // Elimina la configuracion de puntos de un criterio concreto en una categoria.
+
     @Transactional
     public void deleteCriterionPoints(Long categoryId, Long criterionId) {
         CategoryCriterionPoints points = criterionPointsRepository
@@ -205,7 +200,7 @@ public class CategoryService {
         criterionPointsRepository.delete(points);
     }
 
-    //  Período de votación                                      
+    //  Periodo de votacion
 
 
     public CategoryDto setTimeInitial(Long id, Date timeInitial) {
@@ -224,9 +219,9 @@ public class CategoryService {
         return toDto(categoryRepository.save(category));
     }
 
-  
-    //  Helpers                                                             
-  
+
+    //  Helpers
+
 
     private CategoryDto toDto(Category category) {
         Long eventId = category.getEvent() != null ? category.getEvent().getId() : null;

@@ -138,6 +138,7 @@ public class CategoryService {
     //Si ya existía un registro para ese par (categoría, criterio), se actualiza.
      //Si no existía, se crea uno nuevo.
      
+     /**
      * @param categoryId  ID de la categoría
      * @param criterionId ID del criterio (Innovación, Calidad Técnica, Presentación…)
      * @param maxPoints   Puntos máximos a asignar (valor del slider en la UI)
@@ -164,6 +165,7 @@ public class CategoryService {
     }
      //Reemplaza toda la configuración de puntos de una categoría de una vez.
    
+     /**
      * "Configuración de puntos – Puntos Por Categoría".
      *
      * @param categoryId  ID de la categoría

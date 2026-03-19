@@ -66,6 +66,7 @@ public class CategoryController {
 
     //  Req. 4 – Configurar Puntos: puntos por criterio por categoría    
    
+    /**
      * Obtiene la configuración de puntos por criterio de una categoría
      */
     @GetMapping("/{id}/criterion-points")

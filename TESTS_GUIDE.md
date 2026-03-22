@@ -12,7 +12,7 @@ src/test/
 │   ├── service/                        ← Tests UNITARIOS (Mockito, sin BD)
 │   │   ├── CriterionServiceTest.java       9 tests  — CRUD criterios
 │   │   ├── EventServiceTest.java           9 tests  — CRUD eventos
-│   │   ├── CategoryServiceTest.java       13 tests  — CRUD + puntos + validación fechas
+│   │   ├── CategoryServiceTest.java       16 tests  — CRUD + puntos + validación fechas
 │   │   ├── VotingServiceTest.java         10 tests  — CRUD votos + intervención manual
 │   │   ├── ProjectServiceTest.java         9 tests  — CRUD proyectos + comentarios
 │   │   └── EventParticipationServiceTest.java  8 tests  — Registro competidores/votantes
@@ -26,7 +26,7 @@ src/test/
     └── application-test.properties     ← H2 en memoria (no necesita Supabase)
 ```
 
-**Total: 83 tests** distribuidos en 9 clases
+> **Total: 89 tests** distribuidos en 6 clases de servicio (unit tests) y 3 clases de repositorio (integration tests).
 
 ### ***en scr/main/resources/aplication.properties hay que cambiar a true para que ejecute test votify.test.category=false***
 
@@ -60,6 +60,9 @@ mvn test -pl . --no-transfer-progress
 
 # Generar reporte HTML en target/surefire-reports/
 mvn surefire-report:report
+
+# Test recomendado por el último cambio de refactor
+mvn test -Dtest=CategoryServiceTest -q
 ```
 
 ### Opción B — IntelliJ IDEA (recomendado para universidad)
@@ -134,7 +137,7 @@ class CategoryRepositoryTest {
 
 ## ✅ Qué cubre cada test
 
-### `CategoryServiceTest` (13 tests)
+### `CategoryServiceTest` (16 tests)
 
 | Test                                                          | Sprint 1 |
 | ------------------------------------------------------------- | -------- |
@@ -146,8 +149,10 @@ class CategoryRepositoryTest {
 | `createForEvent_throwsException_whenEventNotFound`          | Req. 2   |
 | `setVotingType_setsJuryExpert`                              | Req. 2   |
 | `setVotingType_setsPopularVote`                             | Req. 2   |
-| `setCriterionPointsBulk_savesPointsForEachCriterion`        | Req. 10  |
+| `setCriterionPointsBulk_savesPointsForEachCriterion`        | Req. 10 (Suma=100) |
 | `setCriterionPointsBulk_throwsException_whenNegativePoints` | Req. 10  |
+| `setCriterionPointsBulk_throwsException_whenSumIsNot100`    | Req. 10 (Suma≠100) |
+| `setCriterionPoints_throwsException_whenExceeds100`         | Req. 10 (Excede100)|
 | `setTimeInitial_throwsException_whenBeforeEventStart`       | Req. 5   |
 | `setTimeFinal_throwsException_whenEndBeforeStart`           | Req. 5   |
 

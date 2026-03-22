@@ -171,18 +171,18 @@ class CategoryServiceTest {
         doNothing().when(criterionPointsRepository).deleteByCategoryId(10L);
         when(criterionRepository.findById(1L)).thenReturn(Optional.of(criterion));
 
-        CategoryCriterionPoints ccp = new CategoryCriterionPoints(category, criterion, 30);
+        CategoryCriterionPoints ccp = new CategoryCriterionPoints(category, criterion, 100);
         ccp.setId(100L);
         when(criterionPointsRepository.save(any(CategoryCriterionPoints.class))).thenReturn(ccp);
 
         List<CategoryCriterionPointsDto> input = List.of(
-                new CategoryCriterionPointsDto(null, 10L, 1L, "Innovación", 30)
+                new CategoryCriterionPointsDto(null, 10L, 1L, "Innovación", 100)
         );
 
         List<CategoryCriterionPointsDto> result = categoryService.setCriterionPointsBulk(10L, input);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getMaxPoints()).isEqualTo(30);
+        assertThat(result.get(0).getMaxPoints()).isEqualTo(100);
         verify(criterionPointsRepository, times(1)).deleteByCategoryId(10L);
         verify(criterionPointsRepository, times(1)).save(any(CategoryCriterionPoints.class));
     }
@@ -191,7 +191,6 @@ class CategoryServiceTest {
     @DisplayName("setCriterionPointsBulk → lanza excepción si maxPoints es negativo")
     void setCriterionPointsBulk_throwsException_whenNegativePoints() {
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
-        doNothing().when(criterionPointsRepository).deleteByCategoryId(10L);
 
         List<CategoryCriterionPointsDto> input = List.of(
                 new CategoryCriterionPointsDto(null, 10L, 1L, "X", -5)
@@ -200,6 +199,73 @@ class CategoryServiceTest {
         assertThatThrownBy(() -> categoryService.setCriterionPointsBulk(10L, input))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("non-negative");
+    }
+
+    @Test
+    @DisplayName("setCriterionPointsBulk → lanza excepción si la suma de maxPoints no es 100")
+    void setCriterionPointsBulk_throwsException_whenSumIsNot100() {
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+
+        // 40 + 40 = 80 ≠ 100
+        List<CategoryCriterionPointsDto> input = List.of(
+                new CategoryCriterionPointsDto(null, 10L, 1L, "Innovación", 40),
+                new CategoryCriterionPointsDto(null, 10L, 2L, "Calidad",    40)
+        );
+
+        assertThatThrownBy(() -> categoryService.setCriterionPointsBulk(10L, input))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("100");
+    }
+
+    @Test
+    @DisplayName("setCriterionPointsBulk → acepta cuando la suma de maxPoints es exactamente 100")
+    void setCriterionPointsBulk_savesPoints_whenSumIsExactly100() {
+        Criterion criterion2 = new Criterion("Calidad");
+        criterion2.setId(2L);
+
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        doNothing().when(criterionPointsRepository).deleteByCategoryId(10L);
+        when(criterionRepository.findById(1L)).thenReturn(Optional.of(criterion));
+        when(criterionRepository.findById(2L)).thenReturn(Optional.of(criterion2));
+
+        CategoryCriterionPoints ccp1 = new CategoryCriterionPoints(category, criterion,  60);
+        ccp1.setId(100L);
+        CategoryCriterionPoints ccp2 = new CategoryCriterionPoints(category, criterion2, 40);
+        ccp2.setId(101L);
+        when(criterionPointsRepository.save(any(CategoryCriterionPoints.class)))
+                .thenReturn(ccp1).thenReturn(ccp2);
+
+        // 60 + 40 = 100 ✓
+        List<CategoryCriterionPointsDto> input = List.of(
+                new CategoryCriterionPointsDto(null, 10L, 1L, "Innovación", 60),
+                new CategoryCriterionPointsDto(null, 10L, 2L, "Calidad",    40)
+        );
+
+        List<CategoryCriterionPointsDto> result = categoryService.setCriterionPointsBulk(10L, input);
+
+        assertThat(result).hasSize(2);
+        verify(criterionPointsRepository).deleteByCategoryId(10L);
+    }
+
+    @Test
+    @DisplayName("setCriterionPoints → lanza excepción si el total supera 100")
+    void setCriterionPoints_throwsException_whenExceeds100() {
+        Criterion criterion2 = new Criterion("Calidad");
+        criterion2.setId(2L);
+
+        // Ya hay un criterio con 70 puntos en la BD
+        CategoryCriterionPoints existing = new CategoryCriterionPoints(category, criterion2, 70);
+        existing.setId(200L);
+
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        when(criterionRepository.findById(1L)).thenReturn(Optional.of(criterion));
+        when(criterionPointsRepository.findByCategoryIdAndCriterionId(10L, 1L)).thenReturn(Optional.empty());
+        when(criterionPointsRepository.findByCategoryId(10L)).thenReturn(List.of(existing));
+
+        // Intentar asignar 50 al criterio 1: 70 + 50 = 120 > 100
+        assertThatThrownBy(() -> categoryService.setCriterionPoints(10L, 1L, 50))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("100");
     }
 
     // ── Validación de tiempos ──────────────────────────────────────────────

@@ -156,6 +156,18 @@ public class CategoryService {
         Optional<CategoryCriterionPoints> existing =
                 criterionPointsRepository.findByCategoryIdAndCriterionId(categoryId, criterionId);
 
+        // Suma de los maxPoints del resto de criterios (excluyendo el que se edita)
+        int otherPointsSum = criterionPointsRepository.findByCategoryId(categoryId).stream()
+                .filter(ccp -> !ccp.getCriterion().getId().equals(criterionId))
+                .mapToInt(CategoryCriterionPoints::getMaxPoints)
+                .sum();
+
+        if (otherPointsSum + maxPoints > 100) {
+            throw new RuntimeException(
+                    "The total maxPoints for all criteria cannot exceed 100. Current sum of other criteria: "
+                    + otherPointsSum + ", attempted value: " + maxPoints);
+        }
+
         CategoryCriterionPoints points = existing.orElseGet(() -> new CategoryCriterionPoints(category, criterion, maxPoints));
         points.setMaxPoints(maxPoints);
 
@@ -174,13 +186,26 @@ public class CategoryService {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
 
+        // Validamos que no haya puntos nulos o negativos antes de hacer la suma
+        for (CategoryCriterionPointsDto dto : pointsDtos) {
+            if (dto.getMaxPoints() == null || dto.getMaxPoints() < 0) {
+                throw new RuntimeException("maxPoints must be a non-negative integer for criterion: " + dto.getCriterionId());
+            }
+        }
+
+        // Validar que la suma de maxPoints sea exactamente 100
+        int totalPoints = pointsDtos.stream()
+                .mapToInt(CategoryCriterionPointsDto::getMaxPoints)
+                .sum();
+        if (totalPoints != 100) {
+            throw new RuntimeException(
+                    "The sum of maxPoints for all criteria must be exactly 100. Current sum: " + totalPoints);
+        }
+
         // Eliminamos los registros anteriores y guardamos los nuevos
         criterionPointsRepository.deleteByCategoryId(categoryId);
 
         List<CategoryCriterionPoints> saved = pointsDtos.stream().map(dto -> {
-            if (dto.getMaxPoints() == null || dto.getMaxPoints() < 0) {
-                throw new RuntimeException("maxPoints must be a non-negative integer for criterion: " + dto.getCriterionId());
-            }
             Criterion criterion = criterionRepository.findById(dto.getCriterionId())
                     .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
             return criterionPointsRepository.save(new CategoryCriterionPoints(category, criterion, dto.getMaxPoints()));

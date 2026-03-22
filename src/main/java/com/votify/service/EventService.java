@@ -1,7 +1,9 @@
 package com.votify.service;
 
-import com.votify.dto.CreateEventRequest;
+
+import com.votify.dto.CategoryDto;
 import com.votify.dto.EventDto;
+import com.votify.dto.UserDto;
 import com.votify.entity.Category;
 import com.votify.entity.Event;
 import com.votify.entity.User;
@@ -39,56 +41,72 @@ public class EventService {
         return toDto(event);
     }
 
+    /**
+     * Crea evento y categorías a partir de un {@link EventDto} de entrada.
+     * Se espera {@code categoryNames} (lista de {@link CategoryDto}) con al menos un {@code name} no vacío;
+     * el creador se registra como competidor en la <strong>primera</strong> categoría creada.
+     * Id del usuario creador: {@code creator.id} o, si falta, {@code organizerId}.
+     */
     @Transactional
-    public EventDto create(CreateEventRequest request) {
-        if (request.getCreatorUserId() == null) {
-            throw new RuntimeException("creatorUserId is required");
+    public EventDto create(EventDto dto) {
+        Long creatorId = null;
+        if (dto.getCreator() != null && dto.getCreator().getId() != null) {
+            creatorId = dto.getCreator().getId();
         }
-        if (request.getName() == null || request.getName().isBlank()) {
+        if (creatorId == null && dto.getOrganizerId() != null) {
+            creatorId = dto.getOrganizerId();
+        }
+        if (creatorId == null) {
+            throw new RuntimeException("creator.id or organizerId is required");
+        }
+        if (dto.getName() == null || dto.getName().isBlank()) {
             throw new RuntimeException("Event name is required");
         }
-        if (request.getCategoryNames() == null || request.getCategoryNames().isEmpty()) {
+        List<CategoryDto> incoming = dto.getCategoryNames();
+        if (incoming == null || incoming.isEmpty()) {
             throw new RuntimeException("At least one category is required");
         }
-        String creatorCat = request.getCreatorCategoryName() == null ? "" : request.getCreatorCategoryName().trim();
-        if (creatorCat.isEmpty()) {
-            throw new RuntimeException("Creator category is required");
-        }
-        boolean creatorMatches = request.getCategoryNames().stream()
-                .filter(n -> n != null && !n.isBlank())
-                .anyMatch(n -> n.trim().equalsIgnoreCase(creatorCat));
-        if (!creatorMatches) {
-            throw new RuntimeException("Creator category must be one of the event categories");
-        }
 
-        Event event = new Event(request.getName().trim());
-        event.setTimeInitial(request.getTimeInitial());
-        event.setTimeFinal(request.getTimeFinal());
+        Event event = new Event(dto.getName().trim());
+        event.setTimeInitial(dto.getTimeInitial());
+        event.setTimeFinal(dto.getTimeFinal());
         event = eventRepository.save(event);
 
-        for (String categoryName : request.getCategoryNames()) {
-            if (categoryName == null || categoryName.isBlank()) {
+        Category firstCategory = null;
+        for (CategoryDto cd : incoming) {
+            if (cd == null || cd.getName() == null || cd.getName().isBlank()) {
                 continue;
             }
-            Category category = new Category(categoryName.trim(), event);
-            category.setTimeInitial(request.getTimeInitial());
-            category.setTimeFinal(request.getTimeFinal());
-            Integer reminderMinutes = resolveReminderMinutes(request);
+            Category category = new Category(cd.getName().trim(), event);
+            category.setTimeInitial(dto.getTimeInitial());
+            category.setTimeFinal(dto.getTimeFinal());
+            if (cd.getVotingType() != null) {
+                category.setVotingType(cd.getVotingType());
+            }
+            Integer reminderMinutes = resolveReminderMinutes(dto);
             if (reminderMinutes != null) {
                 category.setReminderMinutes(reminderMinutes);
             }
+            if (cd.getReminderMinutes() != null) {
+                category.setReminderMinutes(cd.getReminderMinutes());
+            }
+            if (cd.getTotalPoints() != null) {
+                category.setTotalPoints(cd.getTotalPoints());
+            }
+            if (cd.getMaxVotesPerVoter() != null) {
+                category.setMaxVotesPerVoter(cd.getMaxVotesPerVoter());
+            }
             event.getCategories().add(category);
+            if (firstCategory == null) {
+                firstCategory = category;
+            }
         }
         if (event.getCategories().isEmpty()) {
             throw new RuntimeException("At least one non-empty category name is required");
         }
         eventRepository.save(event);
 
-        Category creatorCategory = event.getCategories().stream()
-                .filter(c -> c.getName().equalsIgnoreCase(creatorCat))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Creator category not found"));
-        eventParticipationService.registerCompetitor(event.getId(), request.getCreatorUserId(), creatorCategory.getId());
+        eventParticipationService.registerCompetitor(event.getId(), creatorId, firstCategory.getId());
 
         return toDto(event);
     }
@@ -120,8 +138,39 @@ public class EventService {
     }
 
     private EventDto toDto(Event event) {
-        Long organizerId = event.getOrganizer() != null ? event.getOrganizer().getId() : null;
-        return new EventDto(event.getId(), event.getName(), event.getTimeInitial(), event.getTimeFinal(), organizerId);
+        UserDto creatorDto = null;
+        Long organizerId = null;
+        if (event.getOrganizer() != null) {
+            User org = event.getOrganizer();
+            organizerId = org.getId();
+            creatorDto = new UserDto(org.getId(), org.getName(), org.getEmail());
+        }
+        List<CategoryDto> categoryDtos = event.getCategories().stream()
+                .map(this::categoryToDto)
+                .collect(Collectors.toList());
+        EventDto dto = new EventDto(
+                event.getId(),
+                event.getName(),
+                event.getTimeInitial(),
+                event.getTimeFinal(),
+                creatorDto,
+                categoryDtos
+        );
+        dto.setOrganizerId(organizerId);
+        return dto;
+    }
+
+    private CategoryDto categoryToDto(Category c) {
+        Long eventId = c.getEvent() != null ? c.getEvent().getId() : null;
+        return new CategoryDto(
+                c.getId(),
+                c.getName(),
+                c.getVotingType(),
+                eventId,
+                c.getReminderMinutes(),
+                c.getTotalPoints(),
+                c.getMaxVotesPerVoter()
+        );
     }
 
     public EventDto setTimeInitial(Long id, Date timeInitial) {
@@ -138,12 +187,12 @@ public class EventService {
         return toDto(eventRepository.save(event));
     }
 
-    private static Integer resolveReminderMinutes(CreateEventRequest request) {
-        if (request.getReminderMinutes() != null) {
-            return request.getReminderMinutes();
+    private static Integer resolveReminderMinutes(EventDto dto) {
+        if (dto.getReminderMinutes() != null) {
+            return dto.getReminderMinutes();
         }
-        if (request.getReminderHours() != null) {
-            return request.getReminderHours() * 60;
+        if (dto.getReminderHours() != null) {
+            return dto.getReminderHours() * 60;
         }
         return null;
     }

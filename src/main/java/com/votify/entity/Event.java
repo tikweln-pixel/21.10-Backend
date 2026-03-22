@@ -35,6 +35,11 @@ public class Event {
     @OneToMany(mappedBy = "event", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Project> projects = new ArrayList<>();
 
+    private List<Participant> participants;
+
+    private Integer reminderMinutes;
+    private Integer reminderHours;
+
     public Event() {
     }
 
@@ -96,5 +101,29 @@ public class Event {
 
     public void setProjects(List<Project> projects) {
         this.projects = projects;
+    }
+
+    public List<Participant> getParticipants() {
+        return participants;
+    }
+
+    public void setParticipants(List<Participant> participants) {
+        this.participants = participants;
+    }
+
+    public Integer getReminderMinutes() {
+        return reminderMinutes;
+    }
+
+    public void setReminderMinutes(Integer reminderMinutes) {
+        this.reminderMinutes = reminderMinutes;
+    }
+
+    public Integer getReminderHours() {
+        return reminderHours;
+    }
+    
+    public void setReminderHours(Integer reminderHours) {
+        this.reminderHours = reminderHours;
     }
 }

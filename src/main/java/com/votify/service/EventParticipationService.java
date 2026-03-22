@@ -30,8 +30,8 @@ public class EventParticipationService {
     }
 
     /**
-     * Registers a user as competitor or voter in a specific category of an event.
-     * A user can have different roles in different categories of the same event.
+     * Registra a un usuario como competidor o votante en una categoría concreta de un evento.
+     * Un mismo usuario puede tener distintos roles en distintas categorías del mismo evento.
      */
     public EventParticipationDto registerParticipation(Long eventId, Long userId, Long categoryId, ParticipationRole role) {
         if (categoryId == null) {

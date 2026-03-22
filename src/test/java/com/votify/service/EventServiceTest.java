@@ -3,13 +3,14 @@ package com.votify.service;
 import com.votify.dto.EventDto;
 import com.votify.entity.Event;
 import com.votify.entity.User;
+import com.votify.persistence.CategoryRepository;
+import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -26,17 +27,26 @@ import static org.mockito.Mockito.*;
 @DisplayName("EventService — Tests unitarios")
 class EventServiceTest {
 
-    @Mock  private EventRepository eventRepository;
-    @Mock  private UserRepository  userRepository;
-    @Mock  private EventParticipationService eventParticipationService;
+    @Mock private EventRepository eventRepository;
+    @Mock private UserRepository userRepository;
+    @Mock private EventParticipationRepository eventParticipationRepository;
+    @Mock private CategoryRepository categoryRepository;
 
-    @InjectMocks
     private EventService eventService;
 
     private Event event1, event2;
 
     @BeforeEach
     void setUp() {
+        // Instancia real: no se simula EventParticipationService con Mockito (falla con JDK 23 y Mockito inline).
+        EventParticipationService eventParticipationService = new EventParticipationService(
+                eventParticipationRepository,
+                eventRepository,
+                userRepository,
+                categoryRepository
+        );
+        eventService = new EventService(eventRepository, eventParticipationService, userRepository);
+
         event1 = new Event("Hackathon 2026");
         event1.setId(1L);
         event1.setTimeInitial(new Date(1_000_000L));

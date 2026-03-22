@@ -8,6 +8,7 @@ import com.votify.entity.User;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
@@ -38,25 +39,53 @@ public class EventService {
         return toDto(event);
     }
 
+    @Transactional
     public EventDto create(CreateEventRequest request) {
+        if (request.getCreatorUserId() == null) {
+            throw new RuntimeException("creatorUserId is required");
+        }
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new RuntimeException("Event name is required");
+        }
         if (request.getCategoryNames() == null || request.getCategoryNames().isEmpty()) {
             throw new RuntimeException("At least one category is required");
         }
-        if (request.getCreatorCategoryName() == null || !request.getCategoryNames().contains(request.getCreatorCategoryName())) {
+        String creatorCat = request.getCreatorCategoryName() == null ? "" : request.getCreatorCategoryName().trim();
+        if (creatorCat.isEmpty()) {
+            throw new RuntimeException("Creator category is required");
+        }
+        boolean creatorMatches = request.getCategoryNames().stream()
+                .filter(n -> n != null && !n.isBlank())
+                .anyMatch(n -> n.trim().equalsIgnoreCase(creatorCat));
+        if (!creatorMatches) {
             throw new RuntimeException("Creator category must be one of the event categories");
         }
 
-        Event event = new Event(request.getName());
+        Event event = new Event(request.getName().trim());
+        event.setTimeInitial(request.getTimeInitial());
+        event.setTimeFinal(request.getTimeFinal());
         event = eventRepository.save(event);
 
         for (String categoryName : request.getCategoryNames()) {
-            Category category = new Category(categoryName, event);
+            if (categoryName == null || categoryName.isBlank()) {
+                continue;
+            }
+            Category category = new Category(categoryName.trim(), event);
+            category.setTimeInitial(request.getTimeInitial());
+            category.setTimeFinal(request.getTimeFinal());
+            Integer reminderMinutes = resolveReminderMinutes(request);
+            if (reminderMinutes != null) {
+                category.setReminderMinutes(reminderMinutes);
+            }
             event.getCategories().add(category);
+        }
+        if (event.getCategories().isEmpty()) {
+            throw new RuntimeException("At least one non-empty category name is required");
         }
         eventRepository.save(event);
 
         Category creatorCategory = event.getCategories().stream()
-                .filter(c -> c.getName().equals(request.getCreatorCategoryName()))
+                .filter(c -> c.getName().equalsIgnoreCase(creatorCat))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Creator category not found"));
         eventParticipationService.registerCompetitor(event.getId(), request.getCreatorUserId(), creatorCategory.getId());
@@ -107,5 +136,15 @@ public class EventService {
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
         event.setTimeFinal(timeFinal);
         return toDto(eventRepository.save(event));
+    }
+
+    private static Integer resolveReminderMinutes(CreateEventRequest request) {
+        if (request.getReminderMinutes() != null) {
+            return request.getReminderMinutes();
+        }
+        if (request.getReminderHours() != null) {
+            return request.getReminderHours() * 60;
+        }
+        return null;
     }
 }

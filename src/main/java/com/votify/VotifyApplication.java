@@ -35,18 +35,18 @@ public class VotifyApplication {
     // ------------------------------------------------------------------ //
 
     /**
-     * Runner de prueba para Categorías.
+     * Tarea de arranque de prueba para categorías ({@link CommandLineRunner}).
      *
      * Cubre los dos flujos del prototipo:
-     *   1. "Crear Nuevo Evento" → dropdown "Elige Categoría" (VotingType)
-     *   2. "Configuración de puntos" → sliders Puntos Por Categoría
+     *   1. "Crear Nuevo Evento" → lista desplegable "Elige Categoría" ({@link VotingType})
+     *   2. "Configuración de puntos" → deslizadores "Puntos por categoría"
      *
      * Escenario:
      *   - Evento:     "Hackathon Votify Test"
      *   - Categorías: "Proyectos Sociales"   (JURY_EXPERT  / Votacion_Jurado_Exp)
      *                 "Proyectos Culturales" (POPULAR_VOTE / Voto_Popular)
      *   - Criterios:  Innovación, Calidad Técnica, Presentación, Viabilidad
-     *   - Puntos:     valores distintos por categoría para verificar independencia
+     *   - Puntos:     valores distintos por categoría para comprobar que son independientes
      */
     @Bean
     @ConditionalOnProperty(name = "votify.test.category", havingValue = "true")

@@ -3,7 +3,7 @@ package com.votify.dto;
 import com.votify.entity.ParticipationRole;
 
 /**
- * Request for registering a user as competitor or voter in a category of an event.
+ * Petición para registrar a un usuario como competidor o votante en una categoría de un evento.
  */
 public class RegisterParticipationRequest {
 

@@ -1,9 +1,5 @@
 package com.votify.dto;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.votify.dto.json.CategoryNamesDeserializer;
-
 import java.util.Date;
 import java.util.List;
 
@@ -13,34 +9,19 @@ import java.util.List;
  */
 public class CreateEventRequest {
 
-    @JsonAlias({"title"})
     private String name;
-
-    @JsonAlias({"userId", "organizerId", "currentUserId"})
     private Long creatorUserId;
-
-    @JsonAlias({"categories"})
-    @JsonDeserialize(using = CategoryNamesDeserializer.class)
     private List<String> categoryNames;
-
-    @JsonAlias({"creatorCategory", "selectedCategory"})
     private String creatorCategoryName;
 
     /** Inicio del evento (y de cada categoría creada); en JSON: cadena ISO-8601 o milisegundos desde la época Unix. */
-    @JsonAlias({"startDate", "fechaInicio", "timeStart"})
     private Date timeInitial;
 
     /** Fin del evento (y de cada categoría creada). */
-    @JsonAlias({"endDate", "fechaFin", "timeEnd"})
     private Date timeFinal;
 
-    /** Recordatorio opcional (minutos antes del cierre) aplicado a cada categoría creada; p. ej. 60 = 1 hora. */
-    @JsonAlias({"reminderMinutesBeforeClosing", "reminderBeforeCloseMinutes"})
+    /** Recordatorio opcional (minutos antes del cierre) aplicado a cada categoría creada. */
     private Integer reminderMinutes;
-
-    /** Si el front envía horas (p. ej. 1 para "1 hora"), se convierte a minutos al guardar. */
-    @JsonAlias({"reminderHours", "reminderHoursBeforeClosing"})
-    private Integer reminderHours;
 
     public CreateEventRequest() {
     }
@@ -106,13 +87,5 @@ public class CreateEventRequest {
 
     public void setReminderMinutes(Integer reminderMinutes) {
         this.reminderMinutes = reminderMinutes;
-    }
-
-    public Integer getReminderHours() {
-        return reminderHours;
-    }
-
-    public void setReminderHours(Integer reminderHours) {
-        this.reminderHours = reminderHours;
     }
 }

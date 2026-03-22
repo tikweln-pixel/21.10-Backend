@@ -22,6 +22,14 @@ public class Voting {
     @JoinColumn(name = "criterion_id", nullable = false)
     private Criterion criterion;
 
+    /**
+     * Req. 19/23 – Categoría a la que pertenece este voto.
+     * Obligatorio en POPULAR_VOTE para poder validar las restricciones de puntos y límite de votos.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
     @Column(nullable = false)
     private Integer score;
 
@@ -73,5 +81,13 @@ public class Voting {
 
     public void setScore(Integer score) {
         this.score = score;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
     }
 }

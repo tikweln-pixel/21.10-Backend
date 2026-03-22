@@ -295,4 +295,94 @@ class CategoryServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("end time");
     }
+
+    // ── setTotalPoints ─────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("setTotalPoints → configura puntos en categoría POPULAR_VOTE")
+    void setTotalPoints_setsPointsForPopularVote() {
+        category.setVotingType(VotingType.POPULAR_VOTE);
+        category.setTotalPoints(10);
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        when(categoryRepository.save(any(Category.class))).thenReturn(category);
+
+        CategoryDto result = categoryService.setTotalPoints(10L, 10);
+
+        assertThat(result.getTotalPoints()).isEqualTo(10);
+        assertThat(result.getVotingType()).isEqualTo(VotingType.POPULAR_VOTE);
+    }
+
+    @Test
+    @DisplayName("setTotalPoints → lanza excepción si la categoría es JURY_EXPERT")
+    void setTotalPoints_throwsException_whenJuryExpert() {
+        category.setVotingType(VotingType.JURY_EXPERT);
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+
+        assertThatThrownBy(() -> categoryService.setTotalPoints(10L, 10))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("POPULAR_VOTE");
+    }
+
+    @Test
+    @DisplayName("setTotalPoints → lanza excepción si totalPoints es cero o negativo")
+    void setTotalPoints_throwsException_whenZeroOrNegative() {
+        assertThatThrownBy(() -> categoryService.setTotalPoints(10L, 0))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("positive");
+
+        assertThatThrownBy(() -> categoryService.setTotalPoints(10L, -5))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("positive");
+    }
+
+    // ── setMaxVotesPerVoter ────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("setMaxVotesPerVoter → configura límite de 3 de 5 en POPULAR_VOTE")
+    void setMaxVotesPerVoter_setsLimitForPopularVote() {
+        category.setVotingType(VotingType.POPULAR_VOTE);
+        category.setMaxVotesPerVoter(3);
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        when(categoryRepository.save(any(Category.class))).thenReturn(category);
+
+        CategoryDto result = categoryService.setMaxVotesPerVoter(10L, 3);
+
+        assertThat(result.getMaxVotesPerVoter()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("setMaxVotesPerVoter → lanza excepción si la categoría es JURY_EXPERT")
+    void setMaxVotesPerVoter_throwsException_whenJuryExpert() {
+        category.setVotingType(VotingType.JURY_EXPERT);
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+
+        assertThatThrownBy(() -> categoryService.setMaxVotesPerVoter(10L, 3))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("POPULAR_VOTE");
+    }
+
+    @Test
+    @DisplayName("setMaxVotesPerVoter → lanza excepción si el valor es cero o negativo")
+    void setMaxVotesPerVoter_throwsException_whenZeroOrNegative() {
+        assertThatThrownBy(() -> categoryService.setMaxVotesPerVoter(10L, 0))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("positive");
+    }
+
+    // ── Guard JURY_EXPERT en setCriterionPointsBulk ────────────────────────
+
+    @Test
+    @DisplayName("setCriterionPointsBulk → lanza excepción si la categoría es POPULAR_VOTE")
+    void setCriterionPointsBulk_throwsException_whenPopularVote() {
+        category.setVotingType(VotingType.POPULAR_VOTE);
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+
+        List<CategoryCriterionPointsDto> input = List.of(
+                new CategoryCriterionPointsDto(null, 10L, 1L, "Innovación", 100)
+        );
+
+        assertThatThrownBy(() -> categoryService.setCriterionPointsBulk(10L, input))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("JURY_EXPERT");
+    }
 }

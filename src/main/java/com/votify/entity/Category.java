@@ -40,7 +40,23 @@ public class Category {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
-    /** Puntos configurados por criterio para esta categoría (Req. 4 – Configurar Puntos) */
+    /**
+     * Req. 23 – Configurar Puntos (POPULAR_VOTE):
+     * Total de puntos que un votante puede repartir entre los competidores de esta categoría.
+     * Solo aplica cuando votingType = POPULAR_VOTE.
+     */
+    @Column(name = "total_points")
+    private Integer totalPoints;
+
+    /**
+     * Req. 19 – Control de Voto (POPULAR_VOTE):
+     * Máximo de competidores distintos a los que puede votar un mismo votante en esta categoría.
+     * Ej: con 5 proyectos el límite es 3. Solo aplica cuando votingType = POPULAR_VOTE.
+     */
+    @Column(name = "max_votes_per_voter")
+    private Integer maxVotesPerVoter;
+
+    /** Puntos configurados por criterio para esta categoría (Req. 4 – Configurar Puntos JURY_EXPERT) */
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CategoryCriterionPoints> criterionPoints = new ArrayList<>();
 
@@ -106,6 +122,22 @@ public class Category {
 
     public void setVotingType(VotingType votingType) {
         this.votingType = votingType;
+    }
+
+    public Integer getTotalPoints() {
+        return totalPoints;
+    }
+
+    public void setTotalPoints(Integer totalPoints) {
+        this.totalPoints = totalPoints;
+    }
+
+    public Integer getMaxVotesPerVoter() {
+        return maxVotesPerVoter;
+    }
+
+    public void setMaxVotesPerVoter(Integer maxVotesPerVoter) {
+        this.maxVotesPerVoter = maxVotesPerVoter;
     }
 
     public List<CategoryCriterionPoints> getCriterionPoints() {

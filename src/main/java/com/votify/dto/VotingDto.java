@@ -8,6 +8,13 @@ public class VotingDto {
     private Long criterionId;
     private Integer score;
 
+    /**
+     * Req. 19/23 – ID de la categoría a la que pertenece este voto.
+     * Requerido para POPULAR_VOTE (validación de límite de votos y puntos totales).
+     * Opcional en JURY_EXPERT para mantener compatibilidad.
+     */
+    private Long categoryId;
+
     public VotingDto() {
     }
 
@@ -17,6 +24,15 @@ public class VotingDto {
         this.competitorId = competitorId;
         this.criterionId = criterionId;
         this.score = score;
+    }
+
+    public VotingDto(Long id, Long voterId, Long competitorId, Long criterionId, Integer score, Long categoryId) {
+        this.id = id;
+        this.voterId = voterId;
+        this.competitorId = competitorId;
+        this.criterionId = criterionId;
+        this.score = score;
+        this.categoryId = categoryId;
     }
 
     public Long getId() {
@@ -57,5 +73,13 @@ public class VotingDto {
 
     public void setScore(Integer score) {
         this.score = score;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
     }
 }

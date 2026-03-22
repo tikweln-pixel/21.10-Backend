@@ -20,6 +20,17 @@ public class CategoryDto {
     private Long eventId;
     private Integer reminderMinutes;
 
+    /**
+     * Req. 23 – POPULAR_VOTE: puntos totales que puede repartir un votante entre todos los competidores.
+     */
+    private Integer totalPoints;
+
+    /**
+     * Req. 19 – POPULAR_VOTE: máximo de competidores distintos a los que puede votar un votante.
+     * Ej: 3 de 5 proyectos.
+     */
+    private Integer maxVotesPerVoter;
+
     public CategoryDto() {
     }
 
@@ -59,6 +70,19 @@ public class CategoryDto {
         this.timeFinal = timeFinal;
         this.eventId = eventId;
         this.reminderMinutes = reminderMinutes;
+    }
+
+    public CategoryDto(Long id, String name, VotingType votingType, Date timeInitial, Date timeFinal,
+                       Long eventId, Integer reminderMinutes, Integer totalPoints, Integer maxVotesPerVoter) {
+        this.id = id;
+        this.name = name;
+        this.votingType = votingType;
+        this.timeInitial = timeInitial;
+        this.timeFinal = timeFinal;
+        this.eventId = eventId;
+        this.reminderMinutes = reminderMinutes;
+        this.totalPoints = totalPoints;
+        this.maxVotesPerVoter = maxVotesPerVoter;
     }
 
     public Long getId() {
@@ -115,5 +139,21 @@ public class CategoryDto {
 
     public void setVotingType(VotingType votingType) {
         this.votingType = votingType;
+    }
+
+    public Integer getTotalPoints() {
+        return totalPoints;
+    }
+
+    public void setTotalPoints(Integer totalPoints) {
+        this.totalPoints = totalPoints;
+    }
+
+    public Integer getMaxVotesPerVoter() {
+        return maxVotesPerVoter;
+    }
+
+    public void setMaxVotesPerVoter(Integer maxVotesPerVoter) {
+        this.maxVotesPerVoter = maxVotesPerVoter;
     }
 }

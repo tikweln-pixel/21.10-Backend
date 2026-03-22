@@ -107,4 +107,42 @@ public class CategoryController {
         categoryService.deleteCriterionPoints(id, criterionId);
         return ResponseEntity.noContent().build();
     }
+
+    //  Req. 23 – Configurar Puntos POPULAR_VOTE
+
+    /**
+     * Obtiene el totalPoints configurado en una categoría POPULAR_VOTE.
+     * GET /api/categories/{id}/total-points
+     */
+    @GetMapping("/{id}/total-points")
+    public ResponseEntity<CategoryDto> getTotalPoints(@PathVariable Long id) {
+        return ResponseEntity.ok(categoryService.getTotalPoints(id));
+    }
+
+    /**
+     * Configura el total de puntos a repartir en una categoría POPULAR_VOTE.
+     * El cuerpo lleva { "totalPoints": <valor> }.
+     * PUT /api/categories/{id}/total-points
+     */
+    @PutMapping("/{id}/total-points")
+    public ResponseEntity<CategoryDto> setTotalPoints(
+            @PathVariable Long id,
+            @RequestBody CategoryDto dto) {
+        return ResponseEntity.ok(categoryService.setTotalPoints(id, dto.getTotalPoints()));
+    }
+
+    //  Req. 19 – Control de Voto POPULAR_VOTE: límite de competidores distintos
+
+    /**
+     * Configura el máximo de competidores distintos a los que puede votar un votante.
+     * Regla de negocio: de 5 proyectos se puede votar hasta 3 en una votación popular.
+     * El cuerpo lleva { "maxVotesPerVoter": <valor> }.
+     * PUT /api/categories/{id}/max-votes-per-voter
+     */
+    @PutMapping("/{id}/max-votes-per-voter")
+    public ResponseEntity<CategoryDto> setMaxVotesPerVoter(
+            @PathVariable Long id,
+            @RequestBody CategoryDto dto) {
+        return ResponseEntity.ok(categoryService.setMaxVotesPerVoter(id, dto.getMaxVotesPerVoter()));
+    }
 }

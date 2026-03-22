@@ -26,6 +26,7 @@ class VotingServiceTest {
     @Mock private VoterRepository      voterRepository;
     @Mock private CompetitorRepository competitorRepository;
     @Mock private CriterionRepository  criterionRepository;
+    @Mock private CategoryRepository   categoryRepository;
 
     @InjectMocks
     private VotingService votingService;
@@ -189,5 +190,142 @@ class VotingServiceTest {
         VotingDto result = votingService.update(100L, new VotingDto(100L, 1L, 2L, 3L, 0));
 
         assertThat(result.getScore()).isEqualTo(0);
+    }
+
+    // ── Restricción POPULAR_VOTE (Req. 19 / Req. 23) ──────────────────────
+
+    // Helpers privados del test
+    private Event   testEvent;
+    private Category popularCategory;
+
+    private void setUpPopularVoteCategory(Integer maxVotesPerVoter, Integer totalPoints) {
+        testEvent = new Event("Hackathon");
+        testEvent.setId(99L);
+
+        popularCategory = new Category("Voto Popular", testEvent);
+        popularCategory.setId(20L);
+        popularCategory.setVotingType(VotingType.POPULAR_VOTE);
+        popularCategory.setMaxVotesPerVoter(maxVotesPerVoter);
+        popularCategory.setTotalPoints(totalPoints);
+    }
+
+    @Test
+    @DisplayName("create POPULAR_VOTE → permite votar si no ha alcanzado el límite de competidores")
+    void create_popularVote_allowsVote_whenBelowMaxCompetitors() {
+        setUpPopularVoteCategory(3, 10);
+
+        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
+
+        // Solo ha votado a 1 competidor distinto, límite es 3 → OK
+        when(votingRepository.countDistinctCompetitorsByVoterIdAndCategoryId(1L, 20L)).thenReturn(1L);
+        when(votingRepository.findByVoterIdAndCategoryId(1L, 20L)).thenReturn(List.of());
+        when(votingRepository.sumScoreByVoterIdAndCategoryId(1L, 20L)).thenReturn(3);
+
+        Voting savedVoting = new Voting(voter, competitor, criterion, 2);
+        savedVoting.setId(200L);
+        savedVoting.setCategory(popularCategory);
+        when(votingRepository.save(any(Voting.class))).thenReturn(savedVoting);
+
+        VotingDto result = votingService.create(new VotingDto(null, 1L, 2L, 3L, 2, 20L));
+
+        assertThat(result.getId()).isEqualTo(200L);
+        verify(votingRepository, times(1)).save(any(Voting.class));
+    }
+
+    @Test
+    @DisplayName("create POPULAR_VOTE → rechaza voto si supera el límite de 3 competidores de 5")
+    void create_popularVote_rejectsVote_whenMaxCompetitorsReached() {
+        setUpPopularVoteCategory(3, null); // límite 3, sin restricción de puntos
+
+        Competitor competitor2 = new Competitor("Ana", "ana@test.com");
+        competitor2.setId(5L);
+
+        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(competitorRepository.findById(5L)).thenReturn(Optional.of(competitor2));
+        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
+
+        // Ya votó a 3 competidores distintos, intenta votar a un cuarto → rechazar
+        when(votingRepository.countDistinctCompetitorsByVoterIdAndCategoryId(1L, 20L)).thenReturn(3L);
+
+        // competitor2 (id=5) no está en los votos previos → es nuevo
+        Voting prevVoting = new Voting(voter, competitor, criterion, 2);
+        prevVoting.setCategory(popularCategory);
+        when(votingRepository.findByVoterIdAndCategoryId(1L, 20L)).thenReturn(List.of(prevVoting));
+
+        assertThatThrownBy(() ->
+                votingService.create(new VotingDto(null, 1L, 5L, 3L, 2, 20L)))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("límite")
+                .hasMessageContaining("3");
+    }
+
+    @Test
+    @DisplayName("create POPULAR_VOTE → permite votar al mismo competidor ya votado (no cuenta como nuevo)")
+    void create_popularVote_allowsRevote_whenSameCompetitor() {
+        setUpPopularVoteCategory(3, 10);
+
+        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
+
+        // Ya votó a 3, pero el competidor 2 ya está en los votos previos → no es nuevo
+        when(votingRepository.countDistinctCompetitorsByVoterIdAndCategoryId(1L, 20L)).thenReturn(3L);
+        Voting prevVoting = new Voting(voter, competitor, criterion, 1); // competitor.id = 2
+        prevVoting.setCategory(popularCategory);
+        when(votingRepository.findByVoterIdAndCategoryId(1L, 20L)).thenReturn(List.of(prevVoting));
+        when(votingRepository.sumScoreByVoterIdAndCategoryId(1L, 20L)).thenReturn(3);
+
+        Voting savedVoting = new Voting(voter, competitor, criterion, 2);
+        savedVoting.setId(201L);
+        savedVoting.setCategory(popularCategory);
+        when(votingRepository.save(any(Voting.class))).thenReturn(savedVoting);
+
+        // Votar de nuevo al mismo competidor no debe lanzar excepción
+        VotingDto result = votingService.create(new VotingDto(null, 1L, 2L, 3L, 2, 20L));
+        assertThat(result.getId()).isEqualTo(201L);
+    }
+
+    @Test
+    @DisplayName("create POPULAR_VOTE → rechaza voto si supera el totalPoints configurado")
+    void create_popularVote_rejectsVote_whenExceedsTotalPoints() {
+        setUpPopularVoteCategory(null, 10); // sin límite de competidores, totalPoints = 10
+
+        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
+
+        // Ya usó 9 puntos, intenta asignar 5 más → 9+5=14 > 10 → rechazar
+        when(votingRepository.sumScoreByVoterIdAndCategoryId(1L, 20L)).thenReturn(9);
+
+        assertThatThrownBy(() ->
+                votingService.create(new VotingDto(null, 1L, 2L, 3L, 5, 20L)))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("puntos")
+                .hasMessageContaining("10");
+    }
+
+    @Test
+    @DisplayName("create POPULAR_VOTE → permite voto cuando la categoría no tiene límites configurados")
+    void create_popularVote_allowsVote_whenNoLimitsConfigured() {
+        setUpPopularVoteCategory(null, null); // sin ninguna restricción
+
+        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
+
+        Voting savedVoting = new Voting(voter, competitor, criterion, 5);
+        savedVoting.setId(202L);
+        savedVoting.setCategory(popularCategory);
+        when(votingRepository.save(any(Voting.class))).thenReturn(savedVoting);
+
+        VotingDto result = votingService.create(new VotingDto(null, 1L, 2L, 3L, 5, 20L));
+        assertThat(result.getId()).isEqualTo(202L);
     }
 }

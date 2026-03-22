@@ -177,6 +177,7 @@ public class CategoryService {
     /**
      * Reemplaza toda la configuracion de puntos de una categoria de una vez.
      * Usado cuando el organizador pulsa "Aceptar" en la pantalla de sliders.
+     * Solo aplica a categorías JURY_EXPERT (pesos por criterio que suman 100).
      * @param categoryId  ID de la categoria
      * @param pointsDtos  Lista de pares (criterionId, maxPoints) a guardar
      */
@@ -185,6 +186,12 @@ public class CategoryService {
                                                                     List<CategoryCriterionPointsDto> pointsDtos) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+
+        if (category.getVotingType() == VotingType.POPULAR_VOTE) {
+            throw new RuntimeException(
+                    "setCriterionPointsBulk is only valid for JURY_EXPERT categories. " +
+                    "For POPULAR_VOTE, use setTotalPoints to configure the total points per category.");
+        }
 
         // Validamos que no haya puntos nulos o negativos antes de hacer la suma
         for (CategoryCriterionPointsDto dto : pointsDtos) {
@@ -225,6 +232,64 @@ public class CategoryService {
         criterionPointsRepository.delete(points);
     }
 
+    //  Req. 23 – Configurar Puntos POPULAR_VOTE
+
+    /**
+     * Configura el total de puntos que un votante puede repartir entre los competidores
+     * de una categoría de tipo POPULAR_VOTE.
+     * Ej: si totalPoints = 10, el votante puede asignar hasta 10 puntos en total.
+     * @param categoryId  ID de la categoría POPULAR_VOTE
+     * @param totalPoints Total de puntos a repartir (debe ser > 0)
+     */
+    @Transactional
+    public CategoryDto setTotalPoints(Long categoryId, Integer totalPoints) {
+        if (totalPoints == null || totalPoints <= 0) {
+            throw new RuntimeException("totalPoints must be a positive integer");
+        }
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+
+        if (category.getVotingType() != VotingType.POPULAR_VOTE) {
+            throw new RuntimeException(
+                    "setTotalPoints is only valid for POPULAR_VOTE categories. " +
+                    "For JURY_EXPERT, use setCriterionPointsBulk to configure weights per criterion.");
+        }
+        category.setTotalPoints(totalPoints);
+        return toDto(categoryRepository.save(category));
+    }
+
+    /**
+     * Devuelve el total de puntos configurado para una categoría POPULAR_VOTE.
+     */
+    public CategoryDto getTotalPoints(Long categoryId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+        return toDto(category);
+    }
+
+    /**
+     * Req. 19 – Control de Voto POPULAR_VOTE:
+     * Configura el máximo de competidores distintos a los que puede votar un votante.
+     * Ej: en un evento con 5 proyectos, el límite es 3.
+     * @param categoryId       ID de la categoría POPULAR_VOTE
+     * @param maxVotesPerVoter Número máximo de competidores distintos (debe ser > 0)
+     */
+    @Transactional
+    public CategoryDto setMaxVotesPerVoter(Long categoryId, Integer maxVotesPerVoter) {
+        if (maxVotesPerVoter == null || maxVotesPerVoter <= 0) {
+            throw new RuntimeException("maxVotesPerVoter must be a positive integer");
+        }
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+
+        if (category.getVotingType() != VotingType.POPULAR_VOTE) {
+            throw new RuntimeException(
+                    "setMaxVotesPerVoter is only valid for POPULAR_VOTE categories.");
+        }
+        category.setMaxVotesPerVoter(maxVotesPerVoter);
+        return toDto(categoryRepository.save(category));
+    }
+
     //  Periodo de votacion
 
 
@@ -257,7 +322,9 @@ public class CategoryService {
                 category.getTimeInitial(),
                 category.getTimeFinal(),
                 eventId,
-                category.getReminderMinutes()
+                category.getReminderMinutes(),
+                category.getTotalPoints(),
+                category.getMaxVotesPerVoter()
         );
     }
 

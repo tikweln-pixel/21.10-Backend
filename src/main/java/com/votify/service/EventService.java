@@ -56,9 +56,11 @@ public class EventService {
         if (creatorId == null && dto.getOrganizerId() != null) {
             creatorId = dto.getOrganizerId();
         }
+        /**
         if (creatorId == null) {
             throw new RuntimeException("creator.id or organizerId is required");
         }
+        */
         if (dto.getName() == null || dto.getName().isBlank()) {
             throw new RuntimeException("Event name is required");
         }

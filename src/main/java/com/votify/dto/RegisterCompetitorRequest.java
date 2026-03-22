@@ -1,8 +1,8 @@
 package com.votify.dto;
 
 /**
- * Request body for registering an existing user as a competitor in an event.
- * Example: POST /api/events/1/competitors with body { "userId": 5, "categoryId": 2 }
+ * Cuerpo de la petición para registrar un usuario existente como competidor en un evento.
+ * Ejemplo: POST /api/events/1/competitors con cuerpo { "userId": 5, "categoryId": 2 }
  */
 public class RegisterCompetitorRequest {
 

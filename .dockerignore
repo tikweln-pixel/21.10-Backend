@@ -1,8 +1,10 @@
-target/
-.idea/
-.vscode/
-.vs/
+target
+.git
+.gitignore
+.idea
 *.iml
-*.class
-*.log
-.DS_Store
+.cursor
+**/.DS_Store
+assets
+agent-tools
+*.md

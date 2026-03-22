@@ -13,7 +13,8 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedOriginPatterns(
                         "http://localhost:*",          // desarrollo local
                         "https://*.vercel.app",        // Vercel (cualquier preview/prod)
-                        "https://votify-frontend-nine.vercel.app"
+                        "https://votify-frontend-nine.vercel.app",
+                        "https://*.onrender.com"       // front o API en Render
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")

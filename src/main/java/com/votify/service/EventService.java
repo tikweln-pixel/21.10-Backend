@@ -168,6 +168,8 @@ public class EventService {
                 c.getId(),
                 c.getName(),
                 c.getVotingType(),
+                c.getTimeInitial(),
+                c.getTimeFinal(),
                 eventId,
                 c.getReminderMinutes(),
                 c.getTotalPoints(),

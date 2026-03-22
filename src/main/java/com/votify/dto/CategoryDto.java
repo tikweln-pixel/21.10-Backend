@@ -14,9 +14,10 @@ public class CategoryDto {
      * Se selecciona en el dropdown "Elige Categoría" del formulario de creación de evento.
      */
     private VotingType votingType;
-     
 
-    
+    private Date timeInitial;
+    private Date timeFinal;
+
     private Long eventId;
     private Integer reminderMinutes;
 
@@ -35,11 +36,13 @@ public class CategoryDto {
     }
 
     public CategoryDto(Long id, String name, VotingType votingType,
+                       Date timeInitial, Date timeFinal,
                        Long eventId, Integer reminderMinutes, Integer totalPoints, Integer maxVotesPerVoter) {
         this.id = id;
         this.name = name;
         this.votingType = votingType;
-        
+        this.timeInitial = timeInitial;
+        this.timeFinal = timeFinal;
         this.eventId = eventId;
         this.reminderMinutes = reminderMinutes;
         this.totalPoints = totalPoints;
@@ -62,6 +65,21 @@ public class CategoryDto {
         this.name = name;
     }
 
+    public Date getTimeInitial() {
+        return timeInitial;
+    }
+
+    public void setTimeInitial(Date timeInitial) {
+        this.timeInitial = timeInitial;
+    }
+
+    public Date getTimeFinal() {
+        return timeFinal;
+    }
+
+    public void setTimeFinal(Date timeFinal) {
+        this.timeFinal = timeFinal;
+    }
 
     public Long getEventId() {
         return eventId;

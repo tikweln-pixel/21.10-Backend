@@ -19,6 +19,11 @@ public class ProjectController {
         this.projectService = projectService;
     }
 
+    @GetMapping("/projects")
+    public ResponseEntity<List<ProjectDto>> getAll() {
+        return ResponseEntity.ok(projectService.findAll());
+    }
+
     @PostMapping("/events/{eventId}/projects")
     public ResponseEntity<ProjectDto> createForEvent(@PathVariable Long eventId,
                                                      @RequestBody ProjectDto dto) {

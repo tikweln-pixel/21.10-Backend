@@ -38,6 +38,12 @@ public class ProjectService {
         this.commentRepository = commentRepository;
     }
 
+    public List<ProjectDto> findAll() {
+        return projectRepository.findAll().stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
     public List<ProjectDto> findByEvent(Long eventId) {
         return projectRepository.findByEventId(eventId).stream()
                 .map(this::toDto)

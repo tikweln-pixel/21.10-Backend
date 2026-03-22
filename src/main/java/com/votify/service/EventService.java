@@ -39,27 +39,27 @@ public class EventService {
     }
 
     public EventDto create(CreateEventRequest request) {
-        if (request.getCategoryNames() == null || request.getCategoryNames().isEmpty()) {
-            throw new RuntimeException("At least one category is required");
-        }
-        if (request.getCreatorCategoryName() == null || !request.getCategoryNames().contains(request.getCreatorCategoryName())) {
-            throw new RuntimeException("Creator category must be one of the event categories");
-        }
-
         Event event = new Event(request.getName());
         event = eventRepository.save(event);
 
-        for (String categoryName : request.getCategoryNames()) {
-            Category category = new Category(categoryName, event);
-            event.getCategories().add(category);
-        }
-        eventRepository.save(event);
+        // Categories are optional: if provided, add them and optionally register the creator
+        if (request.getCategoryNames() != null && !request.getCategoryNames().isEmpty()) {
+            for (String categoryName : request.getCategoryNames()) {
+                Category category = new Category(categoryName, event);
+                event.getCategories().add(category);
+            }
+            eventRepository.save(event);
 
-        Category creatorCategory = event.getCategories().stream()
-                .filter(c -> c.getName().equals(request.getCreatorCategoryName()))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Creator category not found"));
-        eventParticipationService.registerCompetitor(event.getId(), request.getCreatorUserId(), creatorCategory.getId());
+            // Register creator only when both userId and creatorCategoryName are provided
+            if (request.getCreatorUserId() != null && request.getCreatorCategoryName() != null
+                    && request.getCategoryNames().contains(request.getCreatorCategoryName())) {
+                Category creatorCategory = event.getCategories().stream()
+                        .filter(c -> c.getName().equals(request.getCreatorCategoryName()))
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException("Creator category not found"));
+                eventParticipationService.registerCompetitor(event.getId(), request.getCreatorUserId(), creatorCategory.getId());
+            }
+        }
 
         return toDto(event);
     }

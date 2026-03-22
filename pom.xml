@@ -61,4 +61,11 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- Perfil vacío para que Railway (-Pproduction) no muestre advertencia -->
+    <profiles>
+        <profile>
+            <id>production</id>
+        </profile>
+    </profiles>
 </project>

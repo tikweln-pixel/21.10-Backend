@@ -41,17 +41,24 @@ public class EventService {
         return toDto(event);
     }
 
-    public EventDto create(CreateEventRequest request) {
-        if (request.getCategoryNames() == null || request.getCategoryNames().isEmpty()) {
+    public EventDto create(EventDto dto) {
+        List<CategoryDto> incoming = dto.getCategoryNames();
+        if (incoming == null || incoming.isEmpty()) {
             throw new RuntimeException("At least one category is required");
         }
-        if (request.getCreatorCategoryName() == null || !request.getCategoryNames().contains(request.getCreatorCategoryName())) {
-            throw new RuntimeException("Creator category must be one of the event categories");
+
+        if (dto.getName() == null || dto.getName().isBlank()) {
+            throw new RuntimeException("Event name is required");
         }
 
         Event event = new Event(dto.getName().trim());
         event.setTimeInitial(dto.getTimeInitial());
         event.setTimeFinal(dto.getTimeFinal());
+        if (dto.getOrganizerId() != null) {
+            User organizer = userRepository.findById(dto.getOrganizerId())
+                    .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + dto.getOrganizerId()));
+            event.setOrganizer(organizer);
+        }
         event = eventRepository.save(event);
 
         Category firstCategory = null;
@@ -88,7 +95,10 @@ public class EventService {
         }
         eventRepository.save(event);
 
-        eventParticipationService.registerCompetitor(event.getId(), creatorId, firstCategory.getId());
+        Long creatorId = dto.getOrganizerId();
+        if (creatorId != null && firstCategory != null) {
+            eventParticipationService.registerCompetitor(event.getId(), creatorId, firstCategory.getId());
+        }
 
         return toDto(event);
     }

@@ -1,3 +1,5 @@
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+builder = "RAILPACK"
+
+[deploy]
+startCommand = "java -jar target/votify-backend-1.0.0-SNAPSHOT.jar"

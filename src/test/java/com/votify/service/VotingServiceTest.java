@@ -27,6 +27,7 @@ class VotingServiceTest {
     @Mock private CompetitorRepository competitorRepository;
     @Mock private CriterionRepository  criterionRepository;
     @Mock private CategoryRepository   categoryRepository;
+    @Mock private com.votify.persistence.CategoryCriterionPointsRepository criterionPointsRepository;
 
     @InjectMocks
     private VotingService votingService;
@@ -49,6 +50,10 @@ class VotingServiceTest {
 
         voting = new Voting(voter, competitor, criterion, 25);
         voting.setId(100L);
+
+        // Por defecto, no existe un voto previo entre las entidades usadas en los tests
+        when(votingRepository.findExistingVote(anyLong(), anyLong(), anyLong(), (Long) any()))
+                .thenReturn(java.util.Optional.empty());
     }
 
     // ── findAll ────────────────────────────────────────────────────────────

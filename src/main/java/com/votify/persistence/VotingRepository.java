@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface VotingRepository extends JpaRepository<Voting, Long> {
 
@@ -35,4 +36,11 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
      * Devuelve todos los votos de un votante en una categoría (para auditoría y consulta).
      */
     List<Voting> findByVoterIdAndCategoryId(Long voterId, Long categoryId);
+
+    @Query("SELECT v FROM Voting v WHERE v.voter.id = :voterId AND v.competitor.id = :competitorId "
+           + "AND v.criterion.id = :criterionId AND ((:categoryId IS NULL AND v.category IS NULL) OR v.category.id = :categoryId)")
+    Optional<Voting> findExistingVote(@Param("voterId") Long voterId,
+                                      @Param("competitorId") Long competitorId,
+                                      @Param("criterionId") Long criterionId,
+                                      @Param("categoryId") Long categoryId);
 }

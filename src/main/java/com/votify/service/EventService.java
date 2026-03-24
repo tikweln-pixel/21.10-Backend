@@ -3,6 +3,8 @@ package com.votify.service;
 
 import com.votify.dto.CategoryDto;
 import com.votify.dto.EventDto;
+import com.votify.dto.ParticipantDto;
+import com.votify.dto.ProjectDto;
 import com.votify.dto.UserDto;
 import com.votify.entity.Category;
 import com.votify.entity.Event;
@@ -140,6 +142,19 @@ public class EventService {
         List<CategoryDto> categoryDtos = event.getCategories().stream()
                 .map(this::categoryToDto)
                 .collect(Collectors.toList());
+        List<ParticipantDto> participantDtos = eventParticipationService.getParticipationsByEvent(event.getId()).stream()
+                .map(p -> new ParticipantDto(p.getUserId(), p.getUserName(), p.getUserEmail()))
+                .collect(Collectors.toList());
+
+        List<ProjectDto> projectDtos = event.getProjects().stream()
+                .map(p -> {
+                    List<Long> compIds = p.getCompetitors().stream()
+                            .map(c -> c.getId())
+                            .collect(Collectors.toList());
+                    return new ProjectDto(p.getId(), p.getName(), p.getDescription(), event.getId(), compIds);
+                })
+                .collect(Collectors.toList());
+
         EventDto dto = new EventDto(
                 event.getId(),
                 event.getName(),
@@ -149,6 +164,8 @@ public class EventService {
                 categoryDtos
         );
         dto.setOrganizerId(organizerId);
+        dto.setParticipants(participantDtos);
+        dto.setProjects(projectDtos);
         return dto;
     }
 

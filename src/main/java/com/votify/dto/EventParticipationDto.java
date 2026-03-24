@@ -9,6 +9,9 @@ public class EventParticipationDto {
     private Long userId;
     private Long categoryId;
     private ParticipationRole role;
+    private String userName;
+    private String userEmail;
+    private String categoryName;
 
     public EventParticipationDto() {
     }
@@ -19,6 +22,18 @@ public class EventParticipationDto {
         this.userId = userId;
         this.categoryId = categoryId;
         this.role = role;
+    }
+
+    public EventParticipationDto(Long id, Long eventId, Long userId, Long categoryId, ParticipationRole role,
+                                 String userName, String userEmail, String categoryName) {
+        this.id = id;
+        this.eventId = eventId;
+        this.userId = userId;
+        this.categoryId = categoryId;
+        this.role = role;
+        this.userName = userName;
+        this.userEmail = userEmail;
+        this.categoryName = categoryName;
     }
 
     public Long getId() {
@@ -59,5 +74,29 @@ public class EventParticipationDto {
 
     public void setRole(ParticipationRole role) {
         this.role = role;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getUserEmail() {
+        return userEmail;
+    }
+
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
+    }
+
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
     }
 }

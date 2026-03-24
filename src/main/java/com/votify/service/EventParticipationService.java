@@ -112,7 +112,10 @@ public class EventParticipationService {
                 participation.getEvent().getId(),
                 participation.getUser().getId(),
                 participation.getCategory().getId(),
-                participation.getRole()
+                participation.getRole(),
+                participation.getUser().getName(),
+                participation.getUser().getEmail(),
+                participation.getCategory().getName()
         );
     }
 }

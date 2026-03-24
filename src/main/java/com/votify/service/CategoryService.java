@@ -309,6 +309,14 @@ public class CategoryService {
         return toDto(categoryRepository.save(category));
     }
 
+    private static Integer resolveReminderMinutes(EventDto dto) {
+        if (dto.getReminderMinutes() != null) {
+            return dto.getReminderMinutes();
+        }
+        if (dto.getReminderHours() != null) {
+            return dto.getReminderHours() * 60;
+        }
+        return null;
 
     //  Helpers
 

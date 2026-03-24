@@ -183,28 +183,4 @@ public class EventService {
                 c.getMaxVotesPerVoter()
         );
     }
-
-    public EventDto setTimeInitial(Long id, Date timeInitial) {
-        Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
-        event.setTimeInitial(timeInitial);
-        return toDto(eventRepository.save(event));
-    }
-
-    public EventDto setTimeFinal(Long id, Date timeFinal) {
-        Event event = eventRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
-        event.setTimeFinal(timeFinal);
-        return toDto(eventRepository.save(event));
-    }
-
-    private static Integer resolveReminderMinutes(EventDto dto) {
-        if (dto.getReminderMinutes() != null) {
-            return dto.getReminderMinutes();
-        }
-        if (dto.getReminderHours() != null) {
-            return dto.getReminderHours() * 60;
-        }
-        return null;
-    }
 }

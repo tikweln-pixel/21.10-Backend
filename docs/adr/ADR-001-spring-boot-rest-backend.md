@@ -47,6 +47,12 @@ Esta decisión respeta el modelo de dominio diseñado (entidades, relaciones, re
   - Riesgo: divergencia entre el esquema JPA y el esquema real de Supabase. Mitigación: usar `ddl-auto=update` en desarrollo y revisar manualmente las migraciones antes de hacer deploy.
   - Riesgo: las credenciales de BD están en `application.properties` en texto plano. Mitigación: mover a variables de entorno antes del primer despliegue real.
 
+### 5.1) Actualización — Sprint 1
+
+En Sprint 1 se completó la migración del frontend para que **toda petición pase por este backend**, eliminando `@supabase/supabase-js` del cliente. Se añadieron 12 nuevos endpoints (cascade deletes, comentarios, votantes activos, queries de votings, registro con creación de usuario). Ver **ADR-005** para el detalle completo de la migración.
+
+La consecuencia positiva clave: las credenciales de Supabase ya no están expuestas en el bundle del cliente (navegador).
+
 ### 6) Evidencia
 
 - `pom.xml`: dependencias `spring-boot-starter-web`, `spring-boot-starter-data-jpa`, `postgresql`.

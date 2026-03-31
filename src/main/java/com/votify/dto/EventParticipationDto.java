@@ -1,5 +1,6 @@
 package com.votify.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.votify.entity.ParticipationRole;
 
 public class EventParticipationDto {
@@ -84,6 +85,7 @@ public class EventParticipationDto {
         this.userName = userName;
     }
 
+    @JsonProperty("email")
     public String getUserEmail() {
         return userEmail;
     }

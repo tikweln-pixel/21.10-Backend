@@ -9,8 +9,11 @@ import com.votify.dto.UserDto;
 import com.votify.entity.Category;
 import com.votify.entity.Event;
 import com.votify.entity.User;
+import com.votify.persistence.CommentRepository;
+import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.UserRepository;
+import com.votify.persistence.VotingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,11 +27,22 @@ public class EventService {
     private final EventRepository eventRepository;
     private final EventParticipationService eventParticipationService;
     private final UserRepository userRepository;
+    private final VotingRepository votingRepository;
+    private final EventParticipationRepository eventParticipationRepository;
+    private final CommentRepository commentRepository;
 
-    public EventService(EventRepository eventRepository, EventParticipationService eventParticipationService, UserRepository userRepository) {
+    public EventService(EventRepository eventRepository,
+                        EventParticipationService eventParticipationService,
+                        UserRepository userRepository,
+                        VotingRepository votingRepository,
+                        EventParticipationRepository eventParticipationRepository,
+                        CommentRepository commentRepository) {
         this.eventRepository = eventRepository;
         this.eventParticipationService = eventParticipationService;
         this.userRepository = userRepository;
+        this.votingRepository = votingRepository;
+        this.eventParticipationRepository = eventParticipationRepository;
+        this.commentRepository = commentRepository;
     }
 
     public List<EventDto> findAll() {
@@ -44,7 +58,7 @@ public class EventService {
     }
 
     public EventDto create(EventDto dto) {
-        List<CategoryDto> incoming = dto.getCategoryNames();
+        List<CategoryDto> incoming = dto.getCategories();
         if (incoming == null || incoming.isEmpty()) {
             throw new RuntimeException("At least one category is required");
         }
@@ -127,8 +141,43 @@ public class EventService {
         return toDto(eventRepository.save(event));
     }
 
+    @Transactional
     public void delete(Long id) {
-        eventRepository.deleteById(id);
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
+
+        List<Long> categoryIds = event.getCategories().stream()
+                .map(Category::getId)
+                .collect(Collectors.toList());
+        List<Long> projectIds = event.getProjects().stream()
+                .map(p -> p.getId())
+                .collect(Collectors.toList());
+
+        // Delete votings linked to event categories
+        if (!categoryIds.isEmpty()) {
+            votingRepository.deleteByCategoryIdIn(categoryIds);
+        }
+
+        // Delete event participations
+        eventParticipationRepository.deleteByEventId(id);
+
+        // Delete comments on event projects
+        if (!projectIds.isEmpty()) {
+            commentRepository.deleteByProjectIdIn(projectIds);
+        }
+
+        // Delete the event (JPA cascades handle categories, criterion_points, projects, project_competitors)
+        eventRepository.delete(event);
+    }
+
+    private static Integer resolveReminderMinutes(EventDto dto) {
+        if (dto.getReminderMinutes() != null) {
+            return dto.getReminderMinutes();
+        }
+        if (dto.getReminderHours() != null) {
+            return dto.getReminderHours() * 60;
+        }
+        return null;
     }
 
     private EventDto toDto(Event event) {

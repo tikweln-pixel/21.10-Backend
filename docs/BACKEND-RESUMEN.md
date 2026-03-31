@@ -1,7 +1,8 @@
 # Resumen del Backend — Votify
 
 **Stack:** Spring Boot 3.2.0 · Java 21 · Spring Data JPA · PostgreSQL (Supabase) · Maven
-**Tests:** 86 tests (61 unitarios Mockito + 25 integración @DataJpaTest con H2)
+**Tests:** 98 tests (73 unitarios Mockito + 25 integración @DataJpaTest con H2) — actualizado Sprint 1
+**Arquitectura:** Frontend React → Axios `/api` → Spring Boot :8080 → PostgreSQL Supabase
 
 ---
 
@@ -62,24 +63,26 @@ User  (tabla: users)
 
 Los DTOs son los objetos que viajan por la API (request/response). Los servicios los construyen desde entidades y los controllers los reciben/devuelven. **Nunca se exponen entidades directamente al exterior.**
 
-| DTO | Qué transporta |
-|---|---|
-| `EventDto` | `id`, `name`, `timeInitial`, `timeFinal`, `organizerId` |
-| `CreateEventRequest` | `name`, `categoryNames` (lista), `creatorUserId`, `creatorCategoryName` |
-| `CategoryDto` | `id`, `name`, `votingType`, `timeInitial`, `timeFinal`, `eventId`, `reminderMinutes` |
-| `CategoryCriterionPointsDto` | `id`, `categoryId`, `criterionId`, `criterionName`, `maxPoints` |
-| `CriterionDto` | `id`, `name` |
-| `ProjectDto` | `id`, `name`, `description`, `eventId` |
-| `CompetitorDto` | `id`, `name`, `email` |
-| `VoterDto` | `id`, `name`, `email` |
-| `VotingDto` | `id`, `voterId`, `competitorId`, `criterionId`, `score` |
-| `CommentDto` | `id`, `text`, `voterId`, `projectId` |
-| `ParticipantDto` | `id`, `name`, `email` |
-| `UserDto` | `id`, `name`, `email` |
-| `EventParticipationDto` | `id`, `eventId`, `userId`, `categoryId`, `role` |
-| `RegisterParticipationRequest` | `eventId`, `userId`, `categoryId` |
-| `RegisterCompetitorRequest` | (idem, específico para competidores) |
-| `TimeWindowDto` | `id`, `name`, fechas |
+| DTO | Qué transporta | Sprint |
+|---|---|---|
+| `EventDto` | `id`, `name`, `timeInitial`, `timeFinal`, `organizerId`, `categories` (lista de nombres) | S0+S1 |
+| `CreateEventRequest` | `name`, `categories` (lista), `creatorUserId`, `creatorCategoryName` | S0+S1 |
+| `CategoryDto` | `id`, `name`, `votingType`, `timeInitial`, `timeFinal`, `eventId`, `reminderMinutes` | S0 |
+| `CategoryCriterionPointsDto` | `id`, `categoryId`, `criterionId`, `criterionName`, `maxPoints` | S0 |
+| `CriterionDto` | `id`, `name` | S0 |
+| `ProjectDto` | `id`, `name`, `description`, `eventId`, `competitorIds` | S0+S1 |
+| `CompetitorDto` | `id`, `name`, `email` | S0 |
+| `VoterDto` | `id`, `name`, `email` | S0 |
+| `VotingDto` | `id`, `voterId`, `competitorId`, `criterionId`, `categoryId`, `score`, `manuallyModified` | S0+S1 |
+| `CommentDto` | `id`, `text`, `voterId`, `projectId` | S0 |
+| `CompetitorCommentDto` | `id`, `text`, `voterId`, `projectId`, `projectName` | **S1** |
+| `ParticipantDto` | `id`, `name`, `email` | S0 |
+| `UserDto` | `id`, `name`, `email` | S0 |
+| `EventParticipationDto` | `id`, `eventId`, `userId`, `userEmail` (`email`), `categoryId`, `role` | S0+S1 |
+| `RegisterParticipationRequest` | `eventId`, `userId`, `categoryId` | S0 |
+| `RegisterCompetitorRequest` | (idem, específico para competidores) | S0 |
+| `RegisterNewParticipantRequest` | `name`, `email`, `categoryId` — crea User+Participant+EventParticipation | **S1** |
+| `TimeWindowDto` | `id`, `name`, fechas | S0 |
 
 ---
 
@@ -87,21 +90,21 @@ Los DTOs son los objetos que viajan por la API (request/response). Los servicios
 
 Interfaces que extienden `JpaRepository<Entidad, Long>`. Spring Data genera las queries automáticamente a partir del nombre del método. Sin lógica manual.
 
-| Repositorio | Entidad | Métodos custom destacados |
-|---|---|---|
-| `EventRepository` | `Event` | — (solo CRUD estándar) |
-| `CategoryRepository` | `Category` | `findByEventId(Long eventId)` |
-| `CriterionRepository` | `Criterion` | — |
-| `ProjectRepository` | `Project` | `findByEventId(Long eventId)` |
-| `CompetitorRepository` | `Competitor` | — |
-| `VoterRepository` | `Voter` | — |
-| `VotingRepository` | `Voting` | — |
-| `ParticipantRepository` | `Participant` | — |
-| `UserRepository` | `User` | — |
-| `CommentRepository` | `Comment` | — |
-| `TimeWindowRepository` | `TimeWindow` | — |
-| `CategoryCriterionPointsRepository` | `CategoryCriterionPoints` | `findByCategoryId(Long)`, `findByCategoryIdAndCriterionId(Long, Long)`, `deleteByCategoryId(Long)` |
-| `EventParticipationRepository` | `EventParticipation` | `findByEventId`, `findByEventIdAndCategoryId`, `findByEventIdAndCategoryIdAndRole`, `existsByEventIdAndUserIdAndCategoryId`, `findByEventIdAndUserIdAndCategoryId`, `findByUserId` |
+| Repositorio | Entidad | Métodos custom destacados | Sprint |
+|---|---|---|---|
+| `EventRepository` | `Event` | — (solo CRUD estándar) | S0 |
+| `CategoryRepository` | `Category` | `findByEventId(Long)` | S0 |
+| `CriterionRepository` | `Criterion` | — | S0 |
+| `ProjectRepository` | `Project` | `findByEventId(Long)` | S0 |
+| `CompetitorRepository` | `Competitor` | — | S0 |
+| `VoterRepository` | `Voter` | — | S0 |
+| `VotingRepository` | `Voting` | `findByCompetitorIdIn(List<Long>)`, `findByVoterIdAndCompetitorId(Long,Long)`, `deleteByCategoryIdIn(List<Long>)`, `deleteByCategoryId(Long)` | S0+**S1** |
+| `ParticipantRepository` | `Participant` | — | S0 |
+| `UserRepository` | `User` | `findByEmail(String)` | S0+**S1** |
+| `CommentRepository` | `Comment` | `findByProjectId(Long)`, `deleteByProjectIdIn(List<Long>)` | S0+**S1** |
+| `TimeWindowRepository` | `TimeWindow` | — | S0 |
+| `CategoryCriterionPointsRepository` | `CategoryCriterionPoints` | `findByCategoryId(Long)`, `findByCategoryIdAndCriterionId(Long,Long)`, `deleteByCategoryId(Long)`, `deleteByCategoryIdIn(List<Long>)` | S0+**S1** |
+| `EventParticipationRepository` | `EventParticipation` | `findByEventId`, `findByEventIdAndCategoryId`, `findByEventIdAndCategoryIdAndRole`, `existsByEventIdAndUserIdAndCategoryId`, `findByEventIdAndUserIdAndCategoryId`, `findByUserId`, `deleteByEventId`, `deleteByCategoryId` | S0+**S1** |
 
 ---
 
@@ -179,18 +182,18 @@ CRUD estándar para sus respectivas entidades. Sin lógica de negocio compleja e
 
 Exponen los servicios como endpoints REST (`@RestController`). Reciben DTOs en el body (`@RequestBody`) o como path/query params. Delegan toda la lógica al servicio correspondiente.
 
-| Controller | Servicio que usa | Ruta base |
-|---|---|---|
-| `EventController` | `EventService` | `/events` |
-| `CategoryController` | `CategoryService` | `/categories` |
-| `CriterionController` | `CriterionService` | `/criteria` |
-| `ProjectController` | `ProjectService` | `/projects` |
-| `CompetitorController` | `CompetitorService` | `/competitors` |
-| `VoterController` | `VoterService` | `/voters` |
-| `VotingController` | `VotingService` | `/votings` |
-| `ParticipantController` | `ParticipantService` | `/participants` |
-| `UserController` | `UserService` | `/users` |
-| `TimeWindowController` | `TimeWindowService` | `/time-windows` |
+| Controller | Servicio que usa | Ruta base | Endpoints Sprint 1 añadidos |
+|---|---|---|---|
+| `EventController` | `EventService` | `/events` | `DELETE /{id}` cascade, `POST /{id}/competitors/register`, `POST /{id}/voters/register` |
+| `CategoryController` | `CategoryService` | `/categories` | `DELETE /{id}` cascade, `GET /{id}/active-voters` |
+| `CriterionController` | `CriterionService` | `/criteria` | — |
+| `ProjectController` | `ProjectService` | `/projects` | `GET /{id}/comments`, `GET /{id}/competitors` |
+| `CompetitorController` | `CompetitorService` | `/competitors` | `GET /{userId}/comments` |
+| `VoterController` | `VoterService` | `/voters` | — |
+| `VotingController` | `VotingService` | `/votings` | `GET /by-competitors?ids=...`, `GET /by-voter-competitor?voterId=&competitorId=` |
+| `ParticipantController` | `ParticipantService` | `/participants` | — |
+| `UserController` | `UserService` | `/users` | — |
+| `TimeWindowController` | `TimeWindowService` | `/time-windows` | — |
 
 ---
 
@@ -254,17 +257,39 @@ CriterionService
 
 ## 8. Tests
 
-| Clase | Tipo | Tests | Qué valida |
-|---|---|---|---|
-| `CriterionServiceTest` | Unitario | 9 | CRUD criterios |
-| `EventServiceTest` | Unitario | 9 | CRUD eventos, organizador |
-| `CategoryServiceTest` | Unitario | 16 | CRUD, tipos voto, puntos 100%, fechas |
-| `VotingServiceTest` | Unitario | 10 | Votos, intervención manual, score=0 |
-| `ProjectServiceTest` | Unitario | 9 | Proyectos, comentarios, competidores |
-| `EventParticipationServiceTest` | Unitario | 8 | Registro, duplicados, validación categoría |
-| `CategoryRepositoryTest` | Integración | 9 | Queries JPA en H2 |
-| `VotingRepositoryTest` | Integración | 8 | Persistencia votos en H2 |
-| `EventParticipationRepositoryTest` | Integración | 8 | Queries complejas participaciones |
-| **Total** | | **86** | |
+| Clase | Tipo | Tests | Qué valida | Sprint |
+|---|---|---|---|---|
+| `CriterionServiceTest` | Unitario | 9 | CRUD criterios | S0 |
+| `EventServiceTest` | Unitario | 9 | CRUD eventos, organizador | S0 |
+| `CategoryServiceTest` | Unitario | 16 | CRUD, tipos voto, puntos 100%, fechas | S0 |
+| `VotingServiceTest` | Unitario | 10 | Votos, intervención manual, score=0 | S0 |
+| `ProjectServiceTest` | Unitario | 9 | Proyectos, comentarios, competidores | S0 |
+| `EventParticipationServiceTest` | Unitario | 8 | Registro, duplicados, validación categoría | S0 |
+| Nuevos tests Sprint 1 | Unitario | +12 | Cascade deletes, register con User, queries nuevas | **S1** |
+| `CategoryRepositoryTest` | Integración | 9 | Queries JPA en H2 | S0 |
+| `VotingRepositoryTest` | Integración | 8 | Persistencia votos en H2 | S0 |
+| `EventParticipationRepositoryTest` | Integración | 8 | Queries complejas participaciones | S0 |
+| **Total** | | **98** | | S0+S1 |
 
 Configuración: tests unitarios usan **Mockito** (sin contexto Spring); tests de integración usan **@DataJpaTest + H2** en memoria con `MODE=PostgreSQL`.
+
+---
+
+## 9. Cambios Sprint 1 — resumen
+
+| # | Cambio | Detalle |
+|---|--------|---------|
+| 1 | `VotingDto.manuallyModified` | Campo nuevo para auditoría de intervención manual |
+| 2 | `EventDto.categories` | Renombrado desde `categoryNames` para coherencia con frontend |
+| 3 | `EventParticipationDto.email` | Alias JSON para campo `userEmail` |
+| 4 | `DELETE /api/events/{id}` cascade | Borra votings, participaciones, comentarios, criterion points |
+| 5 | `DELETE /api/categories/{id}` cascade | Cascade delete completo |
+| 6 | `GET /api/projects/{id}/comments` | Comentarios de un proyecto |
+| 7 | `GET /api/competitors/{userId}/comments` | Comentarios recibidos por competidor |
+| 8 | `GET /api/categories/{id}/active-voters` | Votantes que han votado en la categoría |
+| 9 | `GET /api/votings/by-competitors?ids=...` | Votos filtrados por lista de competidores |
+| 10 | `GET /api/votings/by-voter-competitor` | Votos de un voter+competitor específico |
+| 11 | `GET /api/projects/{id}/competitors` | IDs de competidores asignados al proyecto |
+| 12 | `POST /api/events/{id}/competitors/register` y `.../voters/register` | Registro completo con creación de User+Participant en una transacción |
+
+**Frontend:** `@supabase/supabase-js` eliminado. `src/api/client.ts` reescrito con Axios (330 líneas, 48+ funciones). Ver **ADR-005**.

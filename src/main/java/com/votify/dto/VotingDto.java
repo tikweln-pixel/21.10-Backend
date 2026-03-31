@@ -14,6 +14,7 @@ public class VotingDto {
      * Opcional en JURY_EXPERT para mantener compatibilidad.
      */
     private Long categoryId;
+    private Boolean manuallyModified;
 
     public VotingDto() {
     }
@@ -33,6 +34,16 @@ public class VotingDto {
         this.criterionId = criterionId;
         this.score = score;
         this.categoryId = categoryId;
+    }
+
+    public VotingDto(Long id, Long voterId, Long competitorId, Long criterionId, Integer score, Long categoryId, Boolean manuallyModified) {
+        this.id = id;
+        this.voterId = voterId;
+        this.competitorId = competitorId;
+        this.criterionId = criterionId;
+        this.score = score;
+        this.categoryId = categoryId;
+        this.manuallyModified = manuallyModified;
     }
 
     public Long getId() {
@@ -81,5 +92,13 @@ public class VotingDto {
 
     public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public Boolean getManuallyModified() {
+        return manuallyModified;
+    }
+
+    public void setManuallyModified(Boolean manuallyModified) {
+        this.manuallyModified = manuallyModified;
     }
 }

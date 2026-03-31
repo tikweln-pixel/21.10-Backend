@@ -48,5 +48,15 @@ public class ProjectController {
         CommentDto saved = projectService.addComment(projectId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
+
+    @GetMapping("/projects/{projectId}/comments")
+    public ResponseEntity<List<CommentDto>> getCommentsByProject(@PathVariable Long projectId) {
+        return ResponseEntity.ok(projectService.getCommentsByProject(projectId));
+    }
+
+    @GetMapping("/projects/{projectId}/competitors")
+    public ResponseEntity<List<Long>> getCompetitorIds(@PathVariable Long projectId) {
+        return ResponseEntity.ok(projectService.getCompetitorIds(projectId));
+    }
 }
 

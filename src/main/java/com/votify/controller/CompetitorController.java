@@ -1,21 +1,33 @@
 package com.votify.controller;
 
+import com.votify.dto.CompetitorCommentDto;
 import com.votify.dto.CompetitorDto;
+import com.votify.entity.Comment;
+import com.votify.entity.Project;
+import com.votify.persistence.CommentRepository;
+import com.votify.persistence.ProjectRepository;
 import com.votify.service.CompetitorService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/competitors")
 public class CompetitorController {
 
     private final CompetitorService competitorService;
+    private final ProjectRepository projectRepository;
+    private final CommentRepository commentRepository;
 
-    public CompetitorController(CompetitorService competitorService) {
+    public CompetitorController(CompetitorService competitorService,
+                                ProjectRepository projectRepository,
+                                CommentRepository commentRepository) {
         this.competitorService = competitorService;
+        this.projectRepository = projectRepository;
+        this.commentRepository = commentRepository;
     }
 
     @GetMapping
@@ -42,5 +54,26 @@ public class CompetitorController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         competitorService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{competitorId}/comments")
+    public ResponseEntity<List<CompetitorCommentDto>> getCommentsByCompetitor(@PathVariable Long competitorId) {
+        // Find projects where competitor participates
+        List<Project> projects = projectRepository.findAll().stream()
+                .filter(p -> p.getCompetitors().stream().anyMatch(c -> c.getId().equals(competitorId)))
+                .collect(Collectors.toList());
+
+        List<Long> projectIds = projects.stream().map(Project::getId).collect(Collectors.toList());
+        if (projectIds.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        List<CompetitorCommentDto> comments = commentRepository.findByProjectIdIn(projectIds).stream()
+                .map(c -> new CompetitorCommentDto(
+                        c.getId(), c.getText(), c.getVoter().getId(),
+                        c.getProject().getId(), c.getProject().getName()))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(comments);
     }
 }

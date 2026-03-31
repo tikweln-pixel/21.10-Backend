@@ -176,22 +176,48 @@ public class VotingService {
         Voting voting = votingRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Voting not found with id: " + id));
 
-        Voter voter = voterRepository.findById(dto.getVoterId())
-                .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
-        Competitor competitor = competitorRepository.findById(dto.getCompetitorId())
-                .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
-        Criterion criterion = criterionRepository.findById(dto.getCriterionId())
-                .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
-
-        voting.setVoter(voter);
-        voting.setCompetitor(competitor);
-        voting.setCriterion(criterion);
-        voting.setScore(dto.getScore());
+        if (dto.getVoterId() != null && dto.getVoterId() > 0) {
+            Voter voter = voterRepository.findById(dto.getVoterId())
+                    .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
+            voting.setVoter(voter);
+        }
+        if (dto.getCompetitorId() != null && dto.getCompetitorId() > 0) {
+            Competitor competitor = competitorRepository.findById(dto.getCompetitorId())
+                    .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
+            voting.setCompetitor(competitor);
+        }
+        if (dto.getCriterionId() != null && dto.getCriterionId() > 0) {
+            Criterion criterion = criterionRepository.findById(dto.getCriterionId())
+                    .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
+            voting.setCriterion(criterion);
+        }
+        if (dto.getScore() != null) {
+            voting.setScore(dto.getScore());
+        }
+        if (dto.getManuallyModified() != null) {
+            voting.setManuallyModified(dto.getManuallyModified());
+        }
         return toDto(votingRepository.save(voting));
     }
 
     public void delete(Long id) {
         votingRepository.deleteById(id);
+    }
+
+    public List<VotingDto> findByCompetitorIds(List<Long> competitorIds) {
+        return votingRepository.findByCompetitorIdIn(competitorIds).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public List<Long> getActiveVoterIds(Long categoryId) {
+        return votingRepository.findDistinctVoterIdsByCategoryId(categoryId);
+    }
+
+    public List<VotingDto> findByVoterAndCompetitor(Long voterId, Long competitorId) {
+        return votingRepository.findByVoterIdAndCompetitorId(voterId, competitorId).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
     private VotingDto toDto(Voting voting) {
@@ -202,7 +228,8 @@ public class VotingService {
                 voting.getCompetitor().getId(),
                 voting.getCriterion().getId(),
                 voting.getScore(),
-                categoryId
+                categoryId,
+                voting.getManuallyModified()
         );
     }
 }

@@ -6,3 +6,5 @@ target/
 *.class
 *.log
 .DS_Store
+.env
+src/main/resources/application-local.properties

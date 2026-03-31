@@ -4,9 +4,13 @@ import com.votify.dto.EventDto;
 import com.votify.entity.Event;
 import com.votify.entity.User;
 import com.votify.persistence.CategoryRepository;
+import com.votify.persistence.CommentRepository;
+import com.votify.persistence.CompetitorRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.UserRepository;
+import com.votify.persistence.VoterRepository;
+import com.votify.persistence.VotingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +35,10 @@ class EventServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private EventParticipationRepository eventParticipationRepository;
     @Mock private CategoryRepository categoryRepository;
+    @Mock private CompetitorRepository competitorRepository;
+    @Mock private VoterRepository voterRepository;
+    @Mock private VotingRepository votingRepository;
+    @Mock private CommentRepository commentRepository;
 
     private EventService eventService;
 
@@ -38,14 +46,22 @@ class EventServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Instancia real: no se simula EventParticipationService con Mockito (falla con JDK 23 y Mockito inline).
         EventParticipationService eventParticipationService = new EventParticipationService(
                 eventParticipationRepository,
                 eventRepository,
                 userRepository,
-                categoryRepository
+                categoryRepository,
+                competitorRepository,
+                voterRepository
         );
-        eventService = new EventService(eventRepository, eventParticipationService, userRepository);
+        eventService = new EventService(
+                eventRepository,
+                eventParticipationService,
+                userRepository,
+                votingRepository,
+                eventParticipationRepository,
+                commentRepository
+        );
 
         event1 = new Event("Hackathon 2026");
         event1.setId(1L);
@@ -161,21 +177,23 @@ class EventServiceTest {
     // ── delete ─────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("delete → llama a deleteById una sola vez")
-    void delete_callsDeleteByIdOnce() {
-        doNothing().when(eventRepository).deleteById(1L);
+    @DisplayName("delete → llama a delete una sola vez")
+    void delete_callsDeleteOnce() {
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(event1));
+        doNothing().when(eventRepository).delete(event1);
 
         eventService.delete(1L);
 
-        verify(eventRepository, times(1)).deleteById(1L);
+        verify(eventRepository, times(1)).delete(event1);
     }
 
     @Test
-    @DisplayName("delete → no lanza excepción para id inexistente (deleteById es silencioso)")
-    void delete_doesNotThrow_whenNotFound() {
-        doNothing().when(eventRepository).deleteById(99L);
+    @DisplayName("delete → lanza excepción para id inexistente")
+    void delete_throwsException_whenNotFound() {
+        when(eventRepository.findById(99L)).thenReturn(Optional.empty());
 
-        // Spring Data deleteById no lanza excepción si el id no existe
-        assertThatCode(() -> eventService.delete(99L)).doesNotThrowAnyException();
+        assertThatThrownBy(() -> eventService.delete(99L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("99");
     }
 }

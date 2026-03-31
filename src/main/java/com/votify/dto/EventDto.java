@@ -80,11 +80,11 @@ public class EventDto {
         this.creator = creator;
     }
 
-    public List<CategoryDto> getCategoryNames() {
+    public List<CategoryDto> getCategories() {
         return categories;
     }
 
-    public void setCategoryNames(List<CategoryDto> categories) {
+    public void setCategories(List<CategoryDto> categories) {
         this.categories = categories;
     }
 

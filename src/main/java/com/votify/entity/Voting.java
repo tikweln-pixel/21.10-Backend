@@ -33,6 +33,9 @@ public class Voting {
     @Column(nullable = false)
     private Integer score;
 
+    @Column(name = "manually_modified")
+    private Boolean manuallyModified;
+
     public Voting() {
     }
 
@@ -89,5 +92,13 @@ public class Voting {
 
     public void setCategory(Category category) {
         this.category = category;
+    }
+
+    public Boolean getManuallyModified() {
+        return manuallyModified;
+    }
+
+    public void setManuallyModified(Boolean manuallyModified) {
+        this.manuallyModified = manuallyModified;
     }
 }

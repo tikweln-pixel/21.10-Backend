@@ -2,22 +2,32 @@ package com.votify.controller;
 
 import com.votify.dto.CategoryCriterionPointsDto;
 import com.votify.dto.CategoryDto;
+import com.votify.dto.UserDto;
 import com.votify.entity.VotingType;
 import com.votify.service.CategoryService;
+import com.votify.service.VotingService;
+import com.votify.persistence.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/categories")
 public class CategoryController {
 
     private final CategoryService categoryService;
+    private final VotingService votingService;
+    private final UserRepository userRepository;
 
-    public CategoryController(CategoryService categoryService) {
+    public CategoryController(CategoryService categoryService,
+                              VotingService votingService,
+                              UserRepository userRepository) {
         this.categoryService = categoryService;
+        this.votingService = votingService;
+        this.userRepository = userRepository;
     }
 
     //  CRUD básico
@@ -144,5 +154,14 @@ public class CategoryController {
             @PathVariable Long id,
             @RequestBody CategoryDto dto) {
         return ResponseEntity.ok(categoryService.setMaxVotesPerVoter(id, dto.getMaxVotesPerVoter()));
+    }
+
+    @GetMapping("/{categoryId}/active-voters")
+    public ResponseEntity<List<UserDto>> getActiveVoters(@PathVariable Long categoryId) {
+        List<Long> voterIds = votingService.getActiveVoterIds(categoryId);
+        List<UserDto> voters = userRepository.findAllById(voterIds).stream()
+                .map(u -> new UserDto(u.getId(), u.getName(), u.getEmail()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(voters);
     }
 }

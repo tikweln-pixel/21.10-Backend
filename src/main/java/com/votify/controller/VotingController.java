@@ -43,4 +43,15 @@ public class VotingController {
         votingService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/by-competitors")
+    public ResponseEntity<List<VotingDto>> getByCompetitors(@RequestParam List<Long> ids) {
+        return ResponseEntity.ok(votingService.findByCompetitorIds(ids));
+    }
+
+    @GetMapping("/by-voter-competitor")
+    public ResponseEntity<List<VotingDto>> getByVoterAndCompetitor(
+            @RequestParam Long voterId, @RequestParam Long competitorId) {
+        return ResponseEntity.ok(votingService.findByVoterAndCompetitor(voterId, competitorId));
+    }
 }

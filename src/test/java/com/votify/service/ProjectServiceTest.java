@@ -153,7 +153,7 @@ class ProjectServiceTest {
         when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
         when(projectRepository.save(any(Project.class))).thenReturn(project);
 
-        //ProjectDto result = projectService.addCompetitor(10L, 2L);
+        projectService.addCompetitor(10L, 2L);
 
         assertThat(project.getCompetitors()).contains(competitor);
         verify(projectRepository, times(1)).save(project);

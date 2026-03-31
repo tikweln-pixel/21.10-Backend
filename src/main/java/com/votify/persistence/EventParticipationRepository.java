@@ -20,4 +20,8 @@ public interface EventParticipationRepository extends JpaRepository<EventPartici
     Optional<EventParticipation> findByEventIdAndUserIdAndCategoryId(Long eventId, Long userId, Long categoryId);
 
     boolean existsByEventIdAndUserIdAndCategoryId(Long eventId, Long userId, Long categoryId);
+
+    void deleteByEventId(Long eventId);
+
+    void deleteByCategoryId(Long categoryId);
 }

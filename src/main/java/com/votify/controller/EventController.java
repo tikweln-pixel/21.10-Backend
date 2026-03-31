@@ -1,6 +1,7 @@
 package com.votify.controller;
 
 import com.votify.dto.*;
+import com.votify.dto.RegisterNewParticipantRequest;
 import com.votify.service.CategoryService;
 import com.votify.service.EventParticipationService;
 import com.votify.service.EventService;
@@ -121,5 +122,23 @@ public class EventController {
             @RequestParam Long categoryId) {
         eventParticipationService.removeParticipation(eventId, userId, categoryId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{eventId}/competitors/register")
+    public ResponseEntity<EventParticipationDto> registerNewCompetitor(
+            @PathVariable Long eventId,
+            @RequestBody RegisterNewParticipantRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventParticipationService.registerNewCompetitor(
+                        eventId, request.getName(), request.getEmail(), request.getCategoryId()));
+    }
+
+    @PostMapping("/{eventId}/voters/register")
+    public ResponseEntity<EventParticipationDto> registerNewVoter(
+            @PathVariable Long eventId,
+            @RequestBody RegisterNewParticipantRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventParticipationService.registerNewVoter(
+                        eventId, request.getName(), request.getEmail(), request.getCategoryId()));
     }
 }

@@ -10,7 +10,9 @@ import com.votify.entity.VotingType;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CategoryRepository;
 import com.votify.persistence.CriterionRepository;
+import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
+import com.votify.persistence.VotingRepository;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,15 +29,21 @@ public class CategoryService {
     private final EventRepository eventRepository;
     private final CriterionRepository criterionRepository;
     private final CategoryCriterionPointsRepository criterionPointsRepository;
+    private final VotingRepository votingRepository;
+    private final EventParticipationRepository eventParticipationRepository;
 
     public CategoryService(CategoryRepository categoryRepository,
                            EventRepository eventRepository,
                            CriterionRepository criterionRepository,
-                           CategoryCriterionPointsRepository criterionPointsRepository) {
+                           CategoryCriterionPointsRepository criterionPointsRepository,
+                           VotingRepository votingRepository,
+                           EventParticipationRepository eventParticipationRepository) {
         this.categoryRepository = categoryRepository;
         this.eventRepository = eventRepository;
         this.criterionRepository = criterionRepository;
         this.criterionPointsRepository = criterionPointsRepository;
+        this.votingRepository = votingRepository;
+        this.eventParticipationRepository = eventParticipationRepository;
     }
 
     //  CRUD básico
@@ -104,7 +112,15 @@ public class CategoryService {
         return toDto(categoryRepository.save(category));
     }
 
+    @Transactional
     public void delete(Long id) {
+        if (!categoryRepository.existsById(id)) {
+            throw new RuntimeException("Category not found with id: " + id);
+        }
+        // Delete votings, event participations, criterion points linked to this category
+        votingRepository.deleteByCategoryId(id);
+        eventParticipationRepository.deleteByCategoryId(id);
+        criterionPointsRepository.deleteByCategoryId(id);
         categoryRepository.deleteById(id);
     }
 
@@ -309,17 +325,7 @@ public class CategoryService {
         return toDto(categoryRepository.save(category));
     }
 
-    private static Integer resolveReminderMinutes(EventDto dto) {
-        if (dto.getReminderMinutes() != null) {
-            return dto.getReminderMinutes();
-        }
-        if (dto.getReminderHours() != null) {
-            return dto.getReminderHours() * 60;
-        }
-        return null;
-
     //  Helpers
-
 
     private CategoryDto toDto(Category category) {
         Long eventId = category.getEvent() != null ? category.getEvent().getId() : null;

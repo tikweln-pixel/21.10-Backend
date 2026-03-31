@@ -2,6 +2,7 @@ package com.votify.persistence;
 
 import com.votify.entity.Voting;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -43,4 +44,23 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
                                       @Param("competitorId") Long competitorId,
                                       @Param("criterionId") Long criterionId,
                                       @Param("categoryId") Long categoryId);
+
+    /* ── Cascade delete support ── */
+
+    @Modifying
+    @Query("DELETE FROM Voting v WHERE v.category.id IN :categoryIds")
+    void deleteByCategoryIdIn(@Param("categoryIds") List<Long> categoryIds);
+
+    @Modifying
+    @Query("DELETE FROM Voting v WHERE v.category.id = :categoryId")
+    void deleteByCategoryId(@Param("categoryId") Long categoryId);
+
+    /* ── Query endpoints for frontend ── */
+
+    List<Voting> findByCompetitorIdIn(List<Long> competitorIds);
+
+    List<Voting> findByVoterIdAndCompetitorId(Long voterId, Long competitorId);
+
+    @Query("SELECT DISTINCT v.voter.id FROM Voting v WHERE v.category.id = :categoryId")
+    List<Long> findDistinctVoterIdsByCategoryId(@Param("categoryId") Long categoryId);
 }

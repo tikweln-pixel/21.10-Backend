@@ -103,6 +103,23 @@ public class ProjectService {
         return toDto(saved);
     }
 
+    public List<CommentDto> getCommentsByProject(Long projectId) {
+        if (!projectRepository.existsById(projectId)) {
+            throw new RuntimeException("Project not found with id: " + projectId);
+        }
+        return commentRepository.findByProjectId(projectId).stream()
+                .map(c -> new CommentDto(c.getId(), c.getVoter().getId(), c.getText()))
+                .collect(Collectors.toList());
+    }
+
+    public List<Long> getCompetitorIds(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
+        return project.getCompetitors().stream()
+                .map(Competitor::getId)
+                .collect(Collectors.toList());
+    }
+
     private ProjectDto toDto(Project project) {
         List<Long> competitorIds = project.getCompetitors().stream()
                 .map(Competitor::getId)

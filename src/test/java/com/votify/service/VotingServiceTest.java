@@ -52,7 +52,8 @@ class VotingServiceTest {
         voting.setId(100L);
 
         // Por defecto, no existe un voto previo entre las entidades usadas en los tests
-        when(votingRepository.findExistingVote(anyLong(), anyLong(), anyLong(), (Long) any()))
+        // lenient: este stub no lo usan todos los tests (findAll, findById, delete, etc.)
+        lenient().when(votingRepository.findExistingVote(anyLong(), anyLong(), anyLong(), (Long) any()))
                 .thenReturn(java.util.Optional.empty());
     }
 

@@ -2,31 +2,38 @@ package com.votify.service;
 
 import com.votify.dto.EventParticipationDto;
 import com.votify.entity.*;
-import com.votify.persistence.CategoryRepository;
-import com.votify.persistence.EventParticipationRepository;
-import com.votify.persistence.EventRepository;
-import com.votify.persistence.UserRepository;
+import com.votify.persistence.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 public class EventParticipationService {
 
+    private static final Pattern EMAIL_REGEX = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+
     private final EventParticipationRepository eventParticipationRepository;
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final CompetitorRepository competitorRepository;
+    private final VoterRepository voterRepository;
 
     public EventParticipationService(EventParticipationRepository eventParticipationRepository,
                                      EventRepository eventRepository,
                                      UserRepository userRepository,
-                                     CategoryRepository categoryRepository) {
+                                     CategoryRepository categoryRepository,
+                                     CompetitorRepository competitorRepository,
+                                     VoterRepository voterRepository) {
         this.eventParticipationRepository = eventParticipationRepository;
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
+        this.competitorRepository = competitorRepository;
+        this.voterRepository = voterRepository;
     }
 
     /**
@@ -104,6 +111,29 @@ public class EventParticipationService {
                 .findByEventIdAndUserIdAndCategoryId(eventId, userId, categoryId)
                 .orElseThrow(() -> new RuntimeException("Participation not found"));
         eventParticipationRepository.delete(participation);
+    }
+
+    @Transactional
+    public EventParticipationDto registerNewCompetitor(Long eventId, String name, String email, Long categoryId) {
+        validateNewParticipant(name, email);
+        Competitor competitor = competitorRepository.save(new Competitor(name.trim(), email.trim()));
+        return registerParticipation(eventId, competitor.getId(), categoryId, ParticipationRole.COMPETITOR);
+    }
+
+    @Transactional
+    public EventParticipationDto registerNewVoter(Long eventId, String name, String email, Long categoryId) {
+        validateNewParticipant(name, email);
+        Voter voter = voterRepository.save(new Voter(name.trim(), email.trim()));
+        return registerParticipation(eventId, voter.getId(), categoryId, ParticipationRole.VOTER);
+    }
+
+    private void validateNewParticipant(String name, String email) {
+        if (name == null || name.isBlank()) {
+            throw new RuntimeException("Name is required");
+        }
+        if (email == null || !EMAIL_REGEX.matcher(email).matches()) {
+            throw new RuntimeException("Valid email is required");
+        }
     }
 
     private EventParticipationDto toDto(EventParticipation participation) {

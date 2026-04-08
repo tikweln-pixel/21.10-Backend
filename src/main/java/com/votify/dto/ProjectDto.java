@@ -8,6 +8,7 @@ public class ProjectDto {
     private String name;
     private String description;
     private Long eventId;
+    private Long creatorUserId;
     private List<Long> competitorIds;
 
     public ProjectDto() {
@@ -51,6 +52,14 @@ public class ProjectDto {
 
     public void setEventId(Long eventId) {
         this.eventId = eventId;
+    }
+
+    public Long getCreatorUserId() {
+        return creatorUserId;
+    }
+
+    public void setCreatorUserId(Long creatorUserId) {
+        this.creatorUserId = creatorUserId;
     }
 
     public List<Long> getCompetitorIds() {

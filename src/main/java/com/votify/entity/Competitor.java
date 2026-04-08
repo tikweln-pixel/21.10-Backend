@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "competitors")
-@PrimaryKeyJoinColumn(name = "participant_id")
-public class Competitor extends Participant {
+@PrimaryKeyJoinColumn(name = "user_id")
+public class Competitor extends User {
 
     public Competitor() {
     }

@@ -1,6 +1,6 @@
 package com.votify.dto;
 
-public class CompetitorDto extends ParticipantDto {
+public class CompetitorDto extends UserDto {
 
     public CompetitorDto() {
     }

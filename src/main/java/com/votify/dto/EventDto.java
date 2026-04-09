@@ -15,7 +15,7 @@ public class EventDto {
     private Long organizerId;
     private UserDto creator;
     private List<CategoryDto> categories;
-    private List<ParticipantDto> participants;
+    private List<UserDto> participants;
     private List<ProjectDto> projects;
     private Integer reminderMinutes;
     private Integer reminderHours;
@@ -104,11 +104,11 @@ public class EventDto {
         this.reminderHours = reminderHours;
     }
 
-    public List<ParticipantDto> getParticipants() {
+    public List<UserDto> getParticipants() {
         return participants;
     }
 
-    public void setParticipants(List<ParticipantDto> participants) {
+    public void setParticipants(List<UserDto> participants) {
         this.participants = participants;
     }
 

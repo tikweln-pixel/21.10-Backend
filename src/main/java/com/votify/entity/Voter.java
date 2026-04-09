@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "voters")
-@PrimaryKeyJoinColumn(name = "participant_id")
-public class Voter extends Participant {
+@PrimaryKeyJoinColumn(name = "user_id")
+public class Voter extends User {
 
     public Voter() {
     }

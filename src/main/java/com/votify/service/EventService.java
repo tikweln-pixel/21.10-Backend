@@ -3,7 +3,6 @@ package com.votify.service;
 
 import com.votify.dto.CategoryDto;
 import com.votify.dto.EventDto;
-import com.votify.dto.ParticipantDto;
 import com.votify.dto.ProjectDto;
 import com.votify.dto.UserDto;
 import com.votify.entity.Category;
@@ -199,8 +198,8 @@ public class EventService {
         List<CategoryDto> categoryDtos = event.getCategories().stream()
                 .map(this::categoryToDto)
                 .collect(Collectors.toList());
-        List<ParticipantDto> participantDtos = eventParticipationService.getParticipationsByEvent(event.getId()).stream()
-                .map(p -> new ParticipantDto(p.getUserId(), p.getUserName(), p.getUserEmail()))
+        List<UserDto> participantDtos = eventParticipationService.getParticipationsByEvent(event.getId()).stream()
+                .map(p -> new UserDto(p.getUserId(), p.getUserName(), p.getUserEmail()))
                 .collect(Collectors.toList());
 
         List<ProjectDto> projectDtos = event.getProjects().stream()

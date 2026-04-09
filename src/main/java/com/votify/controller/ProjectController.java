@@ -1,5 +1,6 @@
 package com.votify.controller;
 
+import com.votify.dto.CompetitorDto;
 import com.votify.dto.ProjectDto;
 import com.votify.dto.CommentDto;
 import com.votify.service.ProjectService;
@@ -36,10 +37,10 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.findByEvent(eventId));
     }
 
-    @PostMapping("/projects/{projectId}/competitors/{competitorId}")
+    @PostMapping("/projects/{projectId}/competitors/{userId}")
     public ResponseEntity<ProjectDto> addCompetitor(@PathVariable Long projectId,
-                                                    @PathVariable Long competitorId) {
-        return ResponseEntity.ok(projectService.addCompetitor(projectId, competitorId));
+                                                    @PathVariable Long userId) {
+        return ResponseEntity.ok(projectService.addCompetitor(projectId, userId));
     }
 
     @PostMapping("/projects/{projectId}/comments")
@@ -55,8 +56,8 @@ public class ProjectController {
     }
 
     @GetMapping("/projects/{projectId}/competitors")
-    public ResponseEntity<List<Long>> getCompetitorIds(@PathVariable Long projectId) {
-        return ResponseEntity.ok(projectService.getCompetitorIds(projectId));
+    public ResponseEntity<List<CompetitorDto>> getCompetitors(@PathVariable Long projectId) {
+        return ResponseEntity.ok(projectService.getCompetitors(projectId));
     }
 }
 

@@ -2,7 +2,13 @@
 
 **Fecha:** 21-03-2026
 **Sprint:** S0
-**Estado:** Aprobado — con deuda técnica documentada
+**Estado:** ⚠️ Parcialmente supersedido por ADR-007 (09-04-2026)
+
+> **Nota (S1):** La jerarquía `User → Participant → Competitor/Voter` documentada
+> aquí fue simplificada en Sprint 1. `Participant` fue eliminada como clase
+> intermedia vacía. La jerarquía actual es `User → Competitor` y `User → Voter`
+> directamente. La decisión de composición de roles via `EventParticipation`
+> **no cambia**. Ver **ADR-007** para el detalle completo.
 
 ---
 

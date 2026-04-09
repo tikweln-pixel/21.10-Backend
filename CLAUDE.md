@@ -37,9 +37,9 @@ src/main/java/com/votify/
 ## Entidades principales y relaciones
 ```
 User (id, name, email)
-  └── Participant extends User  [@PrimaryKeyJoinColumn]
-        ├── Competitor extends Participant
-        └── Voter extends Participant
+  ├── Competitor extends User  [@PrimaryKeyJoinColumn(name="user_id")]
+  └── Voter extends User       [@PrimaryKeyJoinColumn(name="user_id")]
+  (Participant fue eliminada en Sprint 1 — ver ADR-007)
 
 Event (id, name, timeInitial, timeFinal)
   └── Category (id, name, votingType, timeInitial, timeFinal)
@@ -65,7 +65,7 @@ TimeWindow (category, startTime, endTime)
 | DELETE | /api/events/{id} | Borrar evento (cascade) |
 | GET | /api/events/{id}/categories | Categorías de un evento |
 | GET | /api/events/{id}/participations | Participaciones de un evento |
-| POST | /api/events/{eventId}/competitors/register | Registrar competidor (crea User+Participant+Competitor) |
+| POST | /api/events/{eventId}/competitors/register | Registrar competidor (crea User+Competitor) |
 | POST | /api/events/{eventId}/voters/register | Registrar votante |
 | GET | /api/categories/{id}/active-voters | Votantes activos en categoría |
 | DELETE | /api/categories/{id} | Borrar categoría (cascade) |
@@ -94,7 +94,9 @@ TimeWindow (category, startTime, endTime)
 
 ## Decisiones de arquitectura (ADRs)
 - **ADR-001:** Spring Boot como API REST en lugar de acceso directo desde frontend a Supabase
-- **ADR-002:** Herencia JPA (JOINED) para User→Participant→Competitor/Voter + EventParticipation para roles
+- **ADR-002:** Herencia JPA (JOINED) User→Competitor/Voter + EventParticipation para roles (⚠️ ver ADR-007)
+- **ADR-006:** Factory Method en Votify
+- **ADR-007:** Eliminación de `Participant` — jerarquía simplificada a User→Competitor/Voter (Sprint 1)
 - **ADR-003:** Validación puntos criterio: endpoint individual (≤100) + bulk (=100 exacto)
 - **ADR-004:** H2 en memoria para tests @DataJpaTest (no TestContainers en Sprint 0)
 - **ADR-005:** Migración frontend de Supabase directo a Spring Boot REST (Sprint 1)

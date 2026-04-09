@@ -12,12 +12,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CriterionService — Tests unitarios")
 class CriterionServiceTest {
@@ -90,7 +92,7 @@ class CriterionServiceTest {
         CriterionDto dto = new CriterionDto(null, "Viabilidad");
         Criterion saved = new Criterion("Viabilidad");
         saved.setId(3L);
-        when(criterionRepository.save(any(Criterion.class))).thenReturn(saved);
+        when(criterionRepository.save(any(Criterion.class))).thenReturn(Objects.requireNonNull(saved));
 
         CriterionDto result = criterionService.create(dto);
 
@@ -105,7 +107,7 @@ class CriterionServiceTest {
         CriterionDto dto = new CriterionDto(null, "Presentación");
         Criterion saved = new Criterion("Presentación");
         saved.setId(4L);
-        when(criterionRepository.save(any())).thenReturn(saved);
+        when(criterionRepository.save(any())).thenReturn(Objects.requireNonNull(saved));
 
         criterionService.create(dto);
 
@@ -120,7 +122,7 @@ class CriterionServiceTest {
         when(criterionRepository.findById(1L)).thenReturn(Optional.of(criterion));
         Criterion updated = new Criterion("Innovación Digital");
         updated.setId(1L);
-        when(criterionRepository.save(any(Criterion.class))).thenReturn(updated);
+        when(criterionRepository.save(any(Criterion.class))).thenReturn(Objects.requireNonNull(updated));
 
         CriterionDto result = criterionService.update(1L, new CriterionDto(1L, "Innovación Digital"));
 

@@ -17,9 +17,11 @@ import com.votify.persistence.VotingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
+
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
+
 
 @Service
 public class EventService {
@@ -52,7 +54,8 @@ public class EventService {
     }
 
     public EventDto findById(Long id) {
-        Event event = eventRepository.findById(id)
+        if (id == null) throw new RuntimeException("Event ID cannot be null");
+        Event event = eventRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
         return toDto(event);
     }
@@ -71,11 +74,12 @@ public class EventService {
         event.setTimeInitial(dto.getTimeInitial());
         event.setTimeFinal(dto.getTimeFinal());
         if (dto.getOrganizerId() != null) {
-            User organizer = userRepository.findById(dto.getOrganizerId())
-                    .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + dto.getOrganizerId()));
+            Long orgId = dto.getOrganizerId();
+            User organizer = userRepository.findById(Objects.requireNonNull(orgId))
+                    .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + orgId));
             event.setOrganizer(organizer);
         }
-        event = eventRepository.save(event);
+        event = eventRepository.save(Objects.requireNonNull(event));
 
         Category firstCategory = null;
         for (CategoryDto cd : incoming) {
@@ -109,41 +113,45 @@ public class EventService {
         if (event.getCategories().isEmpty()) {
             throw new RuntimeException("At least one non-empty category name is required");
         }
-        eventRepository.save(event);
+        eventRepository.save(Objects.requireNonNull(event));
 
         Long creatorId = dto.getOrganizerId();
         if (creatorId != null && firstCategory != null) {
-            eventParticipationService.registerCompetitor(event.getId(), creatorId, firstCategory.getId());
+            eventParticipationService.registerCompetitor(Objects.requireNonNull(event.getId()), Objects.requireNonNull(creatorId), Objects.requireNonNull(firstCategory.getId()));
         }
 
         return toDto(event);
     }
 
     public EventDto createForOrganizer(Long organizerId, EventDto dto) {
-        User organizer = userRepository.findById(organizerId)
+        if (organizerId == null) throw new RuntimeException("Organizer ID cannot be null");
+        User organizer = userRepository.findById(Objects.requireNonNull(organizerId))
                 .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + organizerId));
-
+        
         Event event = organizer.createEvent(dto.getName(), dto.getTimeInitial(), dto.getTimeFinal());
-        return toDto(eventRepository.save(event));
+        return toDto(eventRepository.save(Objects.requireNonNull(event)));
     }
 
     public EventDto update(Long id, EventDto dto) {
-        Event event = eventRepository.findById(id)
+        if (id == null) throw new RuntimeException("Event ID cannot be null");
+        Event event = eventRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
         event.setName(dto.getName());
         event.setTimeInitial(dto.getTimeInitial());
         event.setTimeFinal(dto.getTimeFinal());
         if (dto.getOrganizerId() != null) {
-            User organizer = userRepository.findById(dto.getOrganizerId())
-                    .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + dto.getOrganizerId()));
+            Long orgId = dto.getOrganizerId();
+            User organizer = userRepository.findById(Objects.requireNonNull(orgId))
+                    .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + orgId));
             event.setOrganizer(organizer);
         }
-        return toDto(eventRepository.save(event));
+        return toDto(eventRepository.save(Objects.requireNonNull(event)));
     }
 
     @Transactional
     public void delete(Long id) {
-        Event event = eventRepository.findById(id)
+        if (id == null) throw new RuntimeException("Event ID cannot be null");
+        Event event = eventRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
 
         List<Long> categoryIds = event.getCategories().stream()

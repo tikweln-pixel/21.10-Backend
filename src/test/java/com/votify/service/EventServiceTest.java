@@ -20,13 +20,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("EventService — Tests unitarios")
 class EventServiceTest {
@@ -129,7 +130,7 @@ class EventServiceTest {
         saved.setOrganizer(organizer);
 
         when(userRepository.findById(10L)).thenReturn(Optional.of(organizer));
-        when(eventRepository.save(any(Event.class))).thenReturn(saved);
+        when(eventRepository.save(any(Event.class))).thenReturn(Objects.requireNonNull(saved));
 
         EventDto dto = new EventDto();
         dto.setName("Nuevo Evento");
@@ -164,7 +165,7 @@ class EventServiceTest {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event1));
         Event updated = new Event("Hackathon 2027");
         updated.setId(1L);
-        when(eventRepository.save(any(Event.class))).thenReturn(updated);
+        when(eventRepository.save(any(Event.class))).thenReturn(Objects.requireNonNull(updated));
 
         EventDto dto = new EventDto();
         dto.setName("Hackathon 2027");
@@ -180,11 +181,11 @@ class EventServiceTest {
     @DisplayName("delete → llama a delete una sola vez")
     void delete_callsDeleteOnce() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event1));
-        doNothing().when(eventRepository).delete(event1);
+        doNothing().when(eventRepository).delete(Objects.requireNonNull(event1));
 
         eventService.delete(1L);
 
-        verify(eventRepository, times(1)).delete(event1);
+        verify(eventRepository, times(1)).delete(Objects.requireNonNull(event1));
     }
 
     @Test

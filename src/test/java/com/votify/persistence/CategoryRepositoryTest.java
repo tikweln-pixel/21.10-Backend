@@ -13,6 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -57,7 +58,8 @@ class CategoryRepositoryTest {
     @Test
     @DisplayName("findByEventId → retorna solo las categorías del evento especificado")
     void findByEventId_returnsOnlyCategoriesOfGivenEvent() {
-        List<Category> result = categoryRepository.findByEventId(event1.getId());
+        Long eId = event1.getId();
+        List<Category> result = categoryRepository.findByEventId(Objects.requireNonNull(eId));
 
         assertThat(result).hasSize(2);
         assertThat(result).extracting(Category::getName)
@@ -67,7 +69,8 @@ class CategoryRepositoryTest {
     @Test
     @DisplayName("findByEventId → no incluye categorías de otros eventos")
     void findByEventId_doesNotIncludeCategoriesFromOtherEvents() {
-        List<Category> result = categoryRepository.findByEventId(event1.getId());
+        Long eId = event1.getId();
+        List<Category> result = categoryRepository.findByEventId(Objects.requireNonNull(eId));
 
         assertThat(result).noneMatch(c -> c.getName().equals("Otra Categoría"));
     }
@@ -78,7 +81,8 @@ class CategoryRepositoryTest {
         Event emptyEvent = new Event("Sin Cats");
         em.persistAndFlush(emptyEvent);
 
-        List<Category> result = categoryRepository.findByEventId(emptyEvent.getId());
+        Long eId = emptyEvent.getId();
+        List<Category> result = categoryRepository.findByEventId(Objects.requireNonNull(eId));
         assertThat(result).isEmpty();
     }
 
@@ -87,7 +91,8 @@ class CategoryRepositoryTest {
     @Test
     @DisplayName("findById → retorna categoría correcta")
     void findById_returnsCorrectCategory() {
-        Optional<Category> result = categoryRepository.findById(cat1.getId());
+        Long cId = cat1.getId();
+        Optional<Category> result = categoryRepository.findById(Objects.requireNonNull(cId));
 
         assertThat(result).isPresent();
         assertThat(result.get().getName()).isEqualTo("Jurado Experto");
@@ -112,7 +117,8 @@ class CategoryRepositoryTest {
         Category saved = categoryRepository.save(newCat);
 
         assertThat(saved.getId()).isNotNull();
-        assertThat(categoryRepository.findById(saved.getId())).isPresent();
+        Long sId = saved.getId();
+        assertThat(categoryRepository.findById(Objects.requireNonNull(sId))).isPresent();
     }
 
     @Test
@@ -131,11 +137,11 @@ class CategoryRepositoryTest {
     @DisplayName("deleteById → elimina la categoría de la BD")
     void deleteById_removesCategory() {
         Long id = cat1.getId();
-        categoryRepository.deleteById(id);
+        categoryRepository.deleteById(Objects.requireNonNull(id));
         em.flush();
         em.clear();
 
-        assertThat(categoryRepository.findById(id)).isEmpty();
+        assertThat(categoryRepository.findById(Objects.requireNonNull(id))).isEmpty();
     }
 
     // ── findAll ────────────────────────────────────────────────────────────

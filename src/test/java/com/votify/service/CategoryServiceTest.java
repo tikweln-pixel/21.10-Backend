@@ -14,12 +14,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CategoryService — Tests unitarios")
 class CategoryServiceTest {
@@ -117,7 +119,7 @@ class CategoryServiceTest {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
         Category saved = new Category("Nueva Cat", event);
         saved.setId(20L);
-        when(categoryRepository.save(any(Category.class))).thenReturn(saved);
+        when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(saved));
 
         CategoryDto result = categoryService.createForEvent(1L, "Nueva Cat");
 
@@ -143,7 +145,7 @@ class CategoryServiceTest {
     void setVotingType_setsJuryExpert() {
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
         category.setVotingType(VotingType.JURY_EXPERT);
-        when(categoryRepository.save(any(Category.class))).thenReturn(category);
+        when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(category));
 
         CategoryDto result = categoryService.setVotingType(10L, VotingType.JURY_EXPERT);
 
@@ -155,7 +157,7 @@ class CategoryServiceTest {
     void setVotingType_setsPopularVote() {
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
         category.setVotingType(VotingType.POPULAR_VOTE);
-        when(categoryRepository.save(any(Category.class))).thenReturn(category);
+        when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(category));
 
         CategoryDto result = categoryService.setVotingType(10L, VotingType.POPULAR_VOTE);
 
@@ -173,7 +175,7 @@ class CategoryServiceTest {
 
         CategoryCriterionPoints ccp = new CategoryCriterionPoints(category, criterion, 100);
         ccp.setId(100L);
-        when(criterionPointsRepository.save(any(CategoryCriterionPoints.class))).thenReturn(ccp);
+        when(criterionPointsRepository.save(any(CategoryCriterionPoints.class))).thenReturn(Objects.requireNonNull(ccp));
 
         List<CategoryCriterionPointsDto> input = List.of(
                 new CategoryCriterionPointsDto(null, 10L, 1L, "Innovación", 100)
@@ -233,7 +235,7 @@ class CategoryServiceTest {
         CategoryCriterionPoints ccp2 = new CategoryCriterionPoints(category, criterion2, 40);
         ccp2.setId(101L);
         when(criterionPointsRepository.save(any(CategoryCriterionPoints.class)))
-                .thenReturn(ccp1).thenReturn(ccp2);
+                .thenReturn(Objects.requireNonNull(ccp1)).thenReturn(Objects.requireNonNull(ccp2));
 
         // 60 + 40 = 100 ✓
         List<CategoryCriterionPointsDto> input = List.of(
@@ -304,7 +306,7 @@ class CategoryServiceTest {
         category.setVotingType(VotingType.POPULAR_VOTE);
         category.setTotalPoints(10);
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
-        when(categoryRepository.save(any(Category.class))).thenReturn(category);
+        when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(category));
 
         CategoryDto result = categoryService.setTotalPoints(10L, 10);
 
@@ -343,7 +345,7 @@ class CategoryServiceTest {
         category.setVotingType(VotingType.POPULAR_VOTE);
         category.setMaxVotesPerVoter(3);
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
-        when(categoryRepository.save(any(Category.class))).thenReturn(category);
+        when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(category));
 
         CategoryDto result = categoryService.setMaxVotesPerVoter(10L, 3);
 

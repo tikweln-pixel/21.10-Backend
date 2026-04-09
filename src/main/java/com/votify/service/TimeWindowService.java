@@ -6,6 +6,7 @@ import com.votify.persistence.TimeWindowRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,26 +25,29 @@ public class TimeWindowService {
     }
 
     public TimeWindowDto findById(Long id) {
-        TimeWindow timeWindow = timeWindowRepository.findById(id)
+        if (id == null) throw new RuntimeException("TimeWindow ID cannot be null");
+        TimeWindow timeWindow = timeWindowRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("TimeWindow not found with id: " + id));
         return toDto(timeWindow);
     }
 
     public TimeWindowDto create(TimeWindowDto dto) {
         TimeWindow timeWindow = new TimeWindow(dto.getStartTime(), dto.getEndTime());
-        return toDto(timeWindowRepository.save(timeWindow));
+        return toDto(timeWindowRepository.save(Objects.requireNonNull(timeWindow)));
     }
 
     public TimeWindowDto update(Long id, TimeWindowDto dto) {
-        TimeWindow timeWindow = timeWindowRepository.findById(id)
+        if (id == null) throw new RuntimeException("TimeWindow ID cannot be null");
+        TimeWindow timeWindow = timeWindowRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("TimeWindow not found with id: " + id));
         timeWindow.setStartTime(dto.getStartTime());
         timeWindow.setEndTime(dto.getEndTime());
-        return toDto(timeWindowRepository.save(timeWindow));
+        return toDto(timeWindowRepository.save(Objects.requireNonNull(timeWindow)));
     }
 
     public void delete(Long id) {
-        timeWindowRepository.deleteById(id);
+        if (id == null) throw new RuntimeException("TimeWindow ID cannot be null");
+        timeWindowRepository.deleteById(Objects.requireNonNull(id));
     }
 
     private TimeWindowDto toDto(TimeWindow timeWindow) {

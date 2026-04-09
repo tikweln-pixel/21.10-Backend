@@ -13,12 +13,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ProjectService — Tests unitarios")
 class ProjectServiceTest {
@@ -81,7 +83,7 @@ class ProjectServiceTest {
     @DisplayName("createForEvent → crea proyecto asociado al evento")
     void createForEvent_createsProject() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
-        when(projectRepository.save(any(Project.class))).thenReturn(project);
+        when(projectRepository.save(any(Project.class))).thenReturn(Objects.requireNonNull(project));
 
         ProjectDto dto = new ProjectDto(null, "EcoTrack", "App de carbono", 1L, null);
         ProjectDto result = projectService.createForEvent(1L, dto);
@@ -112,7 +114,7 @@ class ProjectServiceTest {
 
         Comment savedComment = new Comment("Muy buena idea", voter, project);
         savedComment.setId(50L);
-        when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
+        when(commentRepository.save(any(Comment.class))).thenReturn(Objects.requireNonNull(savedComment));
 
         CommentDto dto = new CommentDto(null, 5L, "Muy buena idea");
         CommentDto result = projectService.addComment(10L, dto);
@@ -151,12 +153,12 @@ class ProjectServiceTest {
     void addCompetitor_linksCompetitorToProject() {
         when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
         when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(projectRepository.save(any(Project.class))).thenReturn(project);
+        when(projectRepository.save(any(Project.class))).thenReturn(Objects.requireNonNull(project));
 
         projectService.addCompetitor(10L, 2L);
 
         assertThat(project.getCompetitors()).contains(competitor);
-        verify(projectRepository, times(1)).save(project);
+        verify(projectRepository, times(1)).save(Objects.requireNonNull(project));
     }
 
     @Test

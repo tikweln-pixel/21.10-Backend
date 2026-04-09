@@ -6,6 +6,7 @@ import com.votify.persistence.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,26 +25,29 @@ public class UserService {
     }
 
     public UserDto findById(Long id) {
-        User user = userRepository.findById(id)
+        if (id == null) throw new RuntimeException("User ID cannot be null");
+        User user = userRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         return toDto(user);
     }
 
     public UserDto create(UserDto dto) {
         User user = new User(dto.getName(), dto.getEmail());
-        return toDto(userRepository.save(user));
+        return toDto(userRepository.save(Objects.requireNonNull(user)));
     }
 
     public UserDto update(Long id, UserDto dto) {
-        User user = userRepository.findById(id)
+        if (id == null) throw new RuntimeException("User ID cannot be null");
+        User user = userRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
         user.setName(dto.getName());
         user.setEmail(dto.getEmail());
-        return toDto(userRepository.save(user));
+        return toDto(userRepository.save(Objects.requireNonNull(user)));
     }
 
     public void delete(Long id) {
-        userRepository.deleteById(id);
+        if (id == null) throw new RuntimeException("User ID cannot be null");
+        userRepository.deleteById(Objects.requireNonNull(id));
     }
 
     private UserDto toDto(User user) {

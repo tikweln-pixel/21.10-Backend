@@ -6,7 +6,9 @@ import com.votify.persistence.*;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
+
 
 @Service
 public class VotingService {
@@ -39,17 +41,21 @@ public class VotingService {
     }
 
     public VotingDto findById(Long id) {
-        Voting voting = votingRepository.findById(id)
+        if (id == null) throw new RuntimeException("Voting ID cannot be null");
+        Voting voting = votingRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Voting not found with id: " + id));
         return toDto(voting);
     }
 
     public VotingDto create(VotingDto dto) {
-        Voter voter = voterRepository.findById(dto.getVoterId())
+        if (dto.getVoterId() == null) throw new RuntimeException("Voter ID cannot be null");
+        Voter voter = voterRepository.findById(Objects.requireNonNull(dto.getVoterId()))
                 .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
-        Competitor competitor = competitorRepository.findById(dto.getCompetitorId())
+        if (dto.getCompetitorId() == null) throw new RuntimeException("Competitor ID cannot be null");
+        Competitor competitor = competitorRepository.findById(Objects.requireNonNull(dto.getCompetitorId()))
                 .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
-        Criterion criterion = criterionRepository.findById(dto.getCriterionId())
+        if (dto.getCriterionId() == null) throw new RuntimeException("Criterion ID cannot be null");
+        Criterion criterion = criterionRepository.findById(Objects.requireNonNull(dto.getCriterionId()))
                 .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
         // Buscar si ya existe un voto del mismo votante para el mismo competidor/criterio/categoría
         Long categoryId = dto.getCategoryId();
@@ -65,20 +71,20 @@ public class VotingService {
 
             // Aseguramos que la categoría esté enlazada para las validaciones
             if (categoryId != null && existing.getCategory() == null) {
-                Category category = categoryRepository.findById(categoryId)
+                Category category = categoryRepository.findById(Objects.requireNonNull(categoryId))
                         .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
                 existing.setCategory(category);
             }
 
             // Evaluar reglas según tipo de votación (se pasa el voto actualizado)
             evaluateVote(existing);
-            return toDto(votingRepository.save(existing));
+            return toDto(votingRepository.save(Objects.requireNonNull(existing)));
         }
 
         // Si no existe, creamos un nuevo voto
         Voting voting = new Voting(voter, competitor, criterion, dto.getScore());
         if (categoryId != null) {
-            Category category = categoryRepository.findById(categoryId)
+            Category category = categoryRepository.findById(Objects.requireNonNull(categoryId))
                     .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
             voting.setCategory(category);
         }
@@ -86,7 +92,7 @@ public class VotingService {
         // Evaluar el voto según el tipo de votación de la categoría (si aplica)
         evaluateVote(voting);
 
-        return toDto(votingRepository.save(voting));
+        return toDto(votingRepository.save(Objects.requireNonNull(voting)));
     }
 
     /**
@@ -173,22 +179,25 @@ public class VotingService {
     }
 
     public VotingDto update(Long id, VotingDto dto) {
-        Voting voting = votingRepository.findById(id)
+        Voting voting = votingRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Voting not found with id: " + id));
 
         if (dto.getVoterId() != null && dto.getVoterId() > 0) {
-            Voter voter = voterRepository.findById(dto.getVoterId())
-                    .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
+            Long vId = dto.getVoterId();
+            Voter voter = voterRepository.findById(Objects.requireNonNull(vId))
+                    .orElseThrow(() -> new RuntimeException("Voter not found with id: " + vId));
             voting.setVoter(voter);
         }
         if (dto.getCompetitorId() != null && dto.getCompetitorId() > 0) {
-            Competitor competitor = competitorRepository.findById(dto.getCompetitorId())
-                    .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
+            Long cId = dto.getCompetitorId();
+            Competitor competitor = competitorRepository.findById(Objects.requireNonNull(cId))
+                    .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + cId));
             voting.setCompetitor(competitor);
         }
         if (dto.getCriterionId() != null && dto.getCriterionId() > 0) {
-            Criterion criterion = criterionRepository.findById(dto.getCriterionId())
-                    .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
+            Long critId = dto.getCriterionId();
+            Criterion criterion = criterionRepository.findById(Objects.requireNonNull(critId))
+                    .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + critId));
             voting.setCriterion(criterion);
         }
         if (dto.getScore() != null) {
@@ -197,11 +206,12 @@ public class VotingService {
         if (dto.getManuallyModified() != null) {
             voting.setManuallyModified(dto.getManuallyModified());
         }
-        return toDto(votingRepository.save(voting));
+        return toDto(votingRepository.save(Objects.requireNonNull(voting)));
     }
 
     public void delete(Long id) {
-        votingRepository.deleteById(id);
+        if (id == null) throw new RuntimeException("Voting ID cannot be null");
+        votingRepository.deleteById(Objects.requireNonNull(id));
     }
 
     public List<VotingDto> findByCompetitorIds(List<Long> competitorIds) {

@@ -12,12 +12,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("EventParticipationService — Tests unitarios")
 class EventParticipationServiceTest {
@@ -58,7 +60,7 @@ class EventParticipationServiceTest {
 
         EventParticipation saved = new EventParticipation(event, user, category, ParticipationRole.COMPETITOR);
         saved.setId(99L);
-        when(eventParticipationRepository.save(any(EventParticipation.class))).thenReturn(saved);
+        when(eventParticipationRepository.save(any(EventParticipation.class))).thenReturn(Objects.requireNonNull(saved));
 
         EventParticipationDto result = service.registerCompetitor(1L, 2L, 10L);
 
@@ -76,7 +78,7 @@ class EventParticipationServiceTest {
 
         EventParticipation saved = new EventParticipation(event, user, category, ParticipationRole.VOTER);
         saved.setId(100L);
-        when(eventParticipationRepository.save(any(EventParticipation.class))).thenReturn(saved);
+        when(eventParticipationRepository.save(any(EventParticipation.class))).thenReturn(Objects.requireNonNull(saved));
 
         EventParticipationDto result = service.registerVoter(1L, 2L, 10L);
 

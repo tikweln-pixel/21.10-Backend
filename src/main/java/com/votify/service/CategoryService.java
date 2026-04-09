@@ -13,7 +13,6 @@ import com.votify.persistence.CriterionRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.VotingRepository;
-import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("null")
 @Service
 public class CategoryService {
 
@@ -61,7 +61,7 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
-    public CategoryDto findById(@NonNull Long id) {
+    public CategoryDto findById(Long id) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         return toDto(category);

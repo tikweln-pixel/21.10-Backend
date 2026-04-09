@@ -2,7 +2,6 @@ package com.votify.controller;
 
 import com.votify.dto.CompetitorCommentDto;
 import com.votify.dto.CompetitorDto;
-import com.votify.entity.Comment;
 import com.votify.entity.Project;
 import com.votify.persistence.CommentRepository;
 import com.votify.persistence.ProjectRepository;

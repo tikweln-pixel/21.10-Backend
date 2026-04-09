@@ -1,8 +1,9 @@
 # Resumen del Backend — Votify
 
 **Stack:** Spring Boot 3.2.0 · Java 21 · Spring Data JPA · PostgreSQL (Supabase) · Maven
-**Tests:** 98 tests (73 unitarios Mockito + 25 integración @DataJpaTest con H2) — actualizado Sprint 1
+**Tests:** 98 tests (73 unitarios Mockito + 25 integración @DataJpaTest con H2)
 **Arquitectura:** Frontend React → Axios `/api` → Spring Boot :8080 → PostgreSQL Supabase
+**Última actualización:** Sprint 1 — 07-04-2026
 
 ---
 
@@ -11,10 +12,12 @@
 ```
 com.votify
 ├── entity/          → Entidades JPA (tablas de la BD)
-├── dto/             → Objetos de transferencia de datos (lo que entra y sale por la API)
+├── dto/             → Objetos de transferencia de datos (entrada/salida de la API)
 ├── persistence/     → Repositorios Spring Data (acceso a BD)
 ├── service/         → Lógica de negocio
-└── controller/      → Endpoints REST (HTTP)
+├── controller/      → Endpoints REST (HTTP)
+├── config/          → CORS, DataSource
+└── advice/          → Manejo global de excepciones
 ```
 
 ---
@@ -32,168 +35,201 @@ User  (tabla: users)
       └── Voter       (tabla: voters)
 ```
 
-| Clase | Tabla | Qué es | De qué se preocupa |
+| Clase | Tabla | Campos | Notas |
 |---|---|---|---|
-| `User` | `users` | Persona registrada en el sistema | `id`, `name`, `email` (único). Tiene el método `createEvent()` que construye un `Event` asociándose como organizador. Raíz de la herencia con `@Inheritance(JOINED)`. |
-| `Participant` | `participants` | Extensión de `User` que puede participar en eventos | Hereda `User` con `@PrimaryKeyJoinColumn(name="user_id")`. Sin campos propios en Sprint 0. |
-| `Competitor` | `competitors` | Participante que compite con un proyecto | Hereda `Participant`. Tiene `createProjectForEvent()`: crea un `Project` y se añade a sí mismo a sus competidores. |
-| `Voter` | `voters` | Participante que puede votar | Hereda `Participant`. Sin campos extra en Sprint 0. Referenciado desde `Voting`. |
+| `User` | `users` | `id`, `name` (NOT NULL), `email` (UNIQUE NOT NULL) | Raíz de herencia con `@Inheritance(JOINED)`. Método `createEvent(name, timeInitial, timeFinal)`. |
+| `Participant` | `participants` | hereda `User` | `@PrimaryKeyJoinColumn(name="user_id")`. Sin campos propios. |
+| `Competitor` | `competitors` | hereda `Participant` | Método `createProjectForEvent(name, description, event) → Project`. |
+| `Voter` | `voters` | hereda `Participant` | Sin campos extra. Referenciado desde `Voting`. |
 
 ---
 
 ### Entidades de dominio principales
 
-| Clase | Tabla | Qué es | De qué se preocupa | Relaciones clave |
-|---|---|---|---|---|
-| `Event` | `events` | Evento/hackathon/competición | `name`, `timeInitial`, `timeFinal`, `organizer`. Raíz del sistema. | → `User` (organizer, ManyToOne LAZY) · → `Category` (OneToMany, cascade ALL) · → `Project` (OneToMany, cascade ALL) |
-| `Category` | `categories` | Agrupación dentro de un evento (ej. "Jurado", "Voto Popular") | `name`, `votingType` (enum), `timeInitial`, `timeFinal`, `reminderMinutes`. Define el tipo de votación y el periodo temporal. | → `Event` (ManyToOne LAZY) · → `CategoryCriterionPoints` (OneToMany, cascade ALL) |
-| `VotingType` | *(enum)* | Tipo de votación de una categoría | Valores: `JURY_EXPERT` (Votacion_Jurado_Exp) y `POPULAR_VOTE` (Voto_Popular). — |
-| `Project` | `projects` | Proyecto presentado por un equipo en un evento | `name`, `description`. Un proyecto pertenece a un `Event` y tiene varios `Competitor`. | → `Event` (ManyToOne LAZY) · → `Competitor` (ManyToMany via tabla `project_competitors`) |
-| `Criterion` | `criteria` | Criterio de evaluación (ej. "Innovación", "Calidad Técnica") | Solo `name`. Sencillo a propósito: los pesos se gestionan en `CategoryCriterionPoints`. | — |
-| `CategoryCriterionPoints` | `category_criterion_points` | Clase asociación: puntos máximos por criterio para cada categoría | `maxPoints`. Constraint UNIQUE `(category_id, criterion_id)`. La suma de todos los `maxPoints` de una categoría debe ser 100. | → `Category` (ManyToOne LAZY) · → `Criterion` (ManyToOne LAZY) |
-| `Voting` | `votings` | Un voto: un `Voter` puntúa a un `Competitor` en un `Criterion` | `score` (Integer). Es la acción central del sistema. | → `Voter` (ManyToOne) · → `Competitor` (ManyToOne) · → `Criterion` (ManyToOne) |
-| `EventParticipation` | `event_participations` | Registro de qué rol tiene un `User` en una `Category` de un `Event` | `role` (enum `ParticipationRole`). Constraint UNIQUE `(event_id, user_id, category_id)`. Implementa la **composición de roles** (ver ADR-002). | → `Event` (ManyToOne) · → `User` (ManyToOne) · → `Category` (ManyToOne) |
-| `ParticipationRole` | *(enum)* | Rol de participación | Valores: `COMPETITOR`, `VOTER`. — |
-| `TimeWindow` | `time_windows` | Ventana temporal genérica | `name`, fechas. Entidad auxiliar para periodos de votación. | — |
-| `Comment` | `comments` | Comentario de un `Voter` sobre un `Project` | `text`, relación con `Project` y `Voter`. | → `Project` · → `Voter` |
+| Clase | Tabla | Campos clave | Relaciones |
+|---|---|---|---|
+| `Event` | `events` | `id`, `name` (NOT NULL), `timeInitial`, `timeFinal` (TIMESTAMP), `reminderMinutes`, `reminderHours`, `organizer_id` (FK opcional) | → `User` (organizer, ManyToOne LAZY) · → `Category` (OneToMany cascade ALL) · → `Project` (OneToMany cascade ALL) |
+| `Category` | `categories` | `id`, `name` (NOT NULL), `voting_type` (enum), `timeInitial`, `timeFinal`, `reminder_minutes`, **`total_points`** (req.23, POPULAR_VOTE), **`max_votes_per_voter`** (req.19, POPULAR_VOTE) | → `Event` (ManyToOne LAZY) · → `CategoryCriterionPoints` (OneToMany cascade ALL) |
+| `VotingType` | *(enum)* | `JURY_EXPERT`, `POPULAR_VOTE` | — |
+| `Project` | `projects` | `id`, `name` (NOT NULL), `description` (length=1000), `event_id` (FK) | → `Event` (ManyToOne LAZY) · → `Competitor` (ManyToMany via `project_competitors`) |
+| `Criterion` | `criteria` | `id`, `name` (NOT NULL) | — |
+| `CategoryCriterionPoints` | `category_criterion_points` | `id`, `category_id`, `criterion_id`, `max_points` (NOT NULL) | UNIQUE(category_id, criterion_id). Suma de todos los `max_points` de una categoría = 100 (JURY_EXPERT). → `Category` · → `Criterion` (ManyToOne LAZY) |
+| `Voting` | `votings` | `id`, `voter_id` (NOT NULL), `competitor_id` (NOT NULL), `criterion_id` (NOT NULL), `category_id` (opcional para POPULAR_VOTE), `score` (NOT NULL), `manually_modified` (Boolean) | → `Voter` · → `Competitor` · → `Criterion` · → `Category` (todos ManyToOne) |
+| `EventParticipation` | `event_participations` | `id`, `event_id`, `user_id`, `category_id`, `role` (enum) | UNIQUE(event_id, user_id, category_id). Implementa **composición de roles** (ADR-002). → `Event` · → `User` · → `Category` |
+| `ParticipationRole` | *(enum)* | `COMPETITOR`, `VOTER` | — |
+| `Comment` | `comments` | `id`, `text` (length=2000, NOT NULL), `voter_id` (NOT NULL), `project_id` (NOT NULL) | → `Project` · → `Voter` |
+| `TimeWindow` | `time_windows` | `id`, `startTime`, `endTime` (LocalDateTime) | Entidad auxiliar para periodos de votación. |
 
 ---
 
 ## 2. Capa de DTOs (`dto/`)
 
-Los DTOs son los objetos que viajan por la API (request/response). Los servicios los construyen desde entidades y los controllers los reciben/devuelven. **Nunca se exponen entidades directamente al exterior.**
+Los DTOs son los objetos que viajan por la API. **Nunca se exponen entidades directamente al exterior.**
 
-| DTO | Qué transporta | Sprint |
+| DTO | Campos | Sprint |
 |---|---|---|
-| `EventDto` | `id`, `name`, `timeInitial`, `timeFinal`, `organizerId`, `categories` (lista de nombres) | S0+S1 |
-| `CreateEventRequest` | `name`, `categories` (lista), `creatorUserId`, `creatorCategoryName` | S0+S1 |
-| `CategoryDto` | `id`, `name`, `votingType`, `timeInitial`, `timeFinal`, `eventId`, `reminderMinutes` | S0 |
-| `CategoryCriterionPointsDto` | `id`, `categoryId`, `criterionId`, `criterionName`, `maxPoints` | S0 |
+| `UserDto` | `id`, `name`, `email` | S0 |
+| `ParticipantDto` extends UserDto | (heredado) | S0 |
+| `CompetitorDto` extends ParticipantDto | (heredado) | S0 |
+| `VoterDto` extends ParticipantDto | (heredado) | S0 |
+| `EventDto` | `id`, `name`, `timeInitial`, `timeFinal`, `organizerId`, `creator`, `categories`, `participants`, `projects`, `reminderMinutes`, `reminderHours` | S0+S1 |
+| `CategoryDto` | `id`, `name`, `votingType`, `timeInitial`, `timeFinal`, `eventId`, `reminderMinutes`, **`totalPoints`**, **`maxVotesPerVoter`** | S0+S1 |
 | `CriterionDto` | `id`, `name` | S0 |
 | `ProjectDto` | `id`, `name`, `description`, `eventId`, `competitorIds` | S0+S1 |
-| `CompetitorDto` | `id`, `name`, `email` | S0 |
-| `VoterDto` | `id`, `name`, `email` | S0 |
+| `CommentDto` | `id`, `voterId`, `text`, `projectId` | S0 |
+| `CompetitorCommentDto` | `id`, `text`, `voterId`, `projectId`, `projectName` | S1 |
 | `VotingDto` | `id`, `voterId`, `competitorId`, `criterionId`, `categoryId`, `score`, `manuallyModified` | S0+S1 |
-| `CommentDto` | `id`, `text`, `voterId`, `projectId` | S0 |
-| `CompetitorCommentDto` | `id`, `text`, `voterId`, `projectId`, `projectName` | **S1** |
-| `ParticipantDto` | `id`, `name`, `email` | S0 |
-| `UserDto` | `id`, `name`, `email` | S0 |
-| `EventParticipationDto` | `id`, `eventId`, `userId`, `userEmail` (`email`), `categoryId`, `role` | S0+S1 |
-| `RegisterParticipationRequest` | `eventId`, `userId`, `categoryId` | S0 |
-| `RegisterCompetitorRequest` | (idem, específico para competidores) | S0 |
-| `RegisterNewParticipantRequest` | `name`, `email`, `categoryId` — crea User+Participant+EventParticipation | **S1** |
-| `TimeWindowDto` | `id`, `name`, fechas | S0 |
+| `EventParticipationDto` | `id`, `eventId`, `userId`, `categoryId`, `role`, `userName`, `userEmail` (alias `email`), `categoryName` | S0+S1 |
+| `CategoryCriterionPointsDto` | `id`, `categoryId`, `criterionId`, `criterionName`, `maxPoints` | S0 |
+| `TimeWindowDto` | `id`, `startTime`, `endTime` | S0 |
+| `CreateCategoryRequest` | `name` | S0 |
+| `RegisterCompetitorRequest` | `userId`, `categoryId` | S0 |
+| `RegisterNewParticipantRequest` | `name`, `email`, `categoryId` — crea User+Participant+EventParticipation | S1 |
+| `RegisterParticipationRequest` | `userId`, `categoryId`, `role` (ParticipationRole) | S0 |
 
 ---
 
 ## 3. Capa de Repositorios (`persistence/`)
 
-Interfaces que extienden `JpaRepository<Entidad, Long>`. Spring Data genera las queries automáticamente a partir del nombre del método. Sin lógica manual.
+Interfaces que extienden `JpaRepository<Entidad, Long>`. Los métodos custom usan query derivation o `@Query` manual.
 
-| Repositorio | Entidad | Métodos custom destacados | Sprint |
-|---|---|---|---|
-| `EventRepository` | `Event` | — (solo CRUD estándar) | S0 |
-| `CategoryRepository` | `Category` | `findByEventId(Long)` | S0 |
-| `CriterionRepository` | `Criterion` | — | S0 |
-| `ProjectRepository` | `Project` | `findByEventId(Long)` | S0 |
-| `CompetitorRepository` | `Competitor` | — | S0 |
-| `VoterRepository` | `Voter` | — | S0 |
-| `VotingRepository` | `Voting` | `findByCompetitorIdIn(List<Long>)`, `findByVoterIdAndCompetitorId(Long,Long)`, `deleteByCategoryIdIn(List<Long>)`, `deleteByCategoryId(Long)` | S0+**S1** |
-| `ParticipantRepository` | `Participant` | — | S0 |
-| `UserRepository` | `User` | `findByEmail(String)` | S0+**S1** |
-| `CommentRepository` | `Comment` | `findByProjectId(Long)`, `deleteByProjectIdIn(List<Long>)` | S0+**S1** |
-| `TimeWindowRepository` | `TimeWindow` | — | S0 |
-| `CategoryCriterionPointsRepository` | `CategoryCriterionPoints` | `findByCategoryId(Long)`, `findByCategoryIdAndCriterionId(Long,Long)`, `deleteByCategoryId(Long)`, `deleteByCategoryIdIn(List<Long>)` | S0+**S1** |
-| `EventParticipationRepository` | `EventParticipation` | `findByEventId`, `findByEventIdAndCategoryId`, `findByEventIdAndCategoryIdAndRole`, `existsByEventIdAndUserIdAndCategoryId`, `findByEventIdAndUserIdAndCategoryId`, `findByUserId`, `deleteByEventId`, `deleteByCategoryId` | S0+**S1** |
+| Repositorio | Entidad | Métodos custom destacados |
+|---|---|---|
+| `UserRepository` | `User` | `findByEmail(String)` |
+| `ParticipantRepository` | `Participant` | — |
+| `CompetitorRepository` | `Competitor` | — |
+| `VoterRepository` | `Voter` | — |
+| `EventRepository` | `Event` | — |
+| `CategoryRepository` | `Category` | `findByEventId(Long)` |
+| `CriterionRepository` | `Criterion` | — |
+| `ProjectRepository` | `Project` | `findByEventId(Long)` |
+| `CommentRepository` | `Comment` | `findByProjectId(Long)`, `findByProjectIdIn(List<Long>)`, `deleteByProjectIdIn(List<Long>)` |
+| `CategoryCriterionPointsRepository` | `CategoryCriterionPoints` | `findByCategoryId(Long)`, `findByCategoryIdAndCriterionId(Long, Long)`, `deleteByCategoryId(Long)`, `deleteByCategoryIdIn(List<Long>)` |
+| `EventParticipationRepository` | `EventParticipation` | `findByEventId`, `findByEventIdAndCategoryId`, `findByEventIdAndCategoryIdAndRole`, `existsByEventIdAndUserIdAndCategoryId`, `findByEventIdAndUserIdAndCategoryId`, `findByUserId`, `deleteByEventId`, `deleteByCategoryId` |
+| `VotingRepository` | `Voting` | `findByCompetitorIdIn(List<Long>)`, `findByVoterIdAndCompetitorId(Long, Long)`, `findByVoterIdAndCategoryId(Long, Long)`, `deleteByCategoryIdIn(List<Long>)` @Modifying, `deleteByCategoryId(Long)` @Modifying, `findDistinctVoterIdsByCategoryId(Long)` @Query, **`countDistinctCompetitorsByVoterIdAndCategoryId(voterId, categoryId)`** @Query, **`sumScoreByVoterIdAndCategoryId(voterId, categoryId)`** @Query, **`findExistingVote(voterId, competitorId, criterionId, categoryId)`** @Query |
+| `TimeWindowRepository` | `TimeWindow` | — |
 
 ---
 
 ## 4. Capa de Servicios (`service/`)
 
-Aquí reside toda la lógica de negocio. Los servicios son los únicos que conocen tanto los repositorios (para acceder a la BD) como los DTOs (para la comunicación con los controllers). Usan **inyección por constructor** (sin `@Autowired` en campos).
+Toda la lógica de negocio. Usan **inyección por constructor** (sin `@Autowired` en campos). Lanzan `RuntimeException` para errores de validación (capturado en `RestExceptionHandler`).
+
+---
 
 ### `EventService`
-**Se preocupa de:** ciclo de vida de los eventos.
-**Llama a:** `EventRepository`, `UserRepository`, `EventParticipationService`.
-**Operaciones clave:**
-- `create(CreateEventRequest)` → crea el evento con sus categorías y registra al creador como COMPETITOR en su categoría.
-- `createForOrganizer(organizerId, EventDto)` → usa `User.createEvent()` para asociar el organizador.
-- CRUD estándar + `setTimeInitial/setTimeFinal` para actualizar fechas independientemente.
+**Llama a:** `EventRepository`, `UserRepository`, `EventParticipationService`
+
+| Método | Descripción |
+|---|---|
+| `findAll()` / `findById(id)` | Consultas estándar |
+| `create(CreateEventRequest)` | Crea evento con categorías y registra al creador como COMPETITOR en su categoría |
+| `createForOrganizer(organizerId, EventDto)` | Usa `User.createEvent()` para asociar el organizador |
+| `update(id, EventDto)` | Actualiza nombre, fechas, reminderMinutes/Hours |
+| `delete(id)` @Transactional | Cascade: elimina votings, participaciones, comentarios, criterion points |
+| `resolveReminderMinutes(dto)` | Helper: convierte `reminderHours` a minutos si no hay `reminderMinutes` |
 
 ---
 
 ### `CategoryService`
-**Se preocupa de:** gestión de categorías y su configuración de puntos y fechas.
-**Llama a:** `CategoryRepository`, `EventRepository`, `CriterionRepository`, `CategoryCriterionPointsRepository`.
-**Operaciones clave:**
-- `create(CategoryDto)` → valida que las fechas de la categoría estén dentro del evento (`validateCategoryTimesWithinEvent`).
-- `setVotingType(categoryId, VotingType)` → asigna JURY_EXPERT o POPULAR_VOTE.
-- `setCriterionPoints(categoryId, criterionId, maxPoints)` → upsert individual; valida que el total acumulado ≤ 100.
-- `setCriterionPointsBulk(categoryId, pointsDtos)` → reemplaza toda la config; exige suma = 100 exacta. `@Transactional`.
-- `deleteCriterionPoints(categoryId, criterionId)` → elimina la config de un criterio concreto.
+**Llama a:** `CategoryRepository`, `EventRepository`, `CriterionRepository`, `CategoryCriterionPointsRepository`
+
+| Método | Descripción |
+|---|---|
+| CRUD estándar | `findAll`, `findById`, `create`, `update`, `delete` @Transactional |
+| `findByEventId(eventId)` | Categorías de un evento |
+| `createForEvent(eventId, name)` | Crea categoría enlazada al evento |
+| `setVotingType(id, VotingType)` | Asigna JURY_EXPERT o POPULAR_VOTE |
+| `getCriterionPoints(categoryId)` | Lista puntos por criterio de una categoría |
+| `setCriterionPoints(categoryId, criterionId, maxPoints)` | Upsert individual; valida total acumulado ≤ 100 |
+| `setCriterionPointsBulk(categoryId, dtos)` @Transactional | Reemplaza toda la config; exige suma = 100 exacta |
+| `deleteCriterionPoints(categoryId, criterionId)` | Elimina config de un criterio concreto |
+| **`setTotalPoints(categoryId, totalPoints)`** | (req.23) Config de puntos totales para POPULAR_VOTE |
+| **`getTotalPoints(categoryId)`** | Devuelve totalPoints de la categoría |
+| **`setMaxVotesPerVoter(categoryId, maxVotesPerVoter)`** | (req.19) Límite de competidores distintos por votante |
+| `validateCategoryTimesWithinEvent(event, start, end)` | Valida que las fechas de la categoría estén dentro del rango del evento |
 
 ---
 
 ### `CriterionService`
-**Se preocupa de:** CRUD simple de criterios de evaluación.
-**Llama a:** `CriterionRepository`.
-**Operaciones:** `findAll`, `findById`, `create`, `update`, `delete`. Sin lógica adicional.
+CRUD simple: `findAll`, `findById`, `create`, `update`, `delete`. Sin lógica adicional.
 
 ---
 
 ### `ProjectService`
-**Se preocupa de:** proyectos presentados por los competidores y comentarios asociados.
-**Llama a:** `ProjectRepository`, `EventRepository`, `CompetitorRepository`, `VoterRepository`, `CommentRepository`.
-**Operaciones clave:**
-- `createForEvent(eventId, name, description)` → crea el proyecto enlazado al evento.
-- `addComment(projectId, voterId, text)` → guarda un `Comment` asociado al proyecto y al voter.
-- `addCompetitor(projectId, competitorId)` → añade un `Competitor` a la colección del proyecto y persiste.
+**Llama a:** `ProjectRepository`, `EventRepository`, `CompetitorRepository`, `VoterRepository`, `CommentRepository`
+
+| Método | Descripción |
+|---|---|
+| `findAll()` / `findByEvent(eventId)` | Consultas |
+| `createForEvent(eventId, dto)` | Crea proyecto enlazado al evento |
+| `createForParticipantInEvent(participantId, eventId, dto)` | Crea proyecto asignando al participante como competidor |
+| `addCompetitor(projectId, competitorId)` | Añade competidor al proyecto |
+| `addComment(projectId, dto)` | Guarda un `Comment` asociado al proyecto y al voter |
+| `getCommentsByProject(projectId)` | Lista comentarios de un proyecto |
+| `getCompetitorIds(projectId)` | Lista IDs de competidores en el proyecto |
 
 ---
 
 ### `VotingService`
-**Se preocupa de:** registro y actualización de votos (intervención manual incluida).
-**Llama a:** `VotingRepository`, `VoterRepository`, `CompetitorRepository`, `CriterionRepository`.
-**Operaciones clave:**
-- `create(VotingDto)` → resuelve las 3 entidades (voter, competitor, criterion) y persiste el voto.
-- `update(id, VotingDto)` → permite modificar el score de un voto existente (intervención manual del organizador). Score = 0 es válido (anular voto).
-- `delete(id)` → elimina un voto.
+**Llama a:** `VotingRepository`, `VoterRepository`, `CompetitorRepository`, `CriterionRepository`, `CategoryRepository`
+
+| Método | Descripción |
+|---|---|
+| CRUD estándar | `findAll`, `findById`, `delete` |
+| `create(VotingDto)` @Transactional | Resuelve voter/competitor/criterion, aplica `evaluateVote()` y persiste |
+| `update(id, VotingDto)` | Modifica score existente (intervención manual). Score=0 es válido (anular voto). Marca `manuallyModified=true`. |
+| `findByCompetitorIds(ids)` | Votos de una lista de competidores |
+| `findByVoterAndCompetitor(voterId, competitorId)` | Votos de un voter+competitor concreto |
+| `getActiveVoterIds(categoryId)` | IDs de voters que han votado en la categoría |
+| **`evaluateVote(voting)`** | Aplica las reglas de negocio según `VotingType` |
+| **`validatePopularVoteRestrictions(voterId, competitorId, category, score)`** | (req.19) Valida que el votante no supera `maxVotesPerVoter` distintos. (req.23) Valida que el score total del voter no supera `totalPoints`. |
+| **`findExistingVote(...)`** | Si ya existe un voto (voter+competitor+criterion+category), incrementa el score en lugar de crear uno nuevo |
+
+**Reglas aplicadas en `evaluateVote()`:**
+- JURY_EXPERT: `score ≤ maxPoints` del criterio en la categoría
+- POPULAR_VOTE: valida restricciones req.19 (max competidores) y req.23 (max puntos totales)
 
 ---
 
 ### `EventParticipationService`
-**Se preocupa de:** quién participa en qué categoría de qué evento y con qué rol.
-**Llama a:** `EventParticipationRepository`, `EventRepository`, `UserRepository`, `CategoryRepository`.
-**Operaciones clave:**
-- `registerParticipation(eventId, userId, categoryId, role)` → valida que la categoría pertenece al evento, que no haya duplicado `(event, user, category)`, y persiste la participación.
-- `registerCompetitor(...)` / `registerVoter(...)` → wrappers del método anterior con rol fijado.
-- `getParticipationsByEventAndCategory(eventId, categoryId)` → lista participaciones de una categoría.
-- `getCompetitorsByEventAndCategory(...)` / `getVotersByEventAndCategory(...)` → filtra por rol.
-- `removeParticipation(eventId, userId, categoryId)` → da de baja a un participante.
+**Llama a:** `EventParticipationRepository`, `EventRepository`, `UserRepository`, `CategoryRepository`
+
+| Método | Descripción |
+|---|---|
+| `registerParticipation(eventId, userId, categoryId, role)` | Valida que categoría pertenece al evento, constraint UNIQUE(event, user, category), y persiste |
+| `registerCompetitor(...)` / `registerVoter(...)` | Wrappers con rol fijado |
+| `registerNewCompetitor(eventId, name, email, categoryId)` @Transactional | Valida email regex + nombre no vacío → crea `Competitor` + `EventParticipation` |
+| `registerNewVoter(eventId, name, email, categoryId)` @Transactional | Idem para `Voter` |
+| `getParticipationsByEvent(eventId)` | Lista participaciones de un evento |
+| `getParticipationsByEventAndCategory(eventId, categoryId)` | Lista por evento+categoría |
+| `getCompetitorsByEventAndCategory(...)` / `getVotersByEventAndCategory(...)` | Filtra por rol |
+| `getParticipationsByUser(userId)` | Participaciones de un usuario |
+| `removeParticipation(eventId, userId, categoryId)` | Da de baja a un participante |
 
 ---
 
 ### `UserService`, `ParticipantService`, `CompetitorService`, `VoterService`, `TimeWindowService`
-CRUD estándar para sus respectivas entidades. Sin lógica de negocio compleja en Sprint 0.
+CRUD estándar (`findAll`, `findById`, `create`, `update`, `delete`). Sin lógica de negocio adicional.
 
 ---
 
 ## 5. Capa de Controllers (`controller/`)
 
-Exponen los servicios como endpoints REST (`@RestController`). Reciben DTOs en el body (`@RequestBody`) o como path/query params. Delegan toda la lógica al servicio correspondiente.
+| Controller | Ruta base | Endpoints |
+|---|---|---|
+| `UserController` | `/api/users` | GET `/`, GET `/{id}`, POST `/`, PUT `/{id}`, DELETE `/{id}` |
+| `EventController` | `/api/events` | GET `/`, GET `/{id}`, POST `/`, POST `/by-organizer`, PUT `/{id}`, DELETE `/{id}` (cascade), GET `/{id}/categories`, POST `/{id}/categories`, GET `/{id}/participations`, POST `/{id}/participations`, GET `/{id}/categories/{catId}/participations`, GET `/{id}/categories/{catId}/competitors`, GET `/{id}/categories/{catId}/voters`, POST `/{id}/competitors`, POST `/{id}/voters`, **POST `/{id}/competitors/register`**, **POST `/{id}/voters/register`**, **DELETE `/{id}/participations?userId=&categoryId=`** |
+| `CategoryController` | `/api/categories` | GET `/`, GET `/{id}`, POST `/`, PUT `/{id}`, DELETE `/{id}` (cascade), PUT `/{id}/voting-type?type=`, GET `/{id}/criterion-points`, PUT `/{id}/criterion-points/{criterionId}`, PUT `/{id}/criterion-points/bulk`, DELETE `/{id}/criterion-points/{criterionId}`, **GET `/{id}/total-points`**, **PUT `/{id}/total-points`**, **PUT `/{id}/max-votes-per-voter`**, GET `/{id}/active-voters` |
+| `CriterionController` | `/api/criteria` | CRUD estándar |
+| `ProjectController` | `/api` | GET `/projects`, POST `/events/{id}/projects`, GET `/events/{id}/projects`, POST `/projects/{id}/competitors/{competitorId}`, POST `/projects/{id}/comments`, GET `/projects/{id}/comments`, GET `/projects/{id}/competitors` |
+| `VotingController` | `/api/votings` | GET `/`, GET `/{id}`, POST `/`, PUT `/{id}`, DELETE `/{id}`, GET `/by-competitors?ids=`, GET `/by-voter-competitor?voterId=&competitorId=` |
+| `CompetitorController` | `/api/competitors` | CRUD estándar + GET `/{competitorId}/comments` |
+| `VoterController` | `/api/voters` | CRUD estándar |
+| `ParticipantController` | `/api/participants` | CRUD estándar |
+| `TimeWindowController` | `/api/time-windows` | CRUD estándar |
 
-| Controller | Servicio que usa | Ruta base | Endpoints Sprint 1 añadidos |
-|---|---|---|---|
-| `EventController` | `EventService` | `/events` | `DELETE /{id}` cascade, `POST /{id}/competitors/register`, `POST /{id}/voters/register` |
-| `CategoryController` | `CategoryService` | `/categories` | `DELETE /{id}` cascade, `GET /{id}/active-voters` |
-| `CriterionController` | `CriterionService` | `/criteria` | — |
-| `ProjectController` | `ProjectService` | `/projects` | `GET /{id}/comments`, `GET /{id}/competitors` |
-| `CompetitorController` | `CompetitorService` | `/competitors` | `GET /{userId}/comments` |
-| `VoterController` | `VoterService` | `/voters` | — |
-| `VotingController` | `VotingService` | `/votings` | `GET /by-competitors?ids=...`, `GET /by-voter-competitor?voterId=&competitorId=` |
-| `ParticipantController` | `ParticipantService` | `/participants` | — |
-| `UserController` | `UserService` | `/users` | — |
-| `TimeWindowController` | `TimeWindowService` | `/time-windows` | — |
+> **Negrita** = endpoints añadidos en Sprint 1
 
 ---
 
@@ -203,11 +239,11 @@ Exponen los servicios como endpoints REST (`@RestController`). Reciben DTOs en e
 EventService
   ├── EventRepository
   ├── UserRepository
-  └── EventParticipationService ──┐
-                                   ├── EventParticipationRepository
-                                   ├── EventRepository
-                                   ├── UserRepository
-                                   └── CategoryRepository
+  └── EventParticipationService
+        ├── EventParticipationRepository
+        ├── EventRepository
+        ├── UserRepository
+        └── CategoryRepository
 
 CategoryService
   ├── CategoryRepository
@@ -219,7 +255,8 @@ VotingService
   ├── VotingRepository
   ├── VoterRepository
   ├── CompetitorRepository
-  └── CriterionRepository
+  ├── CriterionRepository
+  └── CategoryRepository          ← añadido S1 (para leer totalPoints/maxVotesPerVoter)
 
 ProjectService
   ├── ProjectRepository
@@ -227,9 +264,6 @@ ProjectService
   ├── CompetitorRepository
   ├── VoterRepository
   └── CommentRepository
-
-CriterionService
-  └── CriterionRepository
 ```
 
 ---
@@ -255,41 +289,90 @@ CriterionService
 
 ---
 
-## 8. Tests
+## 8. Reglas de negocio implementadas
 
-| Clase | Tipo | Tests | Qué valida | Sprint |
-|---|---|---|---|---|
-| `CriterionServiceTest` | Unitario | 9 | CRUD criterios | S0 |
-| `EventServiceTest` | Unitario | 9 | CRUD eventos, organizador | S0 |
-| `CategoryServiceTest` | Unitario | 16 | CRUD, tipos voto, puntos 100%, fechas | S0 |
-| `VotingServiceTest` | Unitario | 10 | Votos, intervención manual, score=0 | S0 |
-| `ProjectServiceTest` | Unitario | 9 | Proyectos, comentarios, competidores | S0 |
-| `EventParticipationServiceTest` | Unitario | 8 | Registro, duplicados, validación categoría | S0 |
-| Nuevos tests Sprint 1 | Unitario | +12 | Cascade deletes, register con User, queries nuevas | **S1** |
-| `CategoryRepositoryTest` | Integración | 9 | Queries JPA en H2 | S0 |
-| `VotingRepositoryTest` | Integración | 8 | Persistencia votos en H2 | S0 |
-| `EventParticipationRepositoryTest` | Integración | 8 | Queries complejas participaciones | S0 |
-| **Total** | | **98** | | S0+S1 |
-
-Configuración: tests unitarios usan **Mockito** (sin contexto Spring); tests de integración usan **@DataJpaTest + H2** en memoria con `MODE=PostgreSQL`.
+| # | Regla | Dónde se valida |
+|---|---|---|
+| 1 | `EventParticipation` UNIQUE(event, user, category) | `EventParticipationService.registerParticipation()` + constraint BD |
+| 2 | `CategoryCriterionPoints` UNIQUE(category, criterion) | constraint BD |
+| 3 | Suma de `maxPoints` de los criterios de una categoría = 100 (bulk) | `CategoryService.setCriterionPointsBulk()` |
+| 4 | Suma acumulada de `maxPoints` por criterio individual ≤ 100 | `CategoryService.setCriterionPoints()` |
+| 5 | Score de un voto JURY_EXPERT ≤ `maxPoints` del criterio | `VotingService.evaluateVote()` |
+| 6 | (req.19) Votante no puede votar a más de `maxVotesPerVoter` competidores distintos | `VotingService.validatePopularVoteRestrictions()` |
+| 7 | (req.23) Score total de un votante en POPULAR_VOTE ≤ `totalPoints` de la categoría | `VotingService.validatePopularVoteRestrictions()` |
+| 8 | Si ya existe voto (voter+competitor+criterion+category), se incrementa el score existente | `VotingService.findExistingVote()` |
+| 9 | Fechas de categoría dentro del rango del evento | `CategoryService.validateCategoryTimesWithinEvent()` |
+| 10 | Email válido + nombre no vacío al registrar un participante nuevo | `EventParticipationService.registerNewCompetitor/Voter()` |
+| 11 | Cascade delete: borrar evento elimina categorías, proyectos, votings, participaciones, comentarios | `EventService.delete()` @Transactional |
 
 ---
 
-## 9. Cambios Sprint 1 — resumen
+## 9. Tests
 
-| # | Cambio | Detalle |
-|---|--------|---------|
-| 1 | `VotingDto.manuallyModified` | Campo nuevo para auditoría de intervención manual |
-| 2 | `EventDto.categories` | Renombrado desde `categoryNames` para coherencia con frontend |
-| 3 | `EventParticipationDto.email` | Alias JSON para campo `userEmail` |
-| 4 | `DELETE /api/events/{id}` cascade | Borra votings, participaciones, comentarios, criterion points |
-| 5 | `DELETE /api/categories/{id}` cascade | Cascade delete completo |
-| 6 | `GET /api/projects/{id}/comments` | Comentarios de un proyecto |
-| 7 | `GET /api/competitors/{userId}/comments` | Comentarios recibidos por competidor |
-| 8 | `GET /api/categories/{id}/active-voters` | Votantes que han votado en la categoría |
-| 9 | `GET /api/votings/by-competitors?ids=...` | Votos filtrados por lista de competidores |
-| 10 | `GET /api/votings/by-voter-competitor` | Votos de un voter+competitor específico |
-| 11 | `GET /api/projects/{id}/competitors` | IDs de competidores asignados al proyecto |
-| 12 | `POST /api/events/{id}/competitors/register` y `.../voters/register` | Registro completo con creación de User+Participant en una transacción |
+| Clase | Tipo | Tests | Qué valida |
+|---|---|---|---|
+| `CategoryServiceTest` | Unitario (Mockito) | **23** | CRUD, tipos de voto, puntos criterio (bulk, individual, excede 100, negativos), fechas, totalPoints, maxVotesPerVoter |
+| `VotingServiceTest` | Unitario (Mockito) | **15** | Votos, intervención manual, score=0, validación POPULAR_VOTE (req.19/23), vote dedup |
+| `EventServiceTest` | Unitario (Mockito) | 9 | CRUD eventos, organizador, cascade delete |
+| `ProjectServiceTest` | Unitario (Mockito) | 9 | Proyectos, comentarios, competidores |
+| `EventParticipationServiceTest` | Unitario (Mockito) | 8 | Registro, duplicados, validación categoría, email/nombre |
+| `CriterionServiceTest` | Unitario (Mockito) | 9 | CRUD criterios |
+| `CategoryRepositoryTest` | Integración (@DataJpaTest H2) | 9 | Queries JPA, findByEventId |
+| `VotingRepositoryTest` | Integración (@DataJpaTest H2) | 8 | Persistencia votos, queries custom @Query |
+| `EventParticipationRepositoryTest` | Integración (@DataJpaTest H2) | 8 | Queries complejas participaciones |
+| **Total** | | **98** | |
 
-**Frontend:** `@supabase/supabase-js` eliminado. `src/api/client.ts` reescrito con Axios (330 líneas, 48+ funciones). Ver **ADR-005**.
+Configuración: tests unitarios usan **Mockito** (sin contexto Spring); tests de integración usan **@DataJpaTest + H2** en memoria con `MODE=PostgreSQL` (ver ADR-004).
+
+---
+
+## 10. Configuración y despliegue
+
+### Configuración CORS (`WebConfig` / `CorsConfig`)
+- **Rutas:** `/api/**`
+- **Orígenes permitidos:** `http://localhost:*` (local), `https://*.vercel.app` (Vercel), `https://*.onrender.com` (Render)
+- **Métodos:** GET, POST, PUT, PATCH, DELETE, OPTIONS
+- **Headers:** `*` — Max age: 3600s
+
+### application.properties (producción)
+```properties
+server.port=${PORT:8080}
+spring.profiles.active=${SPRING_PROFILES_ACTIVE:local}
+spring.datasource.url=jdbc:postgresql://aws-1-eu-west-1.pooler.supabase.com:6543/postgres?prepareThreshold=0
+spring.datasource.username=${SPRING_DATASOURCE_USERNAME}
+spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+management.endpoints.web.exposure.include=health,info
+```
+
+### Perfil local
+- Credenciales hardcodeadas en `config/LocalDataSourceConfig.java` (`@Profile("local") @Primary`)
+- Credenciales en `application-local.properties` (gitignored)
+
+### Comandos
+```bash
+# Arrancar (Windows PowerShell — requiere Java 21 en PATH)
+$env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+mvn clean spring-boot:run
+
+# Solo tests
+mvn test
+
+# Build JAR
+mvn clean package -DskipTests
+```
+
+---
+
+## 11. Decisiones de arquitectura (ADRs)
+
+| ADR | Título | Estado |
+|---|---|---|
+| ADR-001 | Spring Boot como API REST (no acceso directo Supabase) | Aprobado |
+| ADR-002 | Herencia JPA JOINED + `EventParticipation` para composición de roles | Aprobado |
+| ADR-003 | Validación puntos criterio: individual (≤100) + bulk (=100 exacto) | Aprobado |
+| ADR-004 | H2 en memoria para tests @DataJpaTest (no TestContainers en Sprint 0) | Aprobado |
+| ADR-005 | Migración frontend: de Supabase JS directo a Spring Boot REST | Completado |
+| ADR-006 | Factory Method GoF en dominios Evaluacion, Votacion y Rol | Propuesto |

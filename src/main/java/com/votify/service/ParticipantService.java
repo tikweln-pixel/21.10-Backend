@@ -6,6 +6,7 @@ import com.votify.persistence.ParticipantRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,26 +25,29 @@ public class ParticipantService {
     }
 
     public ParticipantDto findById(Long id) {
-        Participant participant = participantRepository.findById(id)
+        if (id == null) throw new RuntimeException("Participant ID cannot be null");
+        Participant participant = participantRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Participant not found with id: " + id));
         return toDto(participant);
     }
 
     public ParticipantDto create(ParticipantDto dto) {
         Participant participant = new Participant(dto.getName(), dto.getEmail());
-        return toDto(participantRepository.save(participant));
+        return toDto(participantRepository.save(Objects.requireNonNull(participant)));
     }
 
     public ParticipantDto update(Long id, ParticipantDto dto) {
-        Participant participant = participantRepository.findById(id)
+        if (id == null) throw new RuntimeException("Participant ID cannot be null");
+        Participant participant = participantRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Participant not found with id: " + id));
         participant.setName(dto.getName());
         participant.setEmail(dto.getEmail());
-        return toDto(participantRepository.save(participant));
+        return toDto(participantRepository.save(Objects.requireNonNull(participant)));
     }
 
     public void delete(Long id) {
-        participantRepository.deleteById(id);
+        if (id == null) throw new RuntimeException("Participant ID cannot be null");
+        participantRepository.deleteById(Objects.requireNonNull(id));
     }
 
     private ParticipantDto toDto(Participant participant) {

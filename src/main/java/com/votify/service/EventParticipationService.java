@@ -8,7 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.Objects;
 import java.util.stream.Collectors;
+
 
 @Service
 public class EventParticipationService {
@@ -41,26 +43,28 @@ public class EventParticipationService {
      * Un mismo usuario puede tener distintos roles en distintas categorías del mismo evento.
      */
     public EventParticipationDto registerParticipation(Long eventId, Long userId, Long categoryId, ParticipationRole role) {
+        if (eventId == null) throw new RuntimeException("Event ID is required");
+        if (userId == null) throw new RuntimeException("User ID is required");
         if (categoryId == null) {
             throw new RuntimeException("Category is required for participation");
         }
-        Event event = eventRepository.findById(eventId)
+        Event event = eventRepository.findById(Objects.requireNonNull(eventId))
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
-        User user = userRepository.findById(userId)
+        User user = userRepository.findById(Objects.requireNonNull(userId))
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
-        Category category = categoryRepository.findById(categoryId)
+        Category category = categoryRepository.findById(Objects.requireNonNull(categoryId))
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
 
         if (!category.getEvent().getId().equals(eventId)) {
             throw new RuntimeException("Category does not belong to this event");
         }
 
-        if (eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(eventId, userId, categoryId)) {
+        if (eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(Objects.requireNonNull(eventId), Objects.requireNonNull(userId), Objects.requireNonNull(categoryId))) {
             throw new RuntimeException("User " + userId + " is already registered in category " + categoryId + " of event " + eventId);
         }
 
-        EventParticipation participation = new EventParticipation(event, user, category, role);
-        return toDto(eventParticipationRepository.save(participation));
+        EventParticipation participation = new EventParticipation(Objects.requireNonNull(event), Objects.requireNonNull(user), Objects.requireNonNull(category), role);
+        return toDto(eventParticipationRepository.save(Objects.requireNonNull(participation)));
     }
 
     public EventParticipationDto registerCompetitor(Long eventId, Long userId, Long categoryId) {
@@ -107,23 +111,24 @@ public class EventParticipationService {
     }
 
     public void removeParticipation(Long eventId, Long userId, Long categoryId) {
+        if (eventId == null || userId == null || categoryId == null) throw new RuntimeException("IDs are required for removal");
         EventParticipation participation = eventParticipationRepository
-                .findByEventIdAndUserIdAndCategoryId(eventId, userId, categoryId)
+                .findByEventIdAndUserIdAndCategoryId(Objects.requireNonNull(eventId), Objects.requireNonNull(userId), Objects.requireNonNull(categoryId))
                 .orElseThrow(() -> new RuntimeException("Participation not found"));
-        eventParticipationRepository.delete(participation);
+        eventParticipationRepository.delete(Objects.requireNonNull(participation));
     }
 
     @Transactional
     public EventParticipationDto registerNewCompetitor(Long eventId, String name, String email, Long categoryId) {
         validateNewParticipant(name, email);
-        Competitor competitor = competitorRepository.save(new Competitor(name.trim(), email.trim()));
+        Competitor competitor = competitorRepository.save(Objects.requireNonNull(new Competitor(name.trim(), email.trim())));
         return registerParticipation(eventId, competitor.getId(), categoryId, ParticipationRole.COMPETITOR);
     }
 
     @Transactional
     public EventParticipationDto registerNewVoter(Long eventId, String name, String email, Long categoryId) {
         validateNewParticipant(name, email);
-        Voter voter = voterRepository.save(new Voter(name.trim(), email.trim()));
+        Voter voter = voterRepository.save(Objects.requireNonNull(new Voter(name.trim(), email.trim())));
         return registerParticipation(eventId, voter.getId(), categoryId, ParticipationRole.VOTER);
     }
 

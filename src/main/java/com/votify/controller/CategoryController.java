@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.lang.NonNull;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -23,15 +24,14 @@ public class CategoryController {
     private final UserRepository userRepository;
 
     public CategoryController(CategoryService categoryService,
-                              VotingService votingService,
-                              UserRepository userRepository) {
+            VotingService votingService,
+            UserRepository userRepository) {
         this.categoryService = categoryService;
         this.votingService = votingService;
         this.userRepository = userRepository;
     }
 
-    //  CRUD básico
-
+    // CRUD básico
 
     @GetMapping
     public ResponseEntity<List<CategoryDto>> getAll() {
@@ -39,7 +39,7 @@ public class CategoryController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CategoryDto> getById(@PathVariable Long id) {
+    public ResponseEntity<CategoryDto> getById(@PathVariable @NonNull Long id) {
         return ResponseEntity.ok(categoryService.findById(id));
     }
 
@@ -59,12 +59,12 @@ public class CategoryController {
         return ResponseEntity.noContent().build();
     }
 
-    //   Definir Categorías: tipo de votación
+    // Definir Categorías: tipo de votación
 
-     // Asigna el tipo de votación a una categoría.
+    // Asigna el tipo de votación a una categoría.
 
-     //JURY_EXPERT  → Votacion_Jurado_Exp (diagrama de clases)
-     //POPULAR_VOTE → Voto_Popular        (diagrama de clases)
+    // JURY_EXPERT → Votacion_Jurado_Exp (diagrama de clases)
+    // POPULAR_VOTE → Voto_Popular (diagrama de clases)
 
     @PutMapping("/{id}/voting-type")
     public ResponseEntity<CategoryDto> setVotingType(
@@ -73,8 +73,7 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.setVotingType(id, type));
     }
 
-
-    //  Req. 4 – Configurar Puntos: puntos por criterio por categoría
+    // Req. 4 – Configurar Puntos: puntos por criterio por categoría
 
     /**
      * Obtiene la configuración de puntos por criterio de una categoría
@@ -85,7 +84,8 @@ public class CategoryController {
     }
 
     /**
-     * Actualiza (o crea) los puntos máximos de un criterio concreto en la categoría.
+     * Actualiza (o crea) los puntos máximos de un criterio concreto en la
+     * categoría.
      * El cuerpo lleva { "maxPoints": <valor> }.
      */
     @PutMapping("/{id}/criterion-points/{criterionId}")
@@ -118,7 +118,7 @@ public class CategoryController {
         return ResponseEntity.noContent().build();
     }
 
-    //  Req. 23 – Configurar Puntos POPULAR_VOTE
+    // Req. 23 – Configurar Puntos POPULAR_VOTE
 
     /**
      * Obtiene el totalPoints configurado en una categoría POPULAR_VOTE.
@@ -141,11 +141,13 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.setTotalPoints(id, dto.getTotalPoints()));
     }
 
-    //  Req. 19 – Control de Voto POPULAR_VOTE: límite de competidores distintos
+    // Req. 19 – Control de Voto POPULAR_VOTE: límite de competidores distintos
 
     /**
-     * Configura el máximo de competidores distintos a los que puede votar un votante.
-     * Regla de negocio: de 5 proyectos se puede votar hasta 3 en una votación popular.
+     * Configura el máximo de competidores distintos a los que puede votar un
+     * votante.
+     * Regla de negocio: de 5 proyectos se puede votar hasta 3 en una votación
+     * popular.
      * El cuerpo lleva { "maxVotesPerVoter": <valor> }.
      * PUT /api/categories/{id}/max-votes-per-voter
      */
@@ -159,6 +161,9 @@ public class CategoryController {
     @GetMapping("/{categoryId}/active-voters")
     public ResponseEntity<List<UserDto>> getActiveVoters(@PathVariable Long categoryId) {
         List<Long> voterIds = votingService.getActiveVoterIds(categoryId);
+        if (voterIds == null || voterIds.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
         List<UserDto> voters = userRepository.findAllById(voterIds).stream()
                 .map(u -> new UserDto(u.getId(), u.getName(), u.getEmail()))
                 .collect(Collectors.toList());

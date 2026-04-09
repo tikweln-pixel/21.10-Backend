@@ -15,6 +15,7 @@ import com.votify.persistence.VoterRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,10 +52,12 @@ public class ProjectService {
     }
 
     public CommentDto addComment(Long projectId, CommentDto dto) {
-        Project project = projectRepository.findById(projectId)
+        if (projectId == null) throw new RuntimeException("Project ID cannot be null");
+        Project project = projectRepository.findById(Objects.requireNonNull(projectId))
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
-        Voter voter = voterRepository.findById(dto.getVoterId())
+        if (dto.getVoterId() == null) throw new RuntimeException("Voter ID cannot be null");
+        Voter voter = voterRepository.findById(Objects.requireNonNull(dto.getVoterId()))
                 .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
 
         Comment comment = new Comment();
@@ -62,13 +65,14 @@ public class ProjectService {
         comment.setProject(project);
         comment.setVoter(voter);
 
-        Comment saved = commentRepository.save(comment);
+        Comment saved = commentRepository.save(Objects.requireNonNull(comment));
 
         return new CommentDto(saved.getId(), saved.getVoter().getId(), saved.getText());
     }
 
     public ProjectDto createForEvent(Long eventId, ProjectDto dto) {
-        Event event = eventRepository.findById(eventId)
+        if (eventId == null) throw new RuntimeException("Event ID cannot be null");
+        Event event = eventRepository.findById(Objects.requireNonNull(eventId))
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
 
         Project project = new Project();
@@ -76,35 +80,41 @@ public class ProjectService {
         project.setDescription(dto.getDescription());
         project.setEvent(event);
 
-        Project saved = projectRepository.save(project);
+        Project saved = projectRepository.save(Objects.requireNonNull(project));
         return toDto(saved);
     }
 
     public ProjectDto createForParticipantInEvent(Long participantId, Long eventId, ProjectDto dto) {
-        Event event = eventRepository.findById(eventId)
+        if (eventId == null) throw new RuntimeException("Event ID cannot be null");
+        Event event = eventRepository.findById(Objects.requireNonNull(eventId))
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
 
-        Competitor competitor = competitorRepository.findById(participantId)
+        if (participantId == null) throw new RuntimeException("Participant ID cannot be null");
+        Competitor competitor = competitorRepository.findById(Objects.requireNonNull(participantId))
                 .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + participantId));
 
         Project project = competitor.createProjectForEvent(dto.getName(), dto.getDescription(), event);
-        Project saved = projectRepository.save(project);
+        Project saved = projectRepository.save(Objects.requireNonNull(project));
         return toDto(saved);
     }
 
     public ProjectDto addCompetitor(Long projectId, Long competitorId) {
-        Project project = projectRepository.findById(projectId)
+        if (projectId == null) throw new RuntimeException("Project ID cannot be null");
+        Project project = projectRepository.findById(Objects.requireNonNull(projectId))
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
-        Competitor competitor = competitorRepository.findById(competitorId)
+        
+        if (competitorId == null) throw new RuntimeException("Competitor ID cannot be null");
+        Competitor competitor = competitorRepository.findById(Objects.requireNonNull(competitorId))
                 .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + competitorId));
 
         project.getCompetitors().add(competitor);
-        Project saved = projectRepository.save(project);
+        Project saved = projectRepository.save(Objects.requireNonNull(project));
         return toDto(saved);
     }
 
     public List<CommentDto> getCommentsByProject(Long projectId) {
-        if (!projectRepository.existsById(projectId)) {
+        if (projectId == null) throw new RuntimeException("Project ID cannot be null");
+        if (!projectRepository.existsById(Objects.requireNonNull(projectId))) {
             throw new RuntimeException("Project not found with id: " + projectId);
         }
         return commentRepository.findByProjectId(projectId).stream()
@@ -113,7 +123,8 @@ public class ProjectService {
     }
 
     public List<Long> getCompetitorIds(Long projectId) {
-        Project project = projectRepository.findById(projectId)
+        if (projectId == null) throw new RuntimeException("Project ID cannot be null");
+        Project project = projectRepository.findById(Objects.requireNonNull(projectId))
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
         return project.getCompetitors().stream()
                 .map(Competitor::getId)

@@ -10,6 +10,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -68,7 +69,8 @@ class VotingRepositoryTest {
     @Test
     @DisplayName("findById → retorna voto correcto con todas sus relaciones")
     void findById_returnsVotingWithRelations() {
-        Optional<Voting> result = votingRepository.findById(voting1.getId());
+        Long vId = voting1.getId();
+        Optional<Voting> result = votingRepository.findById(Objects.requireNonNull(vId));
 
         assertThat(result).isPresent();
         Voting v = result.get();
@@ -94,7 +96,8 @@ class VotingRepositoryTest {
 
         assertThat(saved.getId()).isNotNull();
         em.clear();
-        Optional<Voting> reloaded = votingRepository.findById(saved.getId());
+        Long sId = saved.getId();
+        Optional<Voting> reloaded = votingRepository.findById(Objects.requireNonNull(sId));
         assertThat(reloaded).isPresent();
         assertThat(reloaded.get().getScore()).isEqualTo(30);
     }
@@ -116,19 +119,21 @@ class VotingRepositoryTest {
     @DisplayName("deleteById → elimina el voto de la BD")
     void deleteById_removesVoting() {
         Long id = voting1.getId();
-        votingRepository.deleteById(id);
+        votingRepository.deleteById(Objects.requireNonNull(id));
         em.flush(); em.clear();
 
-        assertThat(votingRepository.findById(id)).isEmpty();
+        assertThat(votingRepository.findById(Objects.requireNonNull(id))).isEmpty();
     }
 
     @Test
     @DisplayName("deleteById → no afecta a otros votos del mismo votante")
     void deleteById_doesNotAffectOtherVotings() {
-        votingRepository.deleteById(voting1.getId());
+        Long v1Id = voting1.getId();
+        votingRepository.deleteById(Objects.requireNonNull(v1Id));
         em.flush(); em.clear();
 
-        assertThat(votingRepository.findById(voting2.getId())).isPresent();
+        Long v2Id = voting2.getId();
+        assertThat(votingRepository.findById(Objects.requireNonNull(v2Id))).isPresent();
     }
 
     // ── count ──────────────────────────────────────────────────────────────

@@ -6,7 +6,9 @@ import com.votify.persistence.CompetitorRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
+
 
 @Service
 public class CompetitorService {
@@ -24,26 +26,29 @@ public class CompetitorService {
     }
 
     public CompetitorDto findById(Long id) {
-        Competitor competitor = competitorRepository.findById(id)
+        if (id == null) throw new RuntimeException("Competitor ID cannot be null");
+        Competitor competitor = competitorRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + id));
         return toDto(competitor);
     }
 
     public CompetitorDto create(CompetitorDto dto) {
         Competitor competitor = new Competitor(dto.getName(), dto.getEmail());
-        return toDto(competitorRepository.save(competitor));
+        return toDto(competitorRepository.save(Objects.requireNonNull(competitor)));
     }
 
     public CompetitorDto update(Long id, CompetitorDto dto) {
-        Competitor competitor = competitorRepository.findById(id)
+        if (id == null) throw new RuntimeException("Competitor ID cannot be null");
+        Competitor competitor = competitorRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + id));
         competitor.setName(dto.getName());
         competitor.setEmail(dto.getEmail());
-        return toDto(competitorRepository.save(competitor));
+        return toDto(competitorRepository.save(Objects.requireNonNull(competitor)));
     }
 
     public void delete(Long id) {
-        competitorRepository.deleteById(id);
+        if (id == null) throw new RuntimeException("Competitor ID cannot be null");
+        competitorRepository.deleteById(Objects.requireNonNull(id));
     }
 
     private CompetitorDto toDto(Competitor competitor) {

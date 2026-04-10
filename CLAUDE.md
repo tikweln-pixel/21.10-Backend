@@ -83,23 +83,37 @@ TimeWindow (category, startTime, endTime)
 - **DataSource programático:** `config/LocalDataSourceConfig.java` (@Profile("local"), @Primary)
 - **Para arrancar:** `mvn clean spring-boot:run` (desde Windows PowerShell con Java 21)
 
-## Variables de entorno en producción
+## Despliegue en producción (Railway)
+
+- **Plataforma:** Railway — detecta Maven/Spring Boot automáticamente, sin Dockerfile
+- **Repo desplegado:** `Nmsevinf/21.03_votify-backend` (fork de trabajo de Nina)
+- **URL producción:** `https://votify-backend-production-15c8.up.railway.app`
+- **Health check:** `https://votify-backend-production-15c8.up.railway.app/actuator/health`
+- **Deploy automático:** cada push a `main` de `Nmsevinf/21.03_votify-backend`
+- **Para publicar cambios desde el repo original:**
+  ```bash
+  git remote add nina https://github.com/Nmsevinf/21.03_votify-backend.git
+  git push nina main
+  ```
+
+## Variables de entorno en producción (Railway dashboard)
 | Variable | Descripción |
 |----------|-------------|
-| SPRING_DATASOURCE_URL | URL JDBC completa |
-| SPRING_DATASOURCE_USERNAME | Usuario Supabase pooler |
-| SPRING_DATASOURCE_PASSWORD | Contraseña BD |
-| PORT | Puerto HTTP (default 8080) |
-| SPRING_PROFILES_ACTIVE | Perfil Spring (production en Railway/Render) |
+| `SPRING_PROFILES_ACTIVE` | `production` |
+| `SPRING_DATASOURCE_URL` | URL JDBC Supabase (opcional — ya está en application.properties) |
+| `SPRING_DATASOURCE_USERNAME` | Usuario Supabase pooler (opcional) |
+| `SPRING_DATASOURCE_PASSWORD` | Contraseña BD (opcional) |
+| `PORT` | Railway lo inyecta automáticamente |
 
 ## Decisiones de arquitectura (ADRs)
 - **ADR-001:** Spring Boot como API REST en lugar de acceso directo desde frontend a Supabase
 - **ADR-002:** Herencia JPA (JOINED) User→Competitor/Voter + EventParticipation para roles (⚠️ ver ADR-007)
-- **ADR-006:** Factory Method en Votify
-- **ADR-007:** Eliminación de `Participant` — jerarquía simplificada a User→Competitor/Voter (Sprint 1)
 - **ADR-003:** Validación puntos criterio: endpoint individual (≤100) + bulk (=100 exacto)
 - **ADR-004:** H2 en memoria para tests @DataJpaTest (no TestContainers en Sprint 0)
 - **ADR-005:** Migración frontend de Supabase directo a Spring Boot REST (Sprint 1)
+- **ADR-006:** Factory Method en Votify
+- **ADR-007:** Eliminación de `Participant` — jerarquía simplificada a User→Competitor/Voter (Sprint 1)
+- **ADR-008:** Plataforma de deploy — Railway vs Render (Sprint 1)
 
 ## Tests
 - **98 tests** en total (tras Sprint 1): 73 unitarios (Mockito) + 25 integración (@DataJpaTest H2)
@@ -114,9 +128,9 @@ TimeWindow (category, startTime, endTime)
 
 ## Comandos útiles
 ```bash
-# Arrancar (Windows PowerShell)
-$env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
-$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+# Arrancar local (Git Bash / WSL)
+export JAVA_HOME="/mnt/c/Program Files/Java/jdk-21"
+export PATH="$JAVA_HOME/bin:$PATH"
 mvn clean spring-boot:run
 
 # Solo tests
@@ -125,7 +139,6 @@ mvn test
 # Build JAR
 mvn clean package -DskipTests
 
-# Docker
-docker build -t votify-backend .
-docker run -e SPRING_DATASOURCE_URL=... -e SPRING_DATASOURCE_USERNAME=... -e SPRING_DATASOURCE_PASSWORD=... -p 8080:8080 votify-backend
+# Publicar a Railway (repo de Nina)
+git push nina main
 ```

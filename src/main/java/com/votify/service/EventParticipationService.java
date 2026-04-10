@@ -3,6 +3,9 @@ package com.votify.service;
 import com.votify.dto.EventParticipationDto;
 import com.votify.entity.*;
 import com.votify.persistence.*;
+import com.votify.service.factory.participant.CompetitorCreator;
+import com.votify.service.factory.participant.ParticipantCreator;
+import com.votify.service.factory.participant.VoterCreator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,21 +24,15 @@ public class EventParticipationService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
-    private final CompetitorRepository competitorRepository;
-    private final VoterRepository voterRepository;
 
     public EventParticipationService(EventParticipationRepository eventParticipationRepository,
                                      EventRepository eventRepository,
                                      UserRepository userRepository,
-                                     CategoryRepository categoryRepository,
-                                     CompetitorRepository competitorRepository,
-                                     VoterRepository voterRepository) {
+                                     CategoryRepository categoryRepository) {
         this.eventParticipationRepository = eventParticipationRepository;
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
-        this.competitorRepository = competitorRepository;
-        this.voterRepository = voterRepository;
     }
 
     /**
@@ -120,18 +117,23 @@ public class EventParticipationService {
 
     @Transactional
     public EventParticipationDto registerNewCompetitor(Long eventId, String name, String email, Long categoryId) {
-        validateNewParticipant(name, email);
-        Competitor competitor = competitorRepository.save(Objects.requireNonNull(new Competitor(name.trim(), email.trim())));
-        return registerParticipation(eventId, competitor.getId(), categoryId, ParticipationRole.COMPETITOR);
+        return registerNew(eventId, name, email, categoryId, new CompetitorCreator());
     }
 
     @Transactional
     public EventParticipationDto registerNewVoter(Long eventId, String name, String email, Long categoryId) {
-        validateNewParticipant(name, email);
-        Voter voter = voterRepository.save(Objects.requireNonNull(new Voter(name.trim(), email.trim())));
-        return registerParticipation(eventId, voter.getId(), categoryId, ParticipationRole.VOTER);
+        return registerNew(eventId, name, email, categoryId, new VoterCreator());
     }
 
+
+    private EventParticipationDto registerNew(Long eventId, String name, String email,
+                                              Long categoryId, ParticipantCreator creator) {
+        validateNewParticipant(name, email);
+        User user = creator.register(name.trim(), email.trim(), userRepository);
+        return registerParticipation(eventId, user.getId(), categoryId, creator.getRole());
+    }
+
+    //Validamos que el nombre sea no nulo ni vacío, y que el email tenga formato válido
     private void validateNewParticipant(String name, String email) {
         if (name == null || name.isBlank()) {
             throw new RuntimeException("Name is required");

@@ -5,11 +5,9 @@ import com.votify.entity.Event;
 import com.votify.entity.User;
 import com.votify.persistence.CategoryRepository;
 import com.votify.persistence.CommentRepository;
-import com.votify.persistence.CompetitorRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.UserRepository;
-import com.votify.persistence.VoterRepository;
 import com.votify.persistence.VotingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,8 +34,6 @@ class EventServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private EventParticipationRepository eventParticipationRepository;
     @Mock private CategoryRepository categoryRepository;
-    @Mock private CompetitorRepository competitorRepository;
-    @Mock private VoterRepository voterRepository;
     @Mock private VotingRepository votingRepository;
     @Mock private CommentRepository commentRepository;
 
@@ -51,9 +47,7 @@ class EventServiceTest {
                 eventParticipationRepository,
                 eventRepository,
                 userRepository,
-                categoryRepository,
-                competitorRepository,
-                voterRepository
+                categoryRepository
         );
         eventService = new EventService(
                 eventRepository,

@@ -21,7 +21,6 @@ public class ProjectService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final EventParticipationRepository eventParticipationRepository;
-    private final CategoryRepository categoryRepository;
 
     public ProjectService(ProjectRepository projectRepository,
                           EventRepository eventRepository,
@@ -29,8 +28,7 @@ public class ProjectService {
                           VoterRepository voterRepository,
                           CommentRepository commentRepository,
                           UserRepository userRepository,
-                          EventParticipationRepository eventParticipationRepository,
-                          CategoryRepository categoryRepository) {
+                          EventParticipationRepository eventParticipationRepository) {
         this.projectRepository = projectRepository;
         this.eventRepository = eventRepository;
         this.competitorRepository = competitorRepository;
@@ -38,7 +36,6 @@ public class ProjectService {
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.eventParticipationRepository = eventParticipationRepository;
-        this.categoryRepository = categoryRepository;
     }
 
     public List<ProjectDto> findAll() {

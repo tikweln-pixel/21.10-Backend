@@ -25,11 +25,13 @@ import static org.mockito.Mockito.*;
 @DisplayName("ProjectService — Tests unitarios")
 class ProjectServiceTest {
 
-    @Mock private ProjectRepository    projectRepository;
-    @Mock private EventRepository      eventRepository;
-    @Mock private CompetitorRepository competitorRepository;
-    @Mock private VoterRepository      voterRepository;
-    @Mock private CommentRepository    commentRepository;
+    @Mock private ProjectRepository              projectRepository;
+    @Mock private EventRepository                eventRepository;
+    @Mock private CompetitorRepository           competitorRepository;
+    @Mock private VoterRepository                voterRepository;
+    @Mock private CommentRepository              commentRepository;
+    @Mock private UserRepository                 userRepository;
+    @Mock private EventParticipationRepository   eventParticipationRepository;
 
     @InjectMocks
     private ProjectService projectService;
@@ -82,10 +84,16 @@ class ProjectServiceTest {
     @Test
     @DisplayName("createForEvent → crea proyecto asociado al evento")
     void createForEvent_createsProject() {
+        User creator = new User("Carlos", "carlos@test.com");
+        creator.setId(2L);
+
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(creator));
+        when(competitorRepository.findByEmail("carlos@test.com")).thenReturn(Optional.of(competitor));
         when(projectRepository.save(any(Project.class))).thenReturn(Objects.requireNonNull(project));
 
         ProjectDto dto = new ProjectDto(null, "EcoTrack", "App de carbono", 1L, null);
+        dto.setCreatorUserId(2L);
         ProjectDto result = projectService.createForEvent(1L, dto);
 
         assertThat(result.getId()).isEqualTo(10L);
@@ -99,6 +107,7 @@ class ProjectServiceTest {
         when(eventRepository.findById(99L)).thenReturn(Optional.empty());
 
         ProjectDto dto = new ProjectDto(null, "Test", "Desc", 99L, null);
+        dto.setCreatorUserId(2L);
         assertThatThrownBy(() -> projectService.createForEvent(99L, dto))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("99");
@@ -151,8 +160,12 @@ class ProjectServiceTest {
     @Test
     @DisplayName("addCompetitor → asocia competidor al proyecto")
     void addCompetitor_linksCompetitorToProject() {
+        User user = new User("Carlos", "carlos@test.com");
+        user.setId(2L);
+
         when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(user));
+        when(competitorRepository.findByEmail("carlos@test.com")).thenReturn(Optional.of(competitor));
         when(projectRepository.save(any(Project.class))).thenReturn(Objects.requireNonNull(project));
 
         projectService.addCompetitor(10L, 2L);
@@ -162,13 +175,12 @@ class ProjectServiceTest {
     }
 
     @Test
-    @DisplayName("addCompetitor → lanza excepción si el competidor no existe")
-    void addCompetitor_throwsException_whenCompetitorNotFound() {
+    @DisplayName("addCompetitor → lanza excepción si el usuario no existe")
+    void addCompetitor_throwsException_whenUserNotFound() {
         when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(competitorRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> projectService.addCompetitor(10L, 99L))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Competitor");
+                .hasMessageContaining("99");
     }
 }

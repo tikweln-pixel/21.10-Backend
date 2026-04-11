@@ -10,6 +10,7 @@ import com.votify.entity.VotingType;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CategoryRepository;
 import com.votify.persistence.CriterionRepository;
+import com.votify.persistence.EvaluacionRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.VotingRepository;
@@ -31,19 +32,22 @@ public class CategoryService {
     private final CategoryCriterionPointsRepository criterionPointsRepository;
     private final VotingRepository votingRepository;
     private final EventParticipationRepository eventParticipationRepository;
+    private final EvaluacionRepository evaluacionRepository;
 
     public CategoryService(CategoryRepository categoryRepository,
                            EventRepository eventRepository,
                            CriterionRepository criterionRepository,
                            CategoryCriterionPointsRepository criterionPointsRepository,
                            VotingRepository votingRepository,
-                           EventParticipationRepository eventParticipationRepository) {
+                           EventParticipationRepository eventParticipationRepository,
+                           EvaluacionRepository evaluacionRepository) {
         this.categoryRepository = categoryRepository;
         this.eventRepository = eventRepository;
         this.criterionRepository = criterionRepository;
         this.criterionPointsRepository = criterionPointsRepository;
         this.votingRepository = votingRepository;
         this.eventParticipationRepository = eventParticipationRepository;
+        this.evaluacionRepository = evaluacionRepository;
     }
 
     //  CRUD básico
@@ -117,7 +121,8 @@ public class CategoryService {
         if (!categoryRepository.existsById(id)) {
             throw new RuntimeException("Category not found with id: " + id);
         }
-        // Delete votings, event participations, criterion points linked to this category
+        // Delete evaluaciones, votings, event participations, criterion points linked to this category
+        evaluacionRepository.deleteByCategoryId(id);
         votingRepository.deleteByCategoryId(id);
         eventParticipationRepository.deleteByCategoryId(id);
         criterionPointsRepository.deleteByCategoryId(id);

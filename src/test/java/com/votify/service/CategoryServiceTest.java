@@ -30,6 +30,9 @@ class CategoryServiceTest {
     @Mock private EventRepository                  eventRepository;
     @Mock private CriterionRepository              criterionRepository;
     @Mock private CategoryCriterionPointsRepository criterionPointsRepository;
+    @Mock private VotingRepository                 votingRepository;
+    @Mock private EventParticipationRepository     eventParticipationRepository;
+    @Mock private EvaluacionRepository             evaluacionRepository;
 
     @InjectMocks
     private CategoryService categoryService;

@@ -207,3 +207,133 @@ Referencias en el repo:
 - ADR-006: `docs/adr/ADR-006-factory-method-votify.md`
 - Lab de referencia: `lab_factory_method_votify.pdf` (DDS, Sprint 1)
 - Ficheros de frontend afectados: `src/api/client.ts` (líneas de mapping de Participant)
+
+---
+
+---
+
+## Sesión 3 — Implementación de EvaluacionCreator (Factory Method GoF) (11-04-2026)
+
+**Actividad:** Implementación completa del patrón Factory Method para el dominio Evaluacion multicriterio
+**Herramienta:** Claude Opus 4.6 (Claude Code — modo agente en terminal)
+
+---
+
+### 1) Herramientas usadas
+
+- **Claude Opus 4.6 (Claude Code — modo agente):**
+  - Exploración del backend para verificar el estado de implementación de cada patrón del ADR-006.
+  - Diseño de la arquitectura de clases: decisión SINGLE_TABLE vs JOINED, columna JSON `datos`.
+  - Generación de diagrama UML del patrón en FigJam (Figma MCP).
+  - Creación de documento de visión global con estructura antes/después.
+  - Implementación completa: 7 entidades, 7 creators, DTO, repository, service, controller.
+  - Creación de tests unitarios (Mockito) e integración (H2 @DataJpaTest).
+  - Actualización de ADR-006 y este AI log.
+
+---
+
+### 2) Prompts clave
+
+- **Prompt 1:** `"apoyandote en el adr 6 para evaluar cual de los patrones nombrados en el se ha desarrollado y cuales quedan para desarrollar"`
+  → Solicitud de auditoría del estado de implementación de los 4 Factory Method del ADR-006.
+
+- **Prompt 2:** `"segun veo la evaluacion multicriterio no la veo en uts ni para sprint2,3 asi que porque no implementar esa funcionalidad ahora"`
+  → Decisión de implementar EvaluacionCreator ahora como parte del Sprint 1.
+
+- **Prompt 3:** `"antes de cambiar nada necesito la vision global de la estructura sin la creacion de las nuevas clases, un diagrama uml del patron que vamos a crear y si se codifica alguna clase actual necesito acceder a ella, saber que clase es y guardarme el antes y el despues"`
+  → Solicitud de documentación previa a la implementación: estructura actual, UML, y diff de clases modificadas.
+
+- **Prompt 4:** `"creame un ia logs correspondiente a esta decision que se ha tomado añadiendo campos: 6.2. Revisión crítica de la solución propuesta por la IA, 6.3. Adaptación de la solución a la aplicación"`
+  → Solicitud de campos específicos de revisión crítica en el log.
+
+---
+
+### 3) Salidas relevantes (resumen corto)
+
+- **Prompt 1 →** La IA exploró el backend y determinó que solo `ParticipantCreator` (User→Competitor/Voter) estaba implementado. Los 3 factory methods restantes del ADR-006 (EvaluacionCreator, VotacionCreator, RolCreator) y el ParticipantFactory del frontend estaban pendientes.
+
+- **Prompt 2 →** Se decidió implementar los 6 tipos de evaluación completos (NUMERICA, CHECKLIST, RUBRICA, COMENTARIO, AUDIO, VIDEO) como entidad nueva `Evaluacion` separada de `Voting`, solo en backend.
+
+- **Prompt 3 →** La IA generó:
+  1. Diagrama UML en FigJam con los 4 participantes GoF.
+  2. Documento `docs/vision-global-evaluacion-factory-method.md` con la estructura ANTES completa.
+  3. El diff exacto (ANTES/DESPUÉS) de `CategoryService.java` — la única clase existente modificada.
+
+- **Prompt 4 →** Implementación completa: 22 ficheros nuevos + 1 modificado. Actualización de ADR-006 y este log con campos 6.2 y 6.3.
+
+---
+
+### 4) Qué aceptamos y qué rechazamos
+
+- **Aceptado:** `SINGLE_TABLE` como estrategia JPA para `Evaluacion` → por qué: los 6 subtipos difieren en comportamiento (`calcularScore()`), no en columnas. JOINED crearía 6 tablas extra sin beneficio real. El ADR-006 mencionaba este riesgo y se resuelve aquí.
+
+- **Aceptado:** Columna `datos` TEXT con JSON → por qué: cada tipo tiene datos con estructura diferente (array de valores, array de booleans, array de niveles, texto, URL+score). Una columna JSON flexible evita columnas sparse nullable.
+
+- **Aceptado:** `Map<TipoEvaluacion, EvaluacionCreator>` en `EvaluacionService` → por qué: reemplaza el if/else por un lookup O(1). Añadir un tipo nuevo = 1 línea en el Map + 2 clases.
+
+- **Aceptado:** `Evaluacion` como entidad separada de `Voting` → por qué: `Voting` tiene relaciones (voter, competitor, criterion) y reglas de negocio distintas (maxVotesPerVoter, totalPoints). Mezclar ambos dominios violaría SRP.
+
+- **Rechazado:** Usar Lombok para las entidades → por qué: el proyecto existente usa getters/setters manuales en todas las entidades. Consistencia con el código existente.
+
+---
+
+### 5) Cómo lo verificamos
+
+- [ ] `mvn test` — los 98 tests existentes siguen pasando (CategoryServiceTest actualizado con nuevos mocks).
+- [ ] Tests nuevos de `EvaluacionCreatorTest` pasan — cada ConcreteCreator produce el subtipo correcto.
+- [ ] Tests nuevos de `EvaluacionServiceTest` pasan — CRUD + factory method + validación peso.
+- [ ] Tests de integración `EvaluacionRepositoryTest` pasan — persistencia SINGLE_TABLE en H2.
+- [ ] `mvn clean spring-boot:run` arranca sin errores y Hibernate crea la tabla `evaluaciones`.
+
+---
+
+### 6) Resultado final / decisión humana
+
+Se implementó el Factory Method GoF completo para el dominio `Evaluacion` con 6 tipos de evaluación multicriterio. El patrón elimina la necesidad de if/else al añadir nuevos tipos — solo requiere 2 clases nuevas (Product + Creator) y 1 línea en el Map del Service.
+
+**Ficheros creados:** 22 (7 entidades + 1 enum + 7 creators + 1 DTO + 1 repository + 1 service + 1 controller + 3 tests)
+**Ficheros modificados:** 2 (`CategoryService.java` + `CategoryServiceTest.java`)
+**Ficheros de documentación:** ADR-006 actualizado + este log
+
+#### 6.2. Revisión crítica de la solución propuesta por la IA
+
+**Puntos fuertes de la propuesta:**
+- La elección de SINGLE_TABLE es correcta para este caso: los 6 subtipos comparten exactamente las mismas columnas (evaluador, competitor, category, criterion, peso, datos, createdAt). La diferencia está solo en `calcularScore()`. JOINED habría añadido 6 tablas sin columnas propias — overhead sin beneficio.
+- El uso de `Map<TipoEvaluacion, EvaluacionCreator>` es más limpio que un switch/if-else y es extensible sin modificar código existente (OCP).
+- La columna `datos` como JSON TEXT es pragmática: evita un modelo relacional complejo con tablas auxiliares para cada tipo (tabla de items checklist, tabla de niveles rúbrica, etc.).
+
+**Puntos débiles / trade-offs aceptados:**
+- **JSON no tipado en BD:** la columna `datos` no tiene validación a nivel de base de datos. Un JSON malformado solo se detecta en runtime (`calcularScore()` lanza RuntimeException). Mitigación: los tests cubren cada formato JSON esperado.
+- **ObjectMapper estático en entidades JPA:** cada ConcreteProduct tiene un `static ObjectMapper`. Esto funciona pero acopla la lógica de parseo al modelo de dominio. Una alternativa sería mover el cálculo al Service, pero eso rompería el polimorfismo del patrón (el Service tendría que saber el tipo concreto para calcular).
+- **Sin validación de schema JSON por tipo:** no se valida que un `EvaluacionChecklist` reciba `{"items": [...]}` y no `{"valores": [...]}`. Mitigación aceptable en MVP — el frontend es el único productor de estos payloads.
+- **Número de clases:** 14 clases nuevas solo para el patrón (7 Products + 7 Creators). Es el coste inherente del GoF completo, pero cada clase tiene menos de 30 líneas y una sola responsabilidad.
+
+**Comparación con alternativas descartadas:**
+- Simple Factory (switch en una clase `EvaluacionFactory`): más sencillo pero viola OCP — cada tipo nuevo requiere modificar la factory.
+- Strategy pattern (inyectar la estrategia de cálculo): viable pero no cumple el requisito académico del lab que exige Factory Method GoF con Creator abstracto.
+
+#### 6.3. Adaptación de la solución a la aplicación
+
+El patrón Factory Method GoF (del libro Gang of Four, 1994) se adaptó al contexto específico de Votify de las siguientes formas:
+
+**1. Entidades JPA en lugar de POJOs puros:**
+El GoF define Product como una clase abstracta simple. En Votify, `Evaluacion` es una entidad JPA con `@Entity`, `@Inheritance(SINGLE_TABLE)`, `@DiscriminatorColumn`, y relaciones `@ManyToOne`. Los ConcreteProducts son también `@Entity` con `@DiscriminatorValue`. Esto permite que el ORM gestione la persistencia polimórfica automáticamente — al cargar una `Evaluacion` de la BD, Hibernate instancia el subtipo correcto según el discriminador.
+
+**2. Map de Creators en lugar de herencia pura del Client:**
+El GoF sugiere que el Client use el Creator vía inyección o herencia. En Votify, el `EvaluacionService` (Client) mantiene un `Map<TipoEvaluacion, EvaluacionCreator>` inicializado en el constructor. Esto adapta el patrón a Spring Boot (inyección por constructor, beans stateless) y elimina cualquier if/else residual — el tipo del DTO se convierte en una key de Map.
+
+**3. Resolución de relaciones separada del Creator:**
+En el GoF puro, el Creator construye el producto completo. En Votify, los Creators solo instancian la subclase y setean campos simples (peso, datos). Las relaciones JPA (evaluador, competitor, category, criterion) se resuelven en el Service vía repositorios, porque requieren acceso a la base de datos. Esto mantiene los Creators simples y sin dependencias de Spring.
+
+**4. Template Method en createAndValidate():**
+El `EvaluacionCreator` abstracto define `createAndValidate()` como Template Method: primero valida reglas comunes (peso >= 0), luego delega en `create()` (el Factory Method). Esto replica la estructura del `ParticipantCreator` ya existente en el proyecto, que usa `register()` como Template Method.
+
+**5. Columna JSON para datos polimórficos:**
+El GoF no aborda la persistencia. La adaptación a JPA/SQL requiere decidir cómo almacenar datos que varían por subtipo. Se eligió una columna JSON TEXT en lugar de tablas auxiliares, porque los datos de cada tipo son de lectura frecuente y escritura infrecuente, y la estructura es simple (arrays planos, no grafos).
+
+Referencias en el repo:
+- ADR-006 actualizado: `docs/adr/ADR-006-factory-method-votify.md`
+- Visión global (antes/después): `docs/vision-global-evaluacion-factory-method.md`
+- Entidades: `src/main/java/com/votify/entity/Evaluacion*.java`
+- Factory: `src/main/java/com/votify/service/factory/evaluacion/`
+- Tests: `src/test/java/com/votify/service/factory/evaluacion/EvaluacionCreatorTest.java`

@@ -1,8 +1,8 @@
 # ADR-006: Aplicación del patrón Factory Method (GoF) en el backend de Votify
 
-**Fecha:** 07-04-2026
+**Fecha:** 07-04-2026 (propuesto) / 11-04-2026 (implementación parcial)
 **Sprint:** S1
-**Estado:** Propuesto — pendiente de implementación
+**Estado:** Implementado parcialmente — EvaluacionCreator completado (Sprint 1)
 
 ---
 
@@ -69,29 +69,37 @@ en el backend real.
 Se elige la **Opción B**: Factory Method GoF en tres dominios del backend, por orden de
 prioridad de implementación:
 
-#### 4.1 `EvaluacionCreator` — prioridad alta
+#### 4.1 `EvaluacionCreator` — prioridad alta — **IMPLEMENTADO (11-04-2026)**
 
 El dominio `Evaluacion_multicriterio` tiene seis tipos con lógica `calcularScore()` distinta.
 Es el caso más directo y de mayor impacto.
 
-```
-domain/
-  Evaluacion (abstracto — Product)
-    EvaluacionNumerica     (ConcreteProduct)
-    EvaluacionRubrica      (ConcreteProduct)
-    EvaluacionChecklist    (ConcreteProduct)
-    EvaluacionComentario   (ConcreteProduct)
-    EvaluacionAudio        (ConcreteProduct)
-    EvaluacionVideo        (ConcreteProduct)
+**Decisiones de implementación:**
+- **JPA:** `SINGLE_TABLE` con `@DiscriminatorColumn(name = "tipo")` — los 6 subtipos difieren
+  en comportamiento (`calcularScore()`), no en columnas. Evita 6 tablas JOIN extra.
+- **Datos tipo-específicos:** columna `datos` (TEXT) con JSON. Cada subtipo parsea su estructura
+  en `calcularScore()` via Jackson `ObjectMapper`.
+- **Client del patrón:** `EvaluacionService` usa `Map<TipoEvaluacion, EvaluacionCreator>` en lugar
+  de if/else para seleccionar el Creator concreto.
 
-factory/
-  EvaluacionCreator (abstracto — Creator)
-    EvaluacionNumericaCreator     (ConcreteCreator)
-    EvaluacionRubricaCreator      (ConcreteCreator)
-    EvaluacionChecklistCreator    (ConcreteCreator)
-    EvaluacionComentarioCreator   (ConcreteCreator)
-    EvaluacionAudioCreator        (ConcreteCreator)
-    EvaluacionVideoCreator        (ConcreteCreator)
+```
+entity/
+  Evaluacion.java            (abstracto — Product, @Entity SINGLE_TABLE)
+    EvaluacionNumerica.java     (ConcreteProduct — score = sum(valores))
+    EvaluacionChecklist.java    (ConcreteProduct — score = %checked × 100)
+    EvaluacionRubrica.java      (ConcreteProduct — score = avg(nivel/max) × 100)
+    EvaluacionComentario.java   (ConcreteProduct — score = null)
+    EvaluacionAudio.java        (ConcreteProduct — score = scoreManual o null)
+    EvaluacionVideo.java        (ConcreteProduct — score = scoreManual o null)
+
+service/factory/evaluacion/
+  EvaluacionCreator.java           (abstracto — Creator)
+    EvaluacionNumericaCreator.java     (ConcreteCreator)
+    EvaluacionChecklistCreator.java    (ConcreteCreator)
+    EvaluacionRubricaCreator.java      (ConcreteCreator)
+    EvaluacionComentarioCreator.java   (ConcreteCreator)
+    EvaluacionAudioCreator.java        (ConcreteCreator)
+    EvaluacionVideoCreator.java        (ConcreteCreator)
 ```
 
 Método abstracto en `Creator`: `Evaluacion create(EvaluacionDTO dto)`
@@ -202,44 +210,53 @@ Regla aplicada: Factory Method solo donde el **comportamiento** varía por tipo,
   ADR-003 (validación puntos — responsabilidad que pasa al `Creator` de evaluación)
 - Estructura final prevista:
 
+**Estructura real implementada (11-04-2026):**
 ```
 src/main/java/com/votify/
-├── domain/
-│   ├── evaluacion/
-│   │   ├── Evaluacion.java                  (abstracto)
-│   │   ├── EvaluacionNumerica.java
-│   │   ├── EvaluacionRubrica.java
-│   │   ├── EvaluacionChecklist.java
-│   │   ├── EvaluacionComentario.java
-│   │   ├── EvaluacionAudio.java
-│   │   └── EvaluacionVideo.java
-│   ├── votacion/
-│   │   ├── Votacion.java                    (abstracto)
-│   │   ├── VotacionExperto.java
-│   │   └── VotacionPopular.java
-│   └── rol/
-│       ├── Rol.java                         (abstracto)
-│       ├── RolJurado.java
-│       ├── RolVotante.java
-│       ├── RolExperto.java
-│       └── RolCompetidor.java
-└── factory/
-    ├── evaluacion/
-    │   ├── EvaluacionCreator.java           (abstracto)
-    │   ├── EvaluacionNumericaCreator.java
-    │   ├── EvaluacionRubricaCreator.java
-    │   ├── EvaluacionChecklistCreator.java
-    │   ├── EvaluacionComentarioCreator.java
-    │   ├── EvaluacionAudioCreator.java
-    │   └── EvaluacionVideoCreator.java
-    ├── votacion/
-    │   ├── VotacionCreator.java             (abstracto)
-    │   ├── VotacionExpertoCreator.java
-    │   └── VotacionPopularCreator.java
-    └── rol/
-        ├── RolCreator.java                  (abstracto)
-        ├── RolJuradoCreator.java
-        ├── RolVotanteCreator.java
-        ├── RolExpertoCreator.java
-        └── RolCompetidorCreator.java
+├── entity/                                    ← Products (entidades JPA)
+│   ├── Evaluacion.java                        (abstracto — IMPLEMENTADO)
+│   ├── EvaluacionNumerica.java                (IMPLEMENTADO)
+│   ├── EvaluacionChecklist.java               (IMPLEMENTADO)
+│   ├── EvaluacionRubrica.java                 (IMPLEMENTADO)
+│   ├── EvaluacionComentario.java              (IMPLEMENTADO)
+│   ├── EvaluacionAudio.java                   (IMPLEMENTADO)
+│   ├── EvaluacionVideo.java                   (IMPLEMENTADO)
+│   └── TipoEvaluacion.java                    (enum — IMPLEMENTADO)
+├── dto/
+│   └── EvaluacionDto.java                     (IMPLEMENTADO)
+├── persistence/
+│   └── EvaluacionRepository.java              (IMPLEMENTADO)
+├── service/
+│   ├── EvaluacionService.java                 (Client del patrón — IMPLEMENTADO)
+│   └── factory/
+│       ├── participant/                       (Factory existente — Sprint 0)
+│       │   ├── ParticipantCreator.java
+│       │   ├── CompetitorCreator.java
+│       │   └── VoterCreator.java
+│       └── evaluacion/                        ← Creators (IMPLEMENTADO)
+│           ├── EvaluacionCreator.java         (abstracto)
+│           ├── EvaluacionNumericaCreator.java
+│           ├── EvaluacionChecklistCreator.java
+│           ├── EvaluacionRubricaCreator.java
+│           ├── EvaluacionComentarioCreator.java
+│           ├── EvaluacionAudioCreator.java
+│           └── EvaluacionVideoCreator.java
+└── controller/
+    └── EvaluacionController.java              (IMPLEMENTADO)
+```
+
+**Pendiente de implementación (Sprint 2-3):**
+```
+├── entity/
+│   ├── Votacion.java                          (abstracto — PENDIENTE)
+│   ├── VotacionExperto.java                   (PENDIENTE)
+│   ├── VotacionPopular.java                   (PENDIENTE)
+│   ├── Rol.java                               (abstracto — PENDIENTE)
+│   ├── RolJurado.java                         (PENDIENTE)
+│   ├── RolVotante.java                        (PENDIENTE)
+│   ├── RolExperto.java                        (PENDIENTE)
+│   └── RolCompetidor.java                     (PENDIENTE)
+└── service/factory/
+    ├── votacion/                              (PENDIENTE)
+    └── rol/                                   (PENDIENTE)
 ```

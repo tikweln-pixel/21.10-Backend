@@ -84,10 +84,9 @@ public class CategoryService {
         validateCategoryTimesWithinEvent(event, dto.getTimeInitial(), dto.getTimeFinal());
 
         Category category = new Category(dto.getName(), event);
-        category.setVotingType(dto.getVotingType());
-        category.setTimeInitial(dto.getTimeInitial());
-        category.setTimeFinal(dto.getTimeFinal());
-        category.setReminderMinutes(dto.getReminderMinutes());
+        category.changeVotingType(dto.getVotingType());
+        category.reschedule(dto.getTimeInitial(), dto.getTimeFinal());
+        category.setReminder(dto.getReminderMinutes());
         return toDto(categoryRepository.save(category));
     }
 
@@ -98,17 +97,16 @@ public class CategoryService {
         if (dto.getEventId() != null && (category.getEvent() == null || !dto.getEventId().equals(category.getEvent().getId()))) {
             Event event = eventRepository.findById(dto.getEventId())
                     .orElseThrow(() -> new RuntimeException("Event not found with id: " + dto.getEventId()));
-            category.setEvent(event);
+            category.assignToEvent(event);
         }
 
         Event event = category.getEvent();
         validateCategoryTimesWithinEvent(event, dto.getTimeInitial(), dto.getTimeFinal());
 
-        category.setName(dto.getName());
-        category.setVotingType(dto.getVotingType());
-        category.setTimeInitial(dto.getTimeInitial());
-        category.setTimeFinal(dto.getTimeFinal());
-        category.setReminderMinutes(dto.getReminderMinutes());
+        category.rename(dto.getName());
+        category.changeVotingType(dto.getVotingType());
+        category.reschedule(dto.getTimeInitial(), dto.getTimeFinal());
+        category.setReminder(dto.getReminderMinutes());
         return toDto(categoryRepository.save(category));
     }
 
@@ -132,7 +130,7 @@ public class CategoryService {
     public CategoryDto setVotingType(Long categoryId, VotingType votingType) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
-        category.setVotingType(votingType);
+        category.changeVotingType(votingType);
         return toDto(categoryRepository.save(category));
     }
 
@@ -270,7 +268,7 @@ public class CategoryService {
                     "setTotalPoints is only valid for POPULAR_VOTE categories. " +
                     "For JURY_EXPERT, use setCriterionPointsBulk to configure weights per criterion.");
         }
-        category.setTotalPoints(totalPoints);
+        category.configureTotalPoints(totalPoints);
         return toDto(categoryRepository.save(category));
     }
 
@@ -302,7 +300,7 @@ public class CategoryService {
             throw new RuntimeException(
                     "setMaxVotesPerVoter is only valid for POPULAR_VOTE categories.");
         }
-        category.setMaxVotesPerVoter(maxVotesPerVoter);
+        category.limitVotesPerVoter(maxVotesPerVoter);
         return toDto(categoryRepository.save(category));
     }
 
@@ -313,7 +311,7 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         validateCategoryTimesWithinEvent(category.getEvent(), timeInitial, category.getTimeFinal());
-        category.setTimeInitial(timeInitial);
+        category.changeStartTime(timeInitial);
         return toDto(categoryRepository.save(category));
     }
 
@@ -321,7 +319,7 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         validateCategoryTimesWithinEvent(category.getEvent(), category.getTimeInitial(), timeFinal);
-        category.setTimeFinal(timeFinal);
+        category.changeEndTime(timeFinal);
         return toDto(categoryRepository.save(category));
     }
 

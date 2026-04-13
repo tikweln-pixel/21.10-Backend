@@ -26,15 +26,15 @@ public class CategoryCriterionPoints {
 
     /** Puntos máximos que se pueden asignar a este criterio en esta categoría. */
     @Column(name = "max_points", nullable = false)
-    private Integer maxPoints;
+    private Integer weightPercent;
 
     public CategoryCriterionPoints() {
     }
 
-    public CategoryCriterionPoints(Category category, Criterion criterion, Integer maxPoints) {
+    public CategoryCriterionPoints(Category category, Criterion criterion, Integer weightPercent) {
         this.category = category;
         this.criterion = criterion;
-        this.maxPoints = maxPoints;
+        this.weightPercent = weightPercent;
     }
 
     public Long getId() {
@@ -61,11 +61,11 @@ public class CategoryCriterionPoints {
         this.criterion = criterion;
     }
 
-    public Integer getMaxPoints() {
-        return maxPoints;
+    public Integer getWeightPercent() {
+        return weightPercent;
     }
 
-    public void setMaxPoints(Integer maxPoints) {
-        this.maxPoints = maxPoints;
+    public void setWeightPercent(Integer weightPercent) {
+        this.weightPercent = weightPercent;
     }
 }

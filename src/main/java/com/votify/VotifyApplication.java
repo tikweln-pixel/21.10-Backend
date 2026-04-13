@@ -127,7 +127,7 @@ public class VotifyApplication {
                 List<CategoryCriterionPointsDto> puntos =
                         categoryService.getCriterionPoints(cat.getId());
                 puntos.forEach(p ->
-                        log.info("  │  criterio='{}' maxPuntos={}", p.getCriterionName(), p.getMaxPoints())
+                        log.info("  │  criterio='{}' maxPuntos={}", p.getCriterionName(), p.getWeightPercent())
                 );
                 log.info("  └──────────────────────────────────────");
             });

@@ -63,4 +63,10 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
 
     @Query("SELECT DISTINCT v.voter.id FROM Voting v WHERE v.category.id = :categoryId")
     List<Long> findDistinctVoterIdsByCategoryId(@Param("categoryId") Long categoryId);
+
+    /** Votos de un jurado (voterId) sobre un competidor en una categoría concreta. */
+    List<Voting> findByVoterIdAndCompetitorIdAndCategoryId(Long voterId, Long competitorId, Long categoryId);
+
+    /** Todos los votos de una lista de competidores en una categoría (para calcular nota final). */
+    List<Voting> findByCompetitorIdInAndCategoryId(List<Long> competitorIds, Long categoryId);
 }

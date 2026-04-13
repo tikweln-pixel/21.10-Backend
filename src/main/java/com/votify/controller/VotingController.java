@@ -54,4 +54,12 @@ public class VotingController {
             @RequestParam Long voterId, @RequestParam Long competitorId) {
         return ResponseEntity.ok(votingService.findByVoterAndCompetitor(voterId, competitorId));
     }
+
+    @GetMapping("/by-voter-competitor-category")
+    public ResponseEntity<List<VotingDto>> getByVoterCompetitorCategory(
+            @RequestParam Long voterId,
+            @RequestParam Long competitorId,
+            @RequestParam Long categoryId) {
+        return ResponseEntity.ok(votingService.findByVoterAndCompetitorAndCategory(voterId, competitorId, categoryId));
+    }
 }

@@ -3,12 +3,16 @@ package com.votify.service;
 import com.votify.dto.CompetitorDto;
 import com.votify.dto.CommentDto;
 import com.votify.dto.ProjectDto;
+import com.votify.dto.ProjectFinalScoreDto;
 import com.votify.entity.*;
 import com.votify.persistence.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,6 +25,8 @@ public class ProjectService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final EventParticipationRepository eventParticipationRepository;
+    private final CategoryCriterionPointsRepository criterionPointsRepository;
+    private final VotingRepository votingRepository;
 
     public ProjectService(ProjectRepository projectRepository,
                           EventRepository eventRepository,
@@ -28,7 +34,9 @@ public class ProjectService {
                           VoterRepository voterRepository,
                           CommentRepository commentRepository,
                           UserRepository userRepository,
-                          EventParticipationRepository eventParticipationRepository) {
+                          EventParticipationRepository eventParticipationRepository,
+                          CategoryCriterionPointsRepository criterionPointsRepository,
+                          VotingRepository votingRepository) {
         this.projectRepository = projectRepository;
         this.eventRepository = eventRepository;
         this.competitorRepository = competitorRepository;
@@ -36,6 +44,8 @@ public class ProjectService {
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.eventParticipationRepository = eventParticipationRepository;
+        this.criterionPointsRepository = criterionPointsRepository;
+        this.votingRepository = votingRepository;
     }
 
     public List<ProjectDto> findAll() {
@@ -50,52 +60,14 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Crea un proyecto en un evento.
-     * El usuario creador (creatorUserId) pasa automáticamente a ser Competitor
-     * y queda como primer miembro del proyecto.
-     * Si el dto no incluye creatorUserId se lanza excepción.
-     */
     @Transactional
     public ProjectDto createForEvent(Long eventId, ProjectDto dto) {
-        if (dto.getCreatorUserId() == null) {
-            throw new RuntimeException("El creador del proyecto es obligatorio (creatorUserId)");
-        }
-
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
-
-        User user = userRepository.findById(dto.getCreatorUserId())
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + dto.getCreatorUserId()));
-
-        // Si el usuario aún no es Competitor, se convierte en uno
-        Competitor competitor = competitorRepository.findByEmail(user.getEmail())
-                .orElseGet(() -> competitorRepository.save(new Competitor(user.getName(), user.getEmail())));
-
-        // Crear el proyecto con el competidor ya dentro
         Project project = new Project(dto.getName(), dto.getDescription(), event);
-        project.getCompetitors().add(competitor);
-        Project saved = projectRepository.save(project);
-
-        // Registrar EventParticipation(role=COMPETITOR) si no existe ya en alguna categoría del evento
-        List<Category> categories = event.getCategories();
-        if (!categories.isEmpty()) {
-            Category firstCategory = categories.get(0);
-            boolean alreadyRegistered = eventParticipationRepository
-                    .existsByEventIdAndUserIdAndCategoryId(eventId, competitor.getId(), firstCategory.getId());
-            if (!alreadyRegistered) {
-                eventParticipationRepository.save(
-                        new EventParticipation(event, competitor, firstCategory, ParticipationRole.COMPETITOR));
-            }
-        }
-
-        return toDto(saved);
+        return toDto(projectRepository.save(project));
     }
 
-    /**
-     * Añade un usuario existente a un proyecto como competidor.
-     * Si el usuario aún no es Competitor, se convierte en uno automáticamente.
-     */
     @Transactional
     public ProjectDto addCompetitor(Long projectId, Long userId) {
         Project project = projectRepository.findById(projectId)
@@ -104,14 +76,12 @@ public class ProjectService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
-        // Si el usuario aún no es Competitor, se convierte en uno
         Competitor competitor = competitorRepository.findByEmail(user.getEmail())
                 .orElseGet(() -> competitorRepository.save(new Competitor(user.getName(), user.getEmail())));
 
         project.getCompetitors().add(competitor);
         Project saved = projectRepository.save(project);
 
-        // Registrar EventParticipation(role=COMPETITOR) si no existe ya
         Event event = project.getEvent();
         List<Category> categories = event.getCategories();
         if (!categories.isEmpty()) {
@@ -166,6 +136,44 @@ public class ProjectService {
         return project.getCompetitors().stream()
                 .map(c -> new CompetitorDto(c.getId(), c.getName(), c.getEmail()))
                 .collect(Collectors.toList());
+    }
+
+    public ProjectFinalScoreDto getProjectScore(Long projectId, Long categoryId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
+
+        List<Long> competitorIds = project.getCompetitors().stream()
+                .map(Competitor::getId)
+                .collect(Collectors.toList());
+
+        List<CategoryCriterionPoints> weights = criterionPointsRepository.findByCategoryId(categoryId);
+        List<Voting> votings = competitorIds.isEmpty()
+                ? List.of()
+                : votingRepository.findByCompetitorIdInAndCategoryId(competitorIds, categoryId);
+
+        Map<Long, Integer> scoresByCriterion = new HashMap<>();
+        for (Voting v : votings) {
+            Long critId = v.getCriterion().getId();
+            int score = v.getScore() != null ? v.getScore() : 0;
+            scoresByCriterion.merge(critId, score, Integer::sum);
+        }
+
+        int finalScore = 0;
+        int maxScore = 0;
+        List<ProjectFinalScoreDto.CriterionScoreDetail> details = new ArrayList<>();
+
+        for (CategoryCriterionPoints ccp : weights) {
+            Long critId = ccp.getCriterion().getId();
+            int score = scoresByCriterion.getOrDefault(critId, 0);
+            int weight = ccp.getWeightPercent();
+            finalScore += score;
+            maxScore += weight;
+            details.add(new ProjectFinalScoreDto.CriterionScoreDetail(
+                    critId, ccp.getCriterion().getName(), score, weight));
+        }
+
+        return new ProjectFinalScoreDto(projectId, project.getName(), categoryId,
+                finalScore, maxScore, details);
     }
 
     private ProjectDto toDto(Project project) {

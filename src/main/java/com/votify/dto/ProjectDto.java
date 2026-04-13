@@ -9,6 +9,7 @@ public class ProjectDto {
     private String description;
     private Long eventId;
     private Long creatorUserId;
+    private Long categoryId;
     private List<Long> competitorIds;
 
     public ProjectDto() {
@@ -60,6 +61,14 @@ public class ProjectDto {
 
     public void setCreatorUserId(Long creatorUserId) {
         this.creatorUserId = creatorUserId;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
     }
 
     public List<Long> getCompetitorIds() {

@@ -86,14 +86,14 @@ public class CategoryController {
     /**
      * Actualiza (o crea) los puntos máximos de un criterio concreto en la
      * categoría.
-     * El cuerpo lleva { "maxPoints": <valor> }.
+     * El cuerpo lleva { "weightPercent": <valor> }.
      */
     @PutMapping("/{id}/criterion-points/{criterionId}")
     public ResponseEntity<CategoryCriterionPointsDto> setCriterionPoints(
             @PathVariable Long id,
             @PathVariable Long criterionId,
             @RequestBody CategoryCriterionPointsDto dto) {
-        return ResponseEntity.ok(categoryService.setCriterionPoints(id, criterionId, dto.getMaxPoints()));
+        return ResponseEntity.ok(categoryService.setCriterionPoints(id, criterionId, dto.getWeightPercent()));
     }
 
     /**

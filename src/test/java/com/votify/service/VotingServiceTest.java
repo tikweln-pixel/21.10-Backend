@@ -23,20 +23,26 @@ import static org.mockito.Mockito.*;
 @DisplayName("VotingService — Tests unitarios")
 class VotingServiceTest {
 
-    @Mock private VotingRepository     votingRepository;
-    @Mock private VoterRepository      voterRepository;
-    @Mock private CompetitorRepository competitorRepository;
-    @Mock private CriterionRepository  criterionRepository;
-    @Mock private CategoryRepository   categoryRepository;
-    @Mock private com.votify.persistence.CategoryCriterionPointsRepository criterionPointsRepository;
+    @Mock
+    private VotingRepository votingRepository;
+    @Mock
+    private VoterRepository voterRepository;
+    @Mock
+    private CompetitorRepository competitorRepository;
+    @Mock
+    private CriterionRepository criterionRepository;
+    @Mock
+    private CategoryRepository categoryRepository;
+    @Mock
+    private com.votify.persistence.CategoryCriterionPointsRepository criterionPointsRepository;
 
     @InjectMocks
     private VotingService votingService;
 
-    private Voter      voter;
+    private Voter voter;
     private Competitor competitor;
-    private Criterion  criterion;
-    private Voting     voting;
+    private Criterion criterion;
+    private Voting voting;
 
     @BeforeEach
     void setUp() {
@@ -53,7 +59,8 @@ class VotingServiceTest {
         voting.setId(100L);
 
         // Por defecto, no existe un voto previo entre las entidades usadas en los tests
-        // lenient: este stub no lo usan todos los tests (findAll, findById, delete, etc.)
+        // lenient: este stub no lo usan todos los tests (findAll, findById, delete,
+        // etc.)
         lenient().when(votingRepository.findExistingVote(anyLong(), anyLong(), anyLong(), (Long) any()))
                 .thenReturn(java.util.Optional.empty());
     }
@@ -202,7 +209,7 @@ class VotingServiceTest {
     // ── Restricción POPULAR_VOTE (Req. 19 / Req. 23) ──────────────────────
 
     // Helpers privados del test
-    private Event   testEvent;
+    private Event testEvent;
     private Category popularCategory;
 
     private void setUpPopularVoteCategory(Integer maxVotesPerVoter, Integer totalPoints) {
@@ -211,9 +218,9 @@ class VotingServiceTest {
 
         popularCategory = new Category("Voto Popular", testEvent);
         popularCategory.setId(20L);
-        popularCategory.setVotingType(VotingType.POPULAR_VOTE);
-        popularCategory.setMaxVotesPerVoter(maxVotesPerVoter);
-        popularCategory.setTotalPoints(totalPoints);
+        popularCategory.changeVotingType(VotingType.POPULAR_VOTE);
+        popularCategory.limitVotesPerVoter(maxVotesPerVoter);
+        popularCategory.configureTotalPoints(totalPoints);
     }
 
     @Test
@@ -263,8 +270,7 @@ class VotingServiceTest {
         prevVoting.setCategory(popularCategory);
         when(votingRepository.findByVoterIdAndCategoryId(1L, 20L)).thenReturn(List.of(prevVoting));
 
-        assertThatThrownBy(() ->
-                votingService.create(new VotingDto(null, 1L, 5L, 3L, 2, 20L)))
+        assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 5L, 3L, 2, 20L)))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("límite")
                 .hasMessageContaining("3");
@@ -310,8 +316,7 @@ class VotingServiceTest {
         // Ya usó 9 puntos, intenta asignar 5 más → 9+5=14 > 10 → rechazar
         when(votingRepository.sumScoreByVoterIdAndCategoryId(1L, 20L)).thenReturn(9);
 
-        assertThatThrownBy(() ->
-                votingService.create(new VotingDto(null, 1L, 2L, 3L, 5, 20L)))
+        assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 2L, 3L, 5, 20L)))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("puntos")
                 .hasMessageContaining("10");

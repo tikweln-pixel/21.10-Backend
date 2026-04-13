@@ -147,7 +147,7 @@ class CategoryServiceTest {
     @DisplayName("setVotingType → asigna JURY_EXPERT correctamente")
     void setVotingType_setsJuryExpert() {
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
-        category.setVotingType(VotingType.JURY_EXPERT);
+        category.changeVotingType(VotingType.JURY_EXPERT);
         when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(category));
 
         CategoryDto result = categoryService.setVotingType(10L, VotingType.JURY_EXPERT);
@@ -159,7 +159,7 @@ class CategoryServiceTest {
     @DisplayName("setVotingType → asigna POPULAR_VOTE correctamente")
     void setVotingType_setsPopularVote() {
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
-        category.setVotingType(VotingType.POPULAR_VOTE);
+        category.changeVotingType(VotingType.POPULAR_VOTE);
         when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(category));
 
         CategoryDto result = categoryService.setVotingType(10L, VotingType.POPULAR_VOTE);
@@ -279,7 +279,7 @@ class CategoryServiceTest {
     @DisplayName("setTimeInitial → lanza excepción si la fecha es anterior al inicio del evento")
     void setTimeInitial_throwsException_whenBeforeEventStart() {
         event.setTimeInitial(new Date(5000L));
-        category.setTimeFinal(new Date(8000L));
+        category.changeEndTime(new Date(8000L));
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
 
         // Fecha anterior al inicio del evento
@@ -292,7 +292,7 @@ class CategoryServiceTest {
     @DisplayName("setTimeFinal → lanza excepción si la fecha fin es anterior a la de inicio")
     void setTimeFinal_throwsException_whenEndBeforeStart() {
         event.setTimeFinal(new Date(Long.MAX_VALUE));
-        category.setTimeInitial(new Date(5000L));
+        category.changeStartTime(new Date(5000L));
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
 
         // Fecha fin anterior a la de inicio de la categoría
@@ -306,8 +306,8 @@ class CategoryServiceTest {
     @Test
     @DisplayName("setTotalPoints → configura puntos en categoría POPULAR_VOTE")
     void setTotalPoints_setsPointsForPopularVote() {
-        category.setVotingType(VotingType.POPULAR_VOTE);
-        category.setTotalPoints(10);
+        category.changeVotingType(VotingType.POPULAR_VOTE);
+        category.configureTotalPoints(10);
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
         when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(category));
 
@@ -320,7 +320,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("setTotalPoints → lanza excepción si la categoría es JURY_EXPERT")
     void setTotalPoints_throwsException_whenJuryExpert() {
-        category.setVotingType(VotingType.JURY_EXPERT);
+        category.changeVotingType(VotingType.JURY_EXPERT);
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
 
         assertThatThrownBy(() -> categoryService.setTotalPoints(10L, 10))
@@ -345,8 +345,8 @@ class CategoryServiceTest {
     @Test
     @DisplayName("setMaxVotesPerVoter → configura límite de 3 de 5 en POPULAR_VOTE")
     void setMaxVotesPerVoter_setsLimitForPopularVote() {
-        category.setVotingType(VotingType.POPULAR_VOTE);
-        category.setMaxVotesPerVoter(3);
+        category.changeVotingType(VotingType.POPULAR_VOTE);
+        category.limitVotesPerVoter(3);
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
         when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(category));
 
@@ -358,7 +358,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("setMaxVotesPerVoter → lanza excepción si la categoría es JURY_EXPERT")
     void setMaxVotesPerVoter_throwsException_whenJuryExpert() {
-        category.setVotingType(VotingType.JURY_EXPERT);
+        category.changeVotingType(VotingType.JURY_EXPERT);
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
 
         assertThatThrownBy(() -> categoryService.setMaxVotesPerVoter(10L, 3))
@@ -379,7 +379,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("setCriterionPointsBulk → lanza excepción si la categoría es POPULAR_VOTE")
     void setCriterionPointsBulk_throwsException_whenPopularVote() {
-        category.setVotingType(VotingType.POPULAR_VOTE);
+        category.changeVotingType(VotingType.POPULAR_VOTE);
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
 
         List<CategoryCriterionPointsDto> input = List.of(

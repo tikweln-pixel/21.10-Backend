@@ -35,12 +35,12 @@ public class CategoryService {
     private final EvaluacionRepository evaluacionRepository;
 
     public CategoryService(CategoryRepository categoryRepository,
-                           EventRepository eventRepository,
-                           CriterionRepository criterionRepository,
-                           CategoryCriterionPointsRepository criterionPointsRepository,
-                           VotingRepository votingRepository,
-                           EventParticipationRepository eventParticipationRepository,
-                           EvaluacionRepository evaluacionRepository) {
+            EventRepository eventRepository,
+            CriterionRepository criterionRepository,
+            CategoryCriterionPointsRepository criterionPointsRepository,
+            VotingRepository votingRepository,
+            EventParticipationRepository eventParticipationRepository,
+            EvaluacionRepository evaluacionRepository) {
         this.categoryRepository = categoryRepository;
         this.eventRepository = eventRepository;
         this.criterionRepository = criterionRepository;
@@ -50,8 +50,7 @@ public class CategoryService {
         this.evaluacionRepository = evaluacionRepository;
     }
 
-    //  CRUD básico
-
+    // CRUD básico
 
     public List<CategoryDto> findAll() {
         return categoryRepository.findAll().stream()
@@ -88,10 +87,9 @@ public class CategoryService {
         validateCategoryTimesWithinEvent(event, dto.getTimeInitial(), dto.getTimeFinal());
 
         Category category = new Category(dto.getName(), event);
-        category.setVotingType(dto.getVotingType());
-        category.setTimeInitial(dto.getTimeInitial());
-        category.setTimeFinal(dto.getTimeFinal());
-        category.setReminderMinutes(dto.getReminderMinutes());
+        category.changeVotingType(dto.getVotingType());
+        category.reschedule(dto.getTimeInitial(), dto.getTimeFinal());
+        category.setReminder(dto.getReminderMinutes());
         return toDto(categoryRepository.save(category));
     }
 
@@ -99,20 +97,20 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
 
-        if (dto.getEventId() != null && (category.getEvent() == null || !dto.getEventId().equals(category.getEvent().getId()))) {
+        if (dto.getEventId() != null
+                && (category.getEvent() == null || !dto.getEventId().equals(category.getEvent().getId()))) {
             Event event = eventRepository.findById(dto.getEventId())
                     .orElseThrow(() -> new RuntimeException("Event not found with id: " + dto.getEventId()));
-            category.setEvent(event);
+            category.assignToEvent(event);
         }
 
         Event event = category.getEvent();
         validateCategoryTimesWithinEvent(event, dto.getTimeInitial(), dto.getTimeFinal());
 
-        category.setName(dto.getName());
-        category.setVotingType(dto.getVotingType());
-        category.setTimeInitial(dto.getTimeInitial());
-        category.setTimeFinal(dto.getTimeFinal());
-        category.setReminderMinutes(dto.getReminderMinutes());
+        category.rename(dto.getName());
+        category.changeVotingType(dto.getVotingType());
+        category.reschedule(dto.getTimeInitial(), dto.getTimeFinal());
+        category.setReminder(dto.getReminderMinutes());
         return toDto(categoryRepository.save(category));
     }
 
@@ -121,7 +119,8 @@ public class CategoryService {
         if (!categoryRepository.existsById(id)) {
             throw new RuntimeException("Category not found with id: " + id);
         }
-        // Delete evaluaciones, votings, event participations, criterion points linked to this category
+        // Delete evaluaciones, votings, event participations, criterion points linked
+        // to this category
         evaluacionRepository.deleteByCategoryId(id);
         votingRepository.deleteByCategoryId(id);
         eventParticipationRepository.deleteByCategoryId(id);
@@ -129,21 +128,21 @@ public class CategoryService {
         categoryRepository.deleteById(id);
     }
 
-    //  Req. 5 – Definir Categorías: tipo de votación
-    //JURY_EXPERT  → Votacion_Jurado_Exp (diagrama de clases)
-    //POPULAR_VOTE → Voto_Popular        (diagrama de clases)
+    // Req. 5 – Definir Categorías: tipo de votación
+    // JURY_EXPERT → Votacion_Jurado_Exp (diagrama de clases)
+    // POPULAR_VOTE → Voto_Popular (diagrama de clases)
 
-    //Organizador "Elige Categoría" del formulario de creación de evento
+    // Organizador "Elige Categoría" del formulario de creación de evento
     public CategoryDto setVotingType(Long categoryId, VotingType votingType) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
-        category.setVotingType(votingType);
+        category.changeVotingType(votingType);
         return toDto(categoryRepository.save(category));
     }
 
-    //  Req. 4 – Configurar Puntos: puntos por criterio por categoría
+    // Req. 4 – Configurar Puntos: puntos por criterio por categoría
 
-    //Devuelve la lista de puntos configurados por criterio para una categoría.
+    // Devuelve la lista de puntos configurados por criterio para una categoría.
 
     public List<CategoryCriterionPointsDto> getCriterionPoints(Long categoryId) {
         if (!categoryRepository.existsById(categoryId)) {
@@ -155,11 +154,14 @@ public class CategoryService {
     }
 
     /**
-     * Crea o actualiza los puntos maximos de un criterio concreto dentro de una categoria.
+     * Crea o actualiza los puntos maximos de un criterio concreto dentro de una
+     * categoria.
      * Si ya existia un registro para ese par (categoria, criterio), se actualiza.
      * Si no existia, se crea uno nuevo.
+     * 
      * @param categoryId  ID de la categoria
-     * @param criterionId ID del criterio (Innovacion, Calidad Tecnica, Presentacion)
+     * @param criterionId ID del criterio (Innovacion, Calidad Tecnica,
+     *                    Presentacion)
      * @param maxPoints   Puntos maximos a asignar (valor del slider en la UI)
      */
     @Transactional
@@ -174,8 +176,8 @@ public class CategoryService {
         Criterion criterion = criterionRepository.findById(criterionId)
                 .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + criterionId));
 
-        Optional<CategoryCriterionPoints> existing =
-                criterionPointsRepository.findByCategoryIdAndCriterionId(categoryId, criterionId);
+        Optional<CategoryCriterionPoints> existing = criterionPointsRepository
+                .findByCategoryIdAndCriterionId(categoryId, criterionId);
 
         // Suma de los maxPoints del resto de criterios (excluyendo el que se edita)
         int otherPointsSum = criterionPointsRepository.findByCategoryId(categoryId).stream()
@@ -186,10 +188,11 @@ public class CategoryService {
         if (otherPointsSum + maxPoints > 100) {
             throw new RuntimeException(
                     "The total maxPoints for all criteria cannot exceed 100. Current sum of other criteria: "
-                    + otherPointsSum + ", attempted value: " + maxPoints);
+                            + otherPointsSum + ", attempted value: " + maxPoints);
         }
 
-        CategoryCriterionPoints points = existing.orElseGet(() -> new CategoryCriterionPoints(category, criterion, maxPoints));
+        CategoryCriterionPoints points = existing
+                .orElseGet(() -> new CategoryCriterionPoints(category, criterion, maxPoints));
         points.setMaxPoints(maxPoints);
 
         return toCriterionPointsDto(criterionPointsRepository.save(points));
@@ -199,25 +202,27 @@ public class CategoryService {
      * Reemplaza toda la configuracion de puntos de una categoria de una vez.
      * Usado cuando el organizador pulsa "Aceptar" en la pantalla de sliders.
      * Solo aplica a categorías JURY_EXPERT (pesos por criterio que suman 100).
-     * @param categoryId  ID de la categoria
-     * @param pointsDtos  Lista de pares (criterionId, maxPoints) a guardar
+     * 
+     * @param categoryId ID de la categoria
+     * @param pointsDtos Lista de pares (criterionId, maxPoints) a guardar
      */
     @Transactional
     public List<CategoryCriterionPointsDto> setCriterionPointsBulk(Long categoryId,
-                                                                    List<CategoryCriterionPointsDto> pointsDtos) {
+            List<CategoryCriterionPointsDto> pointsDtos) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
 
         if (category.getVotingType() == VotingType.POPULAR_VOTE) {
             throw new RuntimeException(
                     "setCriterionPointsBulk is only valid for JURY_EXPERT categories. " +
-                    "For POPULAR_VOTE, use setTotalPoints to configure the total points per category.");
+                            "For POPULAR_VOTE, use setTotalPoints to configure the total points per category.");
         }
 
         // Validamos que no haya puntos nulos o negativos antes de hacer la suma
         for (CategoryCriterionPointsDto dto : pointsDtos) {
             if (dto.getMaxPoints() == null || dto.getMaxPoints() < 0) {
-                throw new RuntimeException("maxPoints must be a non-negative integer for criterion: " + dto.getCriterionId());
+                throw new RuntimeException(
+                        "maxPoints must be a non-negative integer for criterion: " + dto.getCriterionId());
             }
         }
 
@@ -253,12 +258,14 @@ public class CategoryService {
         criterionPointsRepository.delete(points);
     }
 
-    //  Req. 23 – Configurar Puntos POPULAR_VOTE
+    // Req. 23 – Configurar Puntos POPULAR_VOTE
 
     /**
-     * Configura el total de puntos que un votante puede repartir entre los competidores
+     * Configura el total de puntos que un votante puede repartir entre los
+     * competidores
      * de una categoría de tipo POPULAR_VOTE.
      * Ej: si totalPoints = 10, el votante puede asignar hasta 10 puntos en total.
+     * 
      * @param categoryId  ID de la categoría POPULAR_VOTE
      * @param totalPoints Total de puntos a repartir (debe ser > 0)
      */
@@ -273,9 +280,9 @@ public class CategoryService {
         if (category.getVotingType() != VotingType.POPULAR_VOTE) {
             throw new RuntimeException(
                     "setTotalPoints is only valid for POPULAR_VOTE categories. " +
-                    "For JURY_EXPERT, use setCriterionPointsBulk to configure weights per criterion.");
+                            "For JURY_EXPERT, use setCriterionPointsBulk to configure weights per criterion.");
         }
-        category.setTotalPoints(totalPoints);
+        category.configureTotalPoints(totalPoints);
         return toDto(categoryRepository.save(category));
     }
 
@@ -290,10 +297,13 @@ public class CategoryService {
 
     /**
      * Req. 19 – Control de Voto POPULAR_VOTE:
-     * Configura el máximo de competidores distintos a los que puede votar un votante.
+     * Configura el máximo de competidores distintos a los que puede votar un
+     * votante.
      * Ej: en un evento con 5 proyectos, el límite es 3.
+     * 
      * @param categoryId       ID de la categoría POPULAR_VOTE
-     * @param maxVotesPerVoter Número máximo de competidores distintos (debe ser > 0)
+     * @param maxVotesPerVoter Número máximo de competidores distintos (debe ser >
+     *                         0)
      */
     @Transactional
     public CategoryDto setMaxVotesPerVoter(Long categoryId, Integer maxVotesPerVoter) {
@@ -307,18 +317,17 @@ public class CategoryService {
             throw new RuntimeException(
                     "setMaxVotesPerVoter is only valid for POPULAR_VOTE categories.");
         }
-        category.setMaxVotesPerVoter(maxVotesPerVoter);
+        category.limitVotesPerVoter(maxVotesPerVoter);
         return toDto(categoryRepository.save(category));
     }
 
-    //  Periodo de votacion
-
+    // Periodo de votacion
 
     public CategoryDto setTimeInitial(Long id, Date timeInitial) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         validateCategoryTimesWithinEvent(category.getEvent(), timeInitial, category.getTimeFinal());
-        category.setTimeInitial(timeInitial);
+        category.changeStartTime(timeInitial);
         return toDto(categoryRepository.save(category));
     }
 
@@ -326,11 +335,11 @@ public class CategoryService {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Category not found with id: " + id));
         validateCategoryTimesWithinEvent(category.getEvent(), category.getTimeInitial(), timeFinal);
-        category.setTimeFinal(timeFinal);
+        category.changeEndTime(timeFinal);
         return toDto(categoryRepository.save(category));
     }
 
-    //  Helpers
+    // Helpers
 
     private CategoryDto toDto(Category category) {
         Long eventId = category.getEvent() != null ? category.getEvent().getId() : null;
@@ -343,22 +352,22 @@ public class CategoryService {
                 eventId,
                 category.getReminderMinutes(),
                 category.getTotalPoints(),
-                category.getMaxVotesPerVoter()
-        );
+                category.getMaxVotesPerVoter());
     }
 
     private CategoryCriterionPointsDto toCriterionPointsDto(CategoryCriterionPoints ccp) {
         String criterionName = ccp.getCriterion() != null ? ccp.getCriterion().getName() : null;
-        Long categoryId  = ccp.getCategory()  != null ? ccp.getCategory().getId()  : null;
+        Long categoryId = ccp.getCategory() != null ? ccp.getCategory().getId() : null;
         Long criterionId = ccp.getCriterion() != null ? ccp.getCriterion().getId() : null;
         return new CategoryCriterionPointsDto(ccp.getId(), categoryId, criterionId, criterionName, ccp.getMaxPoints());
     }
 
     private void validateCategoryTimesWithinEvent(Event event, Date start, Date end) {
-        if (event == null) return;
+        if (event == null)
+            return;
 
         Date evStart = event.getTimeInitial();
-        Date evEnd   = event.getTimeFinal();
+        Date evEnd = event.getTimeFinal();
 
         if (start != null && evStart != null && start.before(evStart)) {
             throw new RuntimeException("Category start time cannot be before event start time");

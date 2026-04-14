@@ -130,6 +130,11 @@ public class EventParticipationService {
                                               Long categoryId, ParticipantCreator creator) {
         validateNewParticipant(name, email);
         User user = creator.register(name.trim(), email.trim(), userRepository);
+
+        if (categoryId == null) {
+            throw new RuntimeException("Debes asignar una categoría al proyecto antes de registrar competidores.");
+        }
+
         return registerParticipation(eventId, user.getId(), categoryId, creator.getRole());
     }
 

@@ -187,13 +187,13 @@ class CategoryServiceTest {
         List<CategoryCriterionPointsDto> result = categoryService.setCriterionPointsBulk(10L, input);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getMaxPoints()).isEqualTo(100);
+        assertThat(result.get(0).getWeightPercent()).isEqualTo(100);
         verify(criterionPointsRepository, times(1)).deleteByCategoryId(10L);
         verify(criterionPointsRepository, times(1)).save(any(CategoryCriterionPoints.class));
     }
 
     @Test
-    @DisplayName("setCriterionPointsBulk → lanza excepción si maxPoints es negativo")
+    @DisplayName("setCriterionPointsBulk → lanza excepción si weightPercent es negativo")
     void setCriterionPointsBulk_throwsException_whenNegativePoints() {
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
 
@@ -207,7 +207,7 @@ class CategoryServiceTest {
     }
 
     @Test
-    @DisplayName("setCriterionPointsBulk → lanza excepción si la suma de maxPoints no es 100")
+    @DisplayName("setCriterionPointsBulk → lanza excepción si la suma de weightPercent no es 100")
     void setCriterionPointsBulk_throwsException_whenSumIsNot100() {
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
 
@@ -223,7 +223,7 @@ class CategoryServiceTest {
     }
 
     @Test
-    @DisplayName("setCriterionPointsBulk → acepta cuando la suma de maxPoints es exactamente 100")
+    @DisplayName("setCriterionPointsBulk → acepta cuando la suma de weightPercent es exactamente 100")
     void setCriterionPointsBulk_savesPoints_whenSumIsExactly100() {
         Criterion criterion2 = new Criterion("Calidad");
         criterion2.setId(2L);

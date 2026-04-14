@@ -12,17 +12,17 @@ public class CategoryCriterionPointsDto {
     private Long categoryId;
     private Long criterionId;
     private String criterionName;
-    private Integer maxPoints;
+    private Integer weightPercent;
 
     public CategoryCriterionPointsDto() {
     }
 
-    public CategoryCriterionPointsDto(Long id, Long categoryId, Long criterionId, String criterionName, Integer maxPoints) {
+    public CategoryCriterionPointsDto(Long id, Long categoryId, Long criterionId, String criterionName, Integer weightPercent) {
         this.id = id;
         this.categoryId = categoryId;
         this.criterionId = criterionId;
         this.criterionName = criterionName;
-        this.maxPoints = maxPoints;
+        this.weightPercent = weightPercent;
     }
 
     public Long getId() {
@@ -57,11 +57,11 @@ public class CategoryCriterionPointsDto {
         this.criterionName = criterionName;
     }
 
-    public Integer getMaxPoints() {
-        return maxPoints;
+    public Integer getWeightPercent() {
+        return weightPercent;
     }
 
-    public void setMaxPoints(Integer maxPoints) {
-        this.maxPoints = maxPoints;
+    public void setWeightPercent(Integer weightPercent) {
+        this.weightPercent = weightPercent;
     }
 }

@@ -13,8 +13,8 @@ public class Comment {
     @Column(length = 2000, nullable = false)
     private String text;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "voter_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "voter_id", nullable = true)
     private Voter voter;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

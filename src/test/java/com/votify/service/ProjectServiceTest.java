@@ -25,13 +25,15 @@ import static org.mockito.Mockito.*;
 @DisplayName("ProjectService — Tests unitarios")
 class ProjectServiceTest {
 
-    @Mock private ProjectRepository              projectRepository;
-    @Mock private EventRepository                eventRepository;
-    @Mock private CompetitorRepository           competitorRepository;
-    @Mock private VoterRepository                voterRepository;
-    @Mock private CommentRepository              commentRepository;
-    @Mock private UserRepository                 userRepository;
-    @Mock private EventParticipationRepository   eventParticipationRepository;
+    @Mock private ProjectRepository                    projectRepository;
+    @Mock private EventRepository                      eventRepository;
+    @Mock private CompetitorRepository                 competitorRepository;
+    @Mock private VoterRepository                      voterRepository;
+    @Mock private CommentRepository                    commentRepository;
+    @Mock private UserRepository                       userRepository;
+    @Mock private EventParticipationRepository         eventParticipationRepository;
+    @Mock private CategoryCriterionPointsRepository    criterionPointsRepository;
+    @Mock private VotingRepository                     votingRepository;
 
     @InjectMocks
     private ProjectService projectService;
@@ -56,8 +58,6 @@ class ProjectServiceTest {
         competitor.setId(2L);
     }
 
-    // ── findByEvent ────────────────────────────────────────────────────────
-
     @Test
     @DisplayName("findByEvent → retorna proyectos del evento")
     void findByEvent_returnsProjectsOfEvent() {
@@ -79,21 +79,13 @@ class ProjectServiceTest {
         assertThat(projectService.findByEvent(1L)).isEmpty();
     }
 
-    // ── createForEvent ─────────────────────────────────────────────────────
-
     @Test
     @DisplayName("createForEvent → crea proyecto asociado al evento")
     void createForEvent_createsProject() {
-        User creator = new User("Carlos", "carlos@test.com");
-        creator.setId(2L);
-
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(creator));
-        when(competitorRepository.findByEmail("carlos@test.com")).thenReturn(Optional.of(competitor));
         when(projectRepository.save(any(Project.class))).thenReturn(Objects.requireNonNull(project));
 
         ProjectDto dto = new ProjectDto(null, "EcoTrack", "App de carbono", 1L, null);
-        dto.setCreatorUserId(2L);
         ProjectDto result = projectService.createForEvent(1L, dto);
 
         assertThat(result.getId()).isEqualTo(10L);
@@ -107,13 +99,10 @@ class ProjectServiceTest {
         when(eventRepository.findById(99L)).thenReturn(Optional.empty());
 
         ProjectDto dto = new ProjectDto(null, "Test", "Desc", 99L, null);
-        dto.setCreatorUserId(2L);
         assertThatThrownBy(() -> projectService.createForEvent(99L, dto))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("99");
     }
-
-    // ── addComment ─────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("addComment → guarda comentario correctamente")
@@ -154,8 +143,6 @@ class ProjectServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Voter");
     }
-
-    // ── addCompetitor ──────────────────────────────────────────────────────
 
     @Test
     @DisplayName("addCompetitor → asocia competidor al proyecto")

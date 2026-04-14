@@ -2,6 +2,7 @@ package com.votify.controller;
 
 import com.votify.dto.CompetitorDto;
 import com.votify.dto.ProjectDto;
+import com.votify.dto.ProjectFinalScoreDto;
 import com.votify.dto.CommentDto;
 import com.votify.service.ProjectService;
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,11 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.findByEvent(eventId));
     }
 
+    @GetMapping("/categories/{categoryId}/projects")
+    public ResponseEntity<List<ProjectDto>> getByCategory(@PathVariable Long categoryId) {
+        return ResponseEntity.ok(projectService.findByCategory(categoryId));
+    }
+
     @PostMapping("/projects/{projectId}/competitors/{userId}")
     public ResponseEntity<ProjectDto> addCompetitor(@PathVariable Long projectId,
                                                     @PathVariable Long userId) {
@@ -58,6 +64,13 @@ public class ProjectController {
     @GetMapping("/projects/{projectId}/competitors")
     public ResponseEntity<List<CompetitorDto>> getCompetitors(@PathVariable Long projectId) {
         return ResponseEntity.ok(projectService.getCompetitors(projectId));
+    }
+
+    @GetMapping("/projects/{projectId}/score")
+    public ResponseEntity<ProjectFinalScoreDto> getProjectScore(
+            @PathVariable Long projectId,
+            @RequestParam Long categoryId) {
+        return ResponseEntity.ok(projectService.getProjectScore(projectId, categoryId));
     }
 }
 

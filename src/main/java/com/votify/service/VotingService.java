@@ -63,11 +63,17 @@ public class VotingService {
                 .findExistingVote(voter.getId(), competitor.getId(), criterion.getId(), categoryId);
 
         if (existingOpt.isPresent()) {
-            // Si ya existe, incrementamos su score
             Voting existing = existingOpt.get();
-            int current = existing.getScore() != null ? existing.getScore() : 0;
             int add = dto.getScore() != null ? dto.getScore() : 0;
-            existing.setScore(current + add);
+            // JURY_EXPERT: el jurado sobreescribe su puntuación anterior (no acumula)
+            // POPULAR_VOTE (y sin categoría): se acumula como votos populares
+            Category existingCat = existing.getCategory();
+            if (existingCat != null && existingCat.getVotingType() == VotingType.JURY_EXPERT) {
+                existing.setScore(add);
+            } else {
+                int current = existing.getScore() != null ? existing.getScore() : 0;
+                existing.setScore(current + add);
+            }
 
             // Aseguramos que la categoría esté enlazada para las validaciones
             if (categoryId != null && existing.getCategory() == null) {
@@ -115,7 +121,7 @@ public class VotingService {
                     voting.getScore()
             );
         } else if (category.getVotingType() == VotingType.JURY_EXPERT) {
-            // Para JURY_EXPERT validamos que el score no exceda los maxPoints
+            // Para JURY_EXPERT validamos que el score no exceda los weightPercent
             // configurados para ese criterio en la categoría.
             if (criterionPointsRepository == null) {
                 throw new RuntimeException("CategoryCriterionPointsRepository no disponible para validar JURY_EXPERT");
@@ -128,11 +134,11 @@ public class VotingService {
                             "No hay configuración de puntos para el criterio '" + voting.getCriterion().getName()
                             + "' en la categoría '" + category.getName() + "'."));
 
-            Integer maxPoints = points.getMaxPoints();
+            Integer weightPercent = points.getWeightPercent();
             Integer score = voting.getScore();
-            if (score != null && maxPoints != null && score > maxPoints) {
+            if (score != null && weightPercent != null && score > weightPercent) {
                 throw new RuntimeException(
-                        "El score (" + score + ") excede los puntos máximos (" + maxPoints + ") para el criterio '"
+                        "El score (" + score + ") excede los puntos máximos (" + weightPercent + ") para el criterio '"
                         + voting.getCriterion().getName() + "' en la categoría '" + category.getName() + "'.");
             }
         }
@@ -230,13 +236,22 @@ public class VotingService {
                 .collect(Collectors.toList());
     }
 
+    public List<VotingDto> findByVoterAndCompetitorAndCategory(Long voterId, Long competitorId, Long categoryId) {
+        return votingRepository.findByVoterIdAndCompetitorIdAndCategoryId(voterId, competitorId, categoryId).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
     private VotingDto toDto(Voting voting) {
-        Long categoryId = voting.getCategory() != null ? voting.getCategory().getId() : null;
+        Long categoryId   = voting.getCategory()   != null ? voting.getCategory().getId()   : null;
+        Long voterId      = voting.getVoter()       != null ? voting.getVoter().getId()      : null;
+        Long competitorId = voting.getCompetitor()  != null ? voting.getCompetitor().getId() : null;
+        Long criterionId  = voting.getCriterion()   != null ? voting.getCriterion().getId()  : null;
         return new VotingDto(
                 voting.getId(),
-                voting.getVoter().getId(),
-                voting.getCompetitor().getId(),
-                voting.getCriterion().getId(),
+                voterId,
+                competitorId,
+                criterionId,
                 voting.getScore(),
                 categoryId,
                 voting.getManuallyModified()

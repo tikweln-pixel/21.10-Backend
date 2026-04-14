@@ -131,18 +131,11 @@ public class EventParticipationService {
         validateNewParticipant(name, email);
         User user = creator.register(name.trim(), email.trim(), userRepository);
 
-        // Si no se indica categoría, usar la primera del evento automáticamente
-        Long resolvedCategoryId = categoryId;
-        if (resolvedCategoryId == null) {
-            Event event = eventRepository.findById(eventId)
-                    .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
-            resolvedCategoryId = event.getCategories().stream()
-                    .findFirst()
-                    .map(Category::getId)
-                    .orElseThrow(() -> new RuntimeException("El evento no tiene categorías. Crea una categoría antes de registrar participantes."));
+        if (categoryId == null) {
+            throw new RuntimeException("Debes asignar una categoría al proyecto antes de registrar competidores.");
         }
 
-        return registerParticipation(eventId, user.getId(), resolvedCategoryId, creator.getRole());
+        return registerParticipation(eventId, user.getId(), categoryId, creator.getRole());
     }
 
     //Validamos que el nombre sea no nulo ni vacío, y que el email tenga formato válido

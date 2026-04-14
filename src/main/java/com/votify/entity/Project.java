@@ -23,6 +23,10 @@ public class Project {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
     @ManyToMany
     @JoinTable(
             name = "project_competitors",
@@ -70,6 +74,14 @@ public class Project {
 
     public void setEvent(Event event) {
         this.event = event;
+    }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
     }
 
     public Set<Competitor> getCompetitors() {

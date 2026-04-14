@@ -243,12 +243,15 @@ public class VotingService {
     }
 
     private VotingDto toDto(Voting voting) {
-        Long categoryId = voting.getCategory() != null ? voting.getCategory().getId() : null;
+        Long categoryId   = voting.getCategory()   != null ? voting.getCategory().getId()   : null;
+        Long voterId      = voting.getVoter()       != null ? voting.getVoter().getId()      : null;
+        Long competitorId = voting.getCompetitor()  != null ? voting.getCompetitor().getId() : null;
+        Long criterionId  = voting.getCriterion()   != null ? voting.getCriterion().getId()  : null;
         return new VotingDto(
                 voting.getId(),
-                voting.getVoter().getId(),
-                voting.getCompetitor().getId(),
-                voting.getCriterion().getId(),
+                voterId,
+                competitorId,
+                criterionId,
                 voting.getScore(),
                 categoryId,
                 voting.getManuallyModified()

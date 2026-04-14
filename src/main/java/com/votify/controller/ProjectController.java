@@ -38,6 +38,11 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.findByEvent(eventId));
     }
 
+    @GetMapping("/categories/{categoryId}/projects")
+    public ResponseEntity<List<ProjectDto>> getByCategory(@PathVariable Long categoryId) {
+        return ResponseEntity.ok(projectService.findByCategory(categoryId));
+    }
+
     @PostMapping("/projects/{projectId}/competitors/{userId}")
     public ResponseEntity<ProjectDto> addCompetitor(@PathVariable Long projectId,
                                                     @PathVariable Long userId) {

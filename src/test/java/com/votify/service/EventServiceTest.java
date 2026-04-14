@@ -3,10 +3,12 @@ package com.votify.service;
 import com.votify.dto.EventDto;
 import com.votify.entity.Event;
 import com.votify.entity.User;
+import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CategoryRepository;
 import com.votify.persistence.CommentRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
+import com.votify.persistence.ProjectRepository;
 import com.votify.persistence.UserRepository;
 import com.votify.persistence.VotingRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +38,8 @@ class EventServiceTest {
     @Mock private CategoryRepository categoryRepository;
     @Mock private VotingRepository votingRepository;
     @Mock private CommentRepository commentRepository;
+    @Mock private ProjectRepository projectRepository;
+    @Mock private CategoryCriterionPointsRepository criterionPointsRepository;
 
     private EventService eventService;
 
@@ -55,7 +59,9 @@ class EventServiceTest {
                 userRepository,
                 votingRepository,
                 eventParticipationRepository,
-                commentRepository
+                commentRepository,
+                projectRepository,
+                criterionPointsRepository
         );
 
         event1 = new Event("Hackathon 2026");

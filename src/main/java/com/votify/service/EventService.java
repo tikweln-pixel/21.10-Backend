@@ -8,9 +8,11 @@ import com.votify.dto.UserDto;
 import com.votify.entity.Category;
 import com.votify.entity.Event;
 import com.votify.entity.User;
+import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CommentRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
+import com.votify.persistence.ProjectRepository;
 import com.votify.persistence.UserRepository;
 import com.votify.persistence.VotingRepository;
 import org.springframework.stereotype.Service;
@@ -31,19 +33,25 @@ public class EventService {
     private final VotingRepository votingRepository;
     private final EventParticipationRepository eventParticipationRepository;
     private final CommentRepository commentRepository;
+    private final ProjectRepository projectRepository;
+    private final CategoryCriterionPointsRepository criterionPointsRepository;
 
     public EventService(EventRepository eventRepository,
                         EventParticipationService eventParticipationService,
                         UserRepository userRepository,
                         VotingRepository votingRepository,
                         EventParticipationRepository eventParticipationRepository,
-                        CommentRepository commentRepository) {
+                        CommentRepository commentRepository,
+                        ProjectRepository projectRepository,
+                        CategoryCriterionPointsRepository criterionPointsRepository) {
         this.eventRepository = eventRepository;
         this.eventParticipationService = eventParticipationService;
         this.userRepository = userRepository;
         this.votingRepository = votingRepository;
         this.eventParticipationRepository = eventParticipationRepository;
         this.commentRepository = commentRepository;
+        this.projectRepository = projectRepository;
+        this.criterionPointsRepository = criterionPointsRepository;
     }
 
     public List<EventDto> findAll() {
@@ -159,6 +167,9 @@ public class EventService {
                 .map(p -> p.getId())
                 .collect(Collectors.toList());
 
+        // Delete criterion points for all event categories
+        categoryIds.forEach(criterionPointsRepository::deleteByCategoryId);
+
         // Delete votings linked to event categories
         if (!categoryIds.isEmpty()) {
             votingRepository.deleteByCategoryIdIn(categoryIds);
@@ -171,6 +182,11 @@ public class EventService {
         if (!projectIds.isEmpty()) {
             commentRepository.deleteByProjectIdIn(projectIds);
         }
+
+        // Nullify category FK on projects to avoid FK constraint when categories are cascade-deleted
+        List<com.votify.entity.Project> projects = projectRepository.findByEventId(id);
+        projects.forEach(p -> p.setCategory(null));
+        projectRepository.saveAll(projects);
 
         // Delete the event (JPA cascades handle categories, criterion_points, projects, project_competitors)
         eventRepository.delete(event);

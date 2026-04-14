@@ -20,6 +20,7 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final EventRepository eventRepository;
+    private final CategoryRepository categoryRepository;
     private final CompetitorRepository competitorRepository;
     private final VoterRepository voterRepository;
     private final CommentRepository commentRepository;
@@ -30,6 +31,7 @@ public class ProjectService {
 
     public ProjectService(ProjectRepository projectRepository,
                           EventRepository eventRepository,
+                          CategoryRepository categoryRepository,
                           CompetitorRepository competitorRepository,
                           VoterRepository voterRepository,
                           CommentRepository commentRepository,
@@ -39,6 +41,7 @@ public class ProjectService {
                           VotingRepository votingRepository) {
         this.projectRepository = projectRepository;
         this.eventRepository = eventRepository;
+        this.categoryRepository = categoryRepository;
         this.competitorRepository = competitorRepository;
         this.voterRepository = voterRepository;
         this.commentRepository = commentRepository;
@@ -60,11 +63,21 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
+    public List<ProjectDto> findByCategory(Long categoryId) {
+        return projectRepository.findByCategoryId(categoryId).stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public ProjectDto createForEvent(Long eventId, ProjectDto dto) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
         Project project = new Project(dto.getName(), dto.getDescription(), event);
+        if (dto.getCategoryId() != null) {
+            categoryRepository.findById(dto.getCategoryId())
+                    .ifPresent(project::setCategory);
+        }
         return toDto(projectRepository.save(project));
     }
 
@@ -181,12 +194,16 @@ public class ProjectService {
                 .map(Competitor::getId)
                 .collect(Collectors.toList());
 
-        return new ProjectDto(
+        ProjectDto dto = new ProjectDto(
                 project.getId(),
                 project.getName(),
                 project.getDescription(),
                 project.getEvent().getId(),
                 competitorIds
         );
+        if (project.getCategory() != null) {
+            dto.setCategoryId(project.getCategory().getId());
+        }
+        return dto;
     }
 }

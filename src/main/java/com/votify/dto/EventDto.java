@@ -19,6 +19,7 @@ public class EventDto {
     private List<ProjectDto> projects;
     private Integer reminderMinutes;
     private Integer reminderHours;
+    private String visibility;
 
     public EventDto() {
     }
@@ -118,6 +119,14 @@ public class EventDto {
 
     public void setProjects(List<ProjectDto> projects) {
         this.projects = projects;
-    }   
+    }
+
+    public String getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(String visibility) {
+        this.visibility = visibility;
+    }
 
 }

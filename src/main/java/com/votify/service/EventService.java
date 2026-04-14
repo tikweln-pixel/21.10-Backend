@@ -80,6 +80,9 @@ public class EventService {
         Event event = new Event(dto.getName().trim());
         event.setTimeInitial(dto.getTimeInitial());
         event.setTimeFinal(dto.getTimeFinal());
+        if (dto.getVisibility() != null && !dto.getVisibility().isBlank()) {
+            event.setVisibility(dto.getVisibility().trim().toUpperCase());
+        }
         if (dto.getOrganizerId() != null) {
             Long orgId = dto.getOrganizerId();
             User organizer = userRepository.findById(Objects.requireNonNull(orgId))
@@ -145,6 +148,9 @@ public class EventService {
         event.setName(dto.getName());
         event.setTimeInitial(dto.getTimeInitial());
         event.setTimeFinal(dto.getTimeFinal());
+        if (dto.getVisibility() != null && !dto.getVisibility().isBlank()) {
+            event.setVisibility(dto.getVisibility().trim().toUpperCase());
+        }
         if (dto.getOrganizerId() != null) {
             Long orgId = dto.getOrganizerId();
             User organizer = userRepository.findById(Objects.requireNonNull(orgId))
@@ -237,6 +243,7 @@ public class EventService {
         dto.setOrganizerId(organizerId);
         dto.setParticipants(participantDtos);
         dto.setProjects(projectDtos);
+        dto.setVisibility(event.getVisibility());
         return dto;
     }
 

@@ -38,6 +38,9 @@ public class Event {
     private Integer reminderMinutes;
     private Integer reminderHours;
 
+    @Column(name = "visibility", length = 20)
+    private String visibility = "PUBLIC";
+
     public Event() {
     }
 
@@ -112,8 +115,16 @@ public class Event {
     public Integer getReminderHours() {
         return reminderHours;
     }
-    
+
     public void setReminderHours(Integer reminderHours) {
         this.reminderHours = reminderHours;
+    }
+
+    public String getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(String visibility) {
+        this.visibility = visibility;
     }
 }

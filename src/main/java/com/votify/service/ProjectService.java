@@ -51,12 +51,14 @@ public class ProjectService {
         this.votingRepository = votingRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<ProjectDto> findAll() {
         return projectRepository.findAll().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ProjectDto> findByEvent(Long eventId) {
         return projectRepository.findByEventId(eventId).stream()
                 .map(this::toDto)

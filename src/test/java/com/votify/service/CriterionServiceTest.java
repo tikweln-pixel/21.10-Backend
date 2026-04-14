@@ -2,7 +2,10 @@ package com.votify.service;
 
 import com.votify.dto.CriterionDto;
 import com.votify.entity.Criterion;
+import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CriterionRepository;
+import com.votify.persistence.EvaluacionRepository;
+import com.votify.persistence.VotingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,15 @@ class CriterionServiceTest {
 
     @Mock
     private CriterionRepository criterionRepository;
+
+    @Mock
+    private CategoryCriterionPointsRepository criterionPointsRepository;
+
+    @Mock
+    private VotingRepository votingRepository;
+
+    @Mock
+    private EvaluacionRepository evaluacionRepository;
 
     @InjectMocks
     private CriterionService criterionService;
@@ -141,12 +153,29 @@ class CriterionServiceTest {
     // ── delete ─────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("delete → llama a deleteById con el id correcto")
+    @DisplayName("delete → cascade deletes related records then deletes criterion")
     void delete_callsDeleteById() {
+        when(criterionRepository.existsById(1L)).thenReturn(true);
+        doNothing().when(votingRepository).deleteByCriterionId(1L);
+        doNothing().when(evaluacionRepository).deleteByCriterionId(1L);
+        doNothing().when(criterionPointsRepository).deleteByCriterionId(1L);
         doNothing().when(criterionRepository).deleteById(1L);
 
         criterionService.delete(1L);
 
+        verify(votingRepository, times(1)).deleteByCriterionId(1L);
+        verify(evaluacionRepository, times(1)).deleteByCriterionId(1L);
+        verify(criterionPointsRepository, times(1)).deleteByCriterionId(1L);
         verify(criterionRepository, times(1)).deleteById(1L);
+    }
+
+    @Test
+    @DisplayName("delete → lanza excepcion si criterio no existe")
+    void delete_throwsException_whenNotFound() {
+        when(criterionRepository.existsById(99L)).thenReturn(false);
+
+        assertThatThrownBy(() -> criterionService.delete(99L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("not found");
     }
 }

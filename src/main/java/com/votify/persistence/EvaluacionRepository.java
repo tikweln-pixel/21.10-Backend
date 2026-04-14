@@ -21,4 +21,8 @@ public interface EvaluacionRepository extends JpaRepository<Evaluacion, Long> {
     @Modifying
     @Query("DELETE FROM Evaluacion e WHERE e.category.id = :categoryId")
     void deleteByCategoryId(@Param("categoryId") Long categoryId);
+
+    @Modifying
+    @Query("DELETE FROM Evaluacion e WHERE e.criterion.id = :criterionId")
+    void deleteByCriterionId(@Param("criterionId") Long criterionId);
 }

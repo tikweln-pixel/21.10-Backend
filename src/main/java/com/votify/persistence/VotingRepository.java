@@ -55,6 +55,10 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
     @Query("DELETE FROM Voting v WHERE v.category.id = :categoryId")
     void deleteByCategoryId(@Param("categoryId") Long categoryId);
 
+    @Modifying
+    @Query("DELETE FROM Voting v WHERE v.criterion.id = :criterionId")
+    void deleteByCriterionId(@Param("criterionId") Long criterionId);
+
     /* ── Query endpoints for frontend ── */
 
     List<Voting> findByCompetitorIdIn(List<Long> competitorIds);

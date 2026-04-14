@@ -13,4 +13,6 @@ public interface CategoryCriterionPointsRepository extends JpaRepository<Categor
     Optional<CategoryCriterionPoints> findByCategoryIdAndCriterionId(Long categoryId, Long criterionId);
 
     void deleteByCategoryId(Long categoryId);
+
+    void deleteByCriterionId(Long criterionId);
 }

@@ -218,9 +218,9 @@ class VotingServiceTest {
 
         popularCategory = new Category("Voto Popular", testEvent);
         popularCategory.setId(20L);
-        popularCategory.changeVotingType(VotingType.POPULAR_VOTE);
-        popularCategory.limitVotesPerVoter(maxVotesPerVoter);
-        popularCategory.configureTotalPoints(totalPoints);
+        popularCategory.setVotingType(VotingType.POPULAR_VOTE);
+        popularCategory.setMaxVotesPerVoter(maxVotesPerVoter);
+        popularCategory.setTotalPoints(totalPoints);
     }
 
     @Test

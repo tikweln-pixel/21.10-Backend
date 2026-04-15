@@ -40,11 +40,11 @@ class CategoryRepositoryTest {
         em.persist(event2);
 
         cat1 = new Category("Jurado Experto", event1);
-        cat1.changeVotingType(VotingType.JURY_EXPERT);
+        cat1.setVotingType(VotingType.JURY_EXPERT);
         em.persist(cat1);
 
         cat2 = new Category("Voto Popular", event1);
-        cat2.changeVotingType(VotingType.POPULAR_VOTE);
+        cat2.setVotingType(VotingType.POPULAR_VOTE);
         em.persist(cat2);
 
         cat3 = new Category("Otra Categoría", event2);
@@ -112,7 +112,7 @@ class CategoryRepositoryTest {
     @DisplayName("save → persiste nueva categoría con id generado")
     void save_persistsNewCategory() {
         Category newCat = new Category("Nueva Cat", event1);
-        newCat.changeVotingType(VotingType.JURY_EXPERT);
+        newCat.setVotingType(VotingType.JURY_EXPERT);
 
         Category saved = categoryRepository.save(newCat);
 
@@ -124,7 +124,7 @@ class CategoryRepositoryTest {
     @Test
     @DisplayName("save → actualiza categoría existente")
     void save_updatesExistingCategory() {
-        cat1.changeVotingType(VotingType.POPULAR_VOTE);
+        cat1.setVotingType(VotingType.POPULAR_VOTE);
         categoryRepository.save(cat1);
 
         Category reloaded = em.find(Category.class, cat1.getId());

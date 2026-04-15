@@ -97,22 +97,23 @@ public class EventService {
                 continue;
             }
             Category category = new Category(cd.getName().trim(), event);
-            category.reschedule(dto.getTimeInitial(), dto.getTimeFinal());
+            category.setTimeInitial(dto.getTimeInitial());
+            category.setTimeFinal(dto.getTimeFinal());
             if (cd.getVotingType() != null) {
-                category.changeVotingType(cd.getVotingType());
+                category.setVotingType(cd.getVotingType());
             }
             Integer reminderMinutes = resolveReminderMinutes(dto);
             if (reminderMinutes != null) {
-                category.setReminder(reminderMinutes);
+                category.setReminderMinutes(reminderMinutes);
             }
             if (cd.getReminderMinutes() != null) {
-                category.setReminder(cd.getReminderMinutes());
+                category.setReminderMinutes(cd.getReminderMinutes());
             }
             if (cd.getTotalPoints() != null) {
-                category.configureTotalPoints(cd.getTotalPoints());
+                category.setTotalPoints(cd.getTotalPoints());
             }
             if (cd.getMaxVotesPerVoter() != null) {
-                category.limitVotesPerVoter(cd.getMaxVotesPerVoter());
+                category.setMaxVotesPerVoter(cd.getMaxVotesPerVoter());
             }
             event.getCategories().add(category);
             if (firstCategory == null) {

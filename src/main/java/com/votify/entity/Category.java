@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 
 import java.util.Date;
 
-import static java.util.Objects.requireNonNull;
-
 @Entity
 @Table(name = "categories")
 public class Category {
@@ -36,73 +34,20 @@ public class Category {
     @Column(name = "reminder_minutes")
     private Integer reminderMinutes;
 
-    /**
-    POPULAR_VOTE: puntos totales que puede repartir un votante entre todos los competidores.
-     */
     @Column(name = "total_points")
     private Integer totalPoints;
 
-    /**
-    POPULAR_VOTE: máximo de competidores distintos a los que puede votar un votante.
-     */
     @Column(name = "max_votes_per_voter")
     private Integer maxVotesPerVoter;
 
-    protected Category() {}
+    public Category() {}
 
     public Category(String name, Event event) {
-        this.name = requireNonNull(name, "el nombre es obligatorio");
+        this.name = name;
         this.event = event;
     }
 
-
-    // Cambia el nombre de la categoria
-    public void rename(String newName) {
-        this.name = requireNonNull(newName, "el nombre es obligatorio");
-    }
-
-    // Asigna el tipo de votación (JURY_EXPERT o POPULAR_VOTE)
-    public void changeVotingType(VotingType votingType) {
-        this.votingType = votingType;
-    }
-
-    // Cambia los tiempos de voto en la categoria.
-    public void reschedule(Date start, Date end) {
-        this.timeInitial = start;
-        this.timeFinal = end;
-    }
-
-    // Establece solo la fecha/hora de inicio.
-    public void changeStartTime(Date start) {
-        this.timeInitial = start;
-    }
-
-    // Establece solo la fecha/hora de fin
-    public void changeEndTime(Date end) {
-        this.timeFinal = end;
-    }
-
-    // Vincula la categoría a un evento
-    public void assignToEvent(Event event) {
-        this.event = event;
-    }
-
-    // Configura el timepo de recordatorio de las votaciones en minutos
-    public void setReminder(Integer minutes) {
-        this.reminderMinutes = minutes;
-    }
-
-    /** Req. 23 – Configura los puntos totales a repartir en POPULAR_VOTE. */
-    public void configureTotalPoints(Integer totalPoints) {
-        this.totalPoints = totalPoints;
-    }
-
-    /** Req. 19 – Limita el número máximo de competidores a los que puede votar un votante. */
-    public void limitVotesPerVoter(Integer maxVotesPerVoter) {
-        this.maxVotesPerVoter = maxVotesPerVoter;
-    }
-
-    // ─ Getters ─
+    // ─ Getters y Setters ─
 
     public Long getId() {
         return id;
@@ -116,32 +61,64 @@ public class Category {
         return name;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public VotingType getVotingType() {
         return votingType;
+    }
+
+    public void setVotingType(VotingType votingType) {
+        this.votingType = votingType;
     }
 
     public Date getTimeInitial() {
         return timeInitial;
     }
 
+    public void setTimeInitial(Date timeInitial) {
+        this.timeInitial = timeInitial;
+    }
+
     public Date getTimeFinal() {
         return timeFinal;
+    }
+
+    public void setTimeFinal(Date timeFinal) {
+        this.timeFinal = timeFinal;
     }
 
     public Event getEvent() {
         return event;
     }
 
+    public void setEvent(Event event) {
+        this.event = event;
+    }
+
     public Integer getReminderMinutes() {
         return reminderMinutes;
+    }
+
+    public void setReminderMinutes(Integer reminderMinutes) {
+        this.reminderMinutes = reminderMinutes;
     }
 
     public Integer getTotalPoints() {
         return totalPoints;
     }
 
+    public void setTotalPoints(Integer totalPoints) {
+        this.totalPoints = totalPoints;
+    }
+
     public Integer getMaxVotesPerVoter() {
         return maxVotesPerVoter;
+    }
+
+    public void setMaxVotesPerVoter(Integer maxVotesPerVoter) {
+        this.maxVotesPerVoter = maxVotesPerVoter;
     }
 
     // ── Identidad ──

@@ -38,7 +38,7 @@ class EvaluacionRepositoryTest {
         em.persist(competitor);
 
         category = new Category("Proyectos", event);
-        category.changeVotingType(VotingType.JURY_EXPERT);
+        category.setVotingType(VotingType.JURY_EXPERT);
         em.persist(category);
 
         em.flush();
@@ -93,7 +93,7 @@ class EvaluacionRepositoryTest {
         em.persist(e1);
 
         Category otherCategory = new Category("Otra", event);
-        otherCategory.changeVotingType(VotingType.POPULAR_VOTE);
+        otherCategory.setVotingType(VotingType.POPULAR_VOTE);
         em.persist(otherCategory);
 
         EvaluacionNumerica e2 = new EvaluacionNumerica(evaluador, competitor, otherCategory, null, 1.0, "{\"valores\":[3]}");

@@ -2,6 +2,8 @@ package com.votify.controller;
 
 import com.votify.dto.CompetitorCommentDto;
 import com.votify.dto.CompetitorDto;
+import com.votify.entity.Comment;
+import com.votify.entity.Competitor;
 import com.votify.entity.Project;
 import com.votify.persistence.CommentRepository;
 import com.votify.persistence.ProjectRepository;
@@ -10,8 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/competitors")
@@ -57,21 +59,31 @@ public class CompetitorController {
 
     @GetMapping("/{competitorId}/comments")
     public ResponseEntity<List<CompetitorCommentDto>> getCommentsByCompetitor(@PathVariable Long competitorId) {
-        // Find projects where competitor participates
-        List<Project> projects = projectRepository.findAll().stream()
-                .filter(p -> p.getCompetitors().stream().anyMatch(c -> c.getId().equals(competitorId)))
-                .collect(Collectors.toList());
+        List<Project> projects = new ArrayList<>();
+        for (Project p : projectRepository.findAll()) {
+            for (Competitor c : p.getCompetitors()) {
+                if (c.getId().equals(competitorId)) {
+                    projects.add(p);
+                    break;
+                }
+            }
+        }
 
-        List<Long> projectIds = projects.stream().map(Project::getId).collect(Collectors.toList());
+        List<Long> projectIds = new ArrayList<>();
+        for (Project p : projects) {
+            projectIds.add(p.getId());
+        }
+
         if (projectIds.isEmpty()) {
             return ResponseEntity.ok(List.of());
         }
 
-        List<CompetitorCommentDto> comments = commentRepository.findByProjectIdIn(projectIds).stream()
-                .map(c -> new CompetitorCommentDto(
-                        c.getId(), c.getText(), c.getVoter().getId(),
-                        c.getProject().getId(), c.getProject().getName()))
-                .collect(Collectors.toList());
+        List<CompetitorCommentDto> comments = new ArrayList<>();
+        for (Comment c : commentRepository.findByProjectIdIn(projectIds)) {
+            comments.add(new CompetitorCommentDto(
+                    c.getId(), c.getText(), c.getVoter().getId(),
+                    c.getProject().getId(), c.getProject().getName()));
+        }
 
         return ResponseEntity.ok(comments);
     }

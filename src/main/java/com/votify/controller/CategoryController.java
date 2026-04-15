@@ -6,13 +6,14 @@ import com.votify.dto.UserDto;
 import com.votify.entity.VotingType;
 import com.votify.service.CategoryService;
 import com.votify.service.VotingService;
+import com.votify.entity.User;
 import com.votify.persistence.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.springframework.lang.NonNull;
 
 @RestController
@@ -164,9 +165,10 @@ public class CategoryController {
         if (voterIds == null || voterIds.isEmpty()) {
             return ResponseEntity.ok(List.of());
         }
-        List<UserDto> voters = userRepository.findAllById(voterIds).stream()
-                .map(u -> new UserDto(u.getId(), u.getName(), u.getEmail()))
-                .collect(Collectors.toList());
+        List<UserDto> voters = new ArrayList<>();
+        for (User u : userRepository.findAllById(voterIds)) {
+            voters.add(new UserDto(u.getId(), u.getName(), u.getEmail()));
+        }
         return ResponseEntity.ok(voters);
     }
 }

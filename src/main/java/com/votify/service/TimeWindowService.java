@@ -5,9 +5,9 @@ import com.votify.entity.TimeWindow;
 import com.votify.persistence.TimeWindowRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Service
 public class TimeWindowService {
@@ -19,9 +19,11 @@ public class TimeWindowService {
     }
 
     public List<TimeWindowDto> findAll() {
-        return timeWindowRepository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<TimeWindowDto> result = new ArrayList<>();
+        for (TimeWindow tw : timeWindowRepository.findAll()) {
+            result.add(toDto(tw));
+        }
+        return result;
     }
 
     public TimeWindowDto findById(Long id) {

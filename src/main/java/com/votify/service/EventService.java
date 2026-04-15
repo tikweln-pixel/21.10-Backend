@@ -1,12 +1,14 @@
 package com.votify.service;
 
-
 import com.votify.dto.CategoryDto;
 import com.votify.dto.EventDto;
+import com.votify.dto.EventParticipationDto;
 import com.votify.dto.ProjectDto;
 import com.votify.dto.UserDto;
 import com.votify.entity.Category;
+import com.votify.entity.Competitor;
 import com.votify.entity.Event;
+import com.votify.entity.Project;
 import com.votify.entity.User;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CommentRepository;
@@ -18,11 +20,9 @@ import com.votify.persistence.VotingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
-
 
 @Service
 public class EventService {
@@ -55,9 +55,12 @@ public class EventService {
     }
 
     public List<EventDto> findAll() {
-        return eventRepository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Event> events = eventRepository.findAll();
+        List<EventDto> result = new ArrayList<>();
+        for (Event event : events) {
+            result.add(toDto(event));
+        }
+        return result;
     }
 
     public EventDto findById(Long id) {
@@ -80,9 +83,6 @@ public class EventService {
         Event event = new Event(dto.getName().trim());
         event.setTimeInitial(dto.getTimeInitial());
         event.setTimeFinal(dto.getTimeFinal());
-        if (dto.getVisibility() != null && !dto.getVisibility().isBlank()) {
-            event.setVisibility(dto.getVisibility().trim().toUpperCase());
-        }
         if (dto.getOrganizerId() != null) {
             Long orgId = dto.getOrganizerId();
             User organizer = userRepository.findById(Objects.requireNonNull(orgId))
@@ -127,7 +127,10 @@ public class EventService {
 
         Long creatorId = dto.getOrganizerId();
         if (creatorId != null && firstCategory != null) {
-            eventParticipationService.registerCompetitor(Objects.requireNonNull(event.getId()), Objects.requireNonNull(creatorId), Objects.requireNonNull(firstCategory.getId()));
+            eventParticipationService.registerCompetitor(
+                    Objects.requireNonNull(event.getId()),
+                    Objects.requireNonNull(creatorId),
+                    Objects.requireNonNull(firstCategory.getId()));
         }
 
         return toDto(event);
@@ -137,7 +140,7 @@ public class EventService {
         if (organizerId == null) throw new RuntimeException("Organizer ID cannot be null");
         User organizer = userRepository.findById(Objects.requireNonNull(organizerId))
                 .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + organizerId));
-        
+
         Event event = organizer.createEvent(dto.getName(), dto.getTimeInitial(), dto.getTimeFinal());
         return toDto(eventRepository.save(Objects.requireNonNull(event)));
     }
@@ -149,9 +152,6 @@ public class EventService {
         event.setName(dto.getName());
         event.setTimeInitial(dto.getTimeInitial());
         event.setTimeFinal(dto.getTimeFinal());
-        if (dto.getVisibility() != null && !dto.getVisibility().isBlank()) {
-            event.setVisibility(dto.getVisibility().trim().toUpperCase());
-        }
         if (dto.getOrganizerId() != null) {
             Long orgId = dto.getOrganizerId();
             User organizer = userRepository.findById(Objects.requireNonNull(orgId))
@@ -167,15 +167,20 @@ public class EventService {
         Event event = eventRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
 
-        List<Long> categoryIds = event.getCategories().stream()
-                .map(Category::getId)
-                .collect(Collectors.toList());
-        List<Long> projectIds = event.getProjects().stream()
-                .map(p -> p.getId())
-                .collect(Collectors.toList());
+        List<Long> categoryIds = new ArrayList<>();
+        for (Category cat : event.getCategories()) {
+            categoryIds.add(cat.getId());
+        }
+
+        List<Long> projectIds = new ArrayList<>();
+        for (Project p : event.getProjects()) {
+            projectIds.add(p.getId());
+        }
 
         // Delete criterion points for all event categories
-        categoryIds.forEach(criterionPointsRepository::deleteByCategoryId);
+        for (Long categoryId : categoryIds) {
+            criterionPointsRepository.deleteByCategoryId(categoryId);
+        }
 
         // Delete votings linked to event categories
         if (!categoryIds.isEmpty()) {
@@ -191,11 +196,12 @@ public class EventService {
         }
 
         // Nullify category FK on projects to avoid FK constraint when categories are cascade-deleted
-        List<com.votify.entity.Project> projects = projectRepository.findByEventId(id);
-        projects.forEach(p -> p.setCategory(null));
+        List<Project> projects = projectRepository.findByEventId(id);
+        for (Project p : projects) {
+            p.setCategory(null);
+        }
         projectRepository.saveAll(projects);
 
-        // Delete the event (JPA cascades handle categories, criterion_points, projects, project_competitors)
         eventRepository.delete(event);
     }
 
@@ -217,21 +223,25 @@ public class EventService {
             organizerId = org.getId();
             creatorDto = new UserDto(org.getId(), org.getName(), org.getEmail());
         }
-        List<CategoryDto> categoryDtos = event.getCategories().stream()
-                .map(this::categoryToDto)
-                .collect(Collectors.toList());
-        List<UserDto> participantDtos = eventParticipationService.getParticipationsByEvent(event.getId()).stream()
-                .map(p -> new UserDto(p.getUserId(), p.getUserName(), p.getUserEmail()))
-                .collect(Collectors.toList());
 
-        List<ProjectDto> projectDtos = event.getProjects().stream()
-                .map(p -> {
-                    List<Long> compIds = p.getCompetitors().stream()
-                            .map(c -> c.getId())
-                            .collect(Collectors.toList());
-                    return new ProjectDto(p.getId(), p.getName(), p.getDescription(), event.getId(), compIds);
-                })
-                .collect(Collectors.toList());
+        List<CategoryDto> categoryDtos = new ArrayList<>();
+        for (Category cat : event.getCategories()) {
+            categoryDtos.add(categoryToDto(cat));
+        }
+
+        List<UserDto> participantDtos = new ArrayList<>();
+        for (EventParticipationDto p : eventParticipationService.getParticipationsByEvent(event.getId())) {
+            participantDtos.add(new UserDto(p.getUserId(), p.getUserName(), p.getUserEmail()));
+        }
+
+        List<ProjectDto> projectDtos = new ArrayList<>();
+        for (Project p : event.getProjects()) {
+            List<Long> compIds = new ArrayList<>();
+            for (Competitor c : p.getCompetitors()) {
+                compIds.add(c.getId());
+            }
+            projectDtos.add(new ProjectDto(p.getId(), p.getName(), p.getDescription(), event.getId(), compIds));
+        }
 
         EventDto dto = new EventDto(
                 event.getId(),
@@ -244,7 +254,6 @@ public class EventService {
         dto.setOrganizerId(organizerId);
         dto.setParticipants(participantDtos);
         dto.setProjects(projectDtos);
-        dto.setVisibility(event.getVisibility());
         return dto;
     }
 

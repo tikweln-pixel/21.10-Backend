@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class ProjectService {
@@ -53,22 +52,31 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<ProjectDto> findAll() {
-        return projectRepository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Project> projects = projectRepository.findAll();
+        List<ProjectDto> result = new ArrayList<>();
+        for (Project project : projects) {
+            result.add(toDto(project));
+        }
+        return result;
     }
 
     @Transactional(readOnly = true)
     public List<ProjectDto> findByEvent(Long eventId) {
-        return projectRepository.findByEventId(eventId).stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Project> projects = projectRepository.findByEventId(eventId);
+        List<ProjectDto> result = new ArrayList<>();
+        for (Project project : projects) {
+            result.add(toDto(project));
+        }
+        return result;
     }
 
     public List<ProjectDto> findByCategory(Long categoryId) {
-        return projectRepository.findByCategoryId(categoryId).stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Project> projects = projectRepository.findByCategoryId(categoryId);
+        List<ProjectDto> result = new ArrayList<>();
+        for (Project project : projects) {
+            result.add(toDto(project));
+        }
+        return result;
     }
 
     @Transactional
@@ -77,8 +85,7 @@ public class ProjectService {
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
         Project project = new Project(dto.getName(), dto.getDescription(), event);
         if (dto.getCategoryId() != null) {
-            categoryRepository.findById(dto.getCategoryId())
-                    .ifPresent(project::setCategory);
+            categoryRepository.findById(dto.getCategoryId()).ifPresent(project::setCategory);
         }
         return toDto(projectRepository.save(project));
     }
@@ -132,38 +139,47 @@ public class ProjectService {
         if (!projectRepository.existsById(projectId)) {
             throw new RuntimeException("Project not found with id: " + projectId);
         }
-        return commentRepository.findByProjectId(projectId).stream()
-                .map(c -> new CommentDto(c.getId(), c.getVoter().getId(), c.getText()))
-                .collect(Collectors.toList());
+        List<Comment> comments = commentRepository.findByProjectId(projectId);
+        List<CommentDto> result = new ArrayList<>();
+        for (Comment c : comments) {
+            Long voterId = c.getVoter() != null ? c.getVoter().getId() : null;
+            result.add(new CommentDto(c.getId(), voterId, c.getText()));
+        }
+        return result;
     }
 
     public List<Long> getCompetitorIds(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
-        return project.getCompetitors().stream()
-                .map(Competitor::getId)
-                .collect(Collectors.toList());
+        List<Long> result = new ArrayList<>();
+        for (Competitor c : project.getCompetitors()) {
+            result.add(c.getId());
+        }
+        return result;
     }
 
     public List<CompetitorDto> getCompetitors(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
-        return project.getCompetitors().stream()
-                .map(c -> new CompetitorDto(c.getId(), c.getName(), c.getEmail()))
-                .collect(Collectors.toList());
+        List<CompetitorDto> result = new ArrayList<>();
+        for (Competitor c : project.getCompetitors()) {
+            result.add(new CompetitorDto(c.getId(), c.getName(), c.getEmail()));
+        }
+        return result;
     }
 
     public ProjectFinalScoreDto getProjectScore(Long projectId, Long categoryId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
-        List<Long> competitorIds = project.getCompetitors().stream()
-                .map(Competitor::getId)
-                .collect(Collectors.toList());
+        List<Long> competitorIds = new ArrayList<>();
+        for (Competitor c : project.getCompetitors()) {
+            competitorIds.add(c.getId());
+        }
 
         List<CategoryCriterionPoints> weights = criterionPointsRepository.findByCategoryId(categoryId);
         List<Voting> votings = competitorIds.isEmpty()
-                ? List.of()
+                ? new ArrayList<>()
                 : votingRepository.findByCompetitorIdInAndCategoryId(competitorIds, categoryId);
 
         Map<Long, Integer> scoresByCriterion = new HashMap<>();
@@ -187,14 +203,14 @@ public class ProjectService {
                     critId, ccp.getCriterion().getName(), score, weight));
         }
 
-        return new ProjectFinalScoreDto(projectId, project.getName(), categoryId,
-                finalScore, maxScore, details);
+        return new ProjectFinalScoreDto(projectId, project.getName(), categoryId, finalScore, maxScore, details);
     }
 
     private ProjectDto toDto(Project project) {
-        List<Long> competitorIds = project.getCompetitors().stream()
-                .map(Competitor::getId)
-                .collect(Collectors.toList());
+        List<Long> competitorIds = new ArrayList<>();
+        for (Competitor c : project.getCompetitors()) {
+            competitorIds.add(c.getId());
+        }
 
         ProjectDto dto = new ProjectDto(
                 project.getId(),

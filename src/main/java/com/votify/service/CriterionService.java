@@ -9,10 +9,9 @@ import com.votify.persistence.VotingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
-
 
 @Service
 public class CriterionService {
@@ -33,9 +32,12 @@ public class CriterionService {
     }
 
     public List<CriterionDto> findAll() {
-        return criterionRepository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Criterion> criteria = criterionRepository.findAll();
+        List<CriterionDto> result = new ArrayList<>();
+        for (Criterion criterion : criteria) {
+            result.add(toDto(criterion));
+        }
+        return result;
     }
 
     public CriterionDto findById(Long id) {
@@ -64,7 +66,6 @@ public class CriterionService {
         if (!criterionRepository.existsById(id)) {
             throw new RuntimeException("Criterion not found with id: " + id);
         }
-        // Cascade: delete related records that reference this criterion
         votingRepository.deleteByCriterionId(id);
         evaluacionRepository.deleteByCriterionId(id);
         criterionPointsRepository.deleteByCriterionId(id);

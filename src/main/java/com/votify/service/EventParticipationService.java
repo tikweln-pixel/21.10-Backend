@@ -9,10 +9,10 @@ import com.votify.service.factory.participant.VoterCreator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 
 @Service
@@ -35,16 +35,11 @@ public class EventParticipationService {
         this.categoryRepository = categoryRepository;
     }
 
-    /**
-     * Registra a un usuario como competidor o votante en una categoría concreta de un evento.
-     * Un mismo usuario puede tener distintos roles en distintas categorías del mismo evento.
-     */
     public EventParticipationDto registerParticipation(Long eventId, Long userId, Long categoryId, ParticipationRole role) {
         if (eventId == null) throw new RuntimeException("Event ID is required");
         if (userId == null) throw new RuntimeException("User ID is required");
-        if (categoryId == null) {
-            throw new RuntimeException("Category is required for participation");
-        }
+        if (categoryId == null) throw new RuntimeException("Category is required for participation");
+
         Event event = eventRepository.findById(Objects.requireNonNull(eventId))
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
         User user = userRepository.findById(Objects.requireNonNull(userId))
@@ -56,11 +51,13 @@ public class EventParticipationService {
             throw new RuntimeException("Category does not belong to this event");
         }
 
-        if (eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(Objects.requireNonNull(eventId), Objects.requireNonNull(userId), Objects.requireNonNull(categoryId))) {
+        if (eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(
+                Objects.requireNonNull(eventId), Objects.requireNonNull(userId), Objects.requireNonNull(categoryId))) {
             throw new RuntimeException("User " + userId + " is already registered in category " + categoryId + " of event " + eventId);
         }
 
-        EventParticipation participation = new EventParticipation(Objects.requireNonNull(event), Objects.requireNonNull(user), Objects.requireNonNull(category), role);
+        EventParticipation participation = new EventParticipation(
+                Objects.requireNonNull(event), Objects.requireNonNull(user), Objects.requireNonNull(category), role);
         return toDto(eventParticipationRepository.save(Objects.requireNonNull(participation)));
     }
 
@@ -73,44 +70,59 @@ public class EventParticipationService {
     }
 
     public List<EventParticipationDto> getParticipationsByEvent(Long eventId) {
-        return eventParticipationRepository.findByEventId(eventId)
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<EventParticipation> participations = eventParticipationRepository.findByEventId(eventId);
+        List<EventParticipationDto> result = new ArrayList<>();
+        for (EventParticipation p : participations) {
+            result.add(toDto(p));
+        }
+        return result;
     }
 
     public List<EventParticipationDto> getParticipationsByEventAndCategory(Long eventId, Long categoryId) {
-        return eventParticipationRepository.findByEventIdAndCategoryId(eventId, categoryId)
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<EventParticipation> participations = eventParticipationRepository.findByEventIdAndCategoryId(eventId, categoryId);
+        List<EventParticipationDto> result = new ArrayList<>();
+        for (EventParticipation p : participations) {
+            result.add(toDto(p));
+        }
+        return result;
     }
 
     public List<EventParticipationDto> getCompetitorsByEventAndCategory(Long eventId, Long categoryId) {
-        return eventParticipationRepository.findByEventIdAndCategoryIdAndRole(eventId, categoryId, ParticipationRole.COMPETITOR)
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<EventParticipation> participations = eventParticipationRepository
+                .findByEventIdAndCategoryIdAndRole(eventId, categoryId, ParticipationRole.COMPETITOR);
+        List<EventParticipationDto> result = new ArrayList<>();
+        for (EventParticipation p : participations) {
+            result.add(toDto(p));
+        }
+        return result;
     }
 
     public List<EventParticipationDto> getVotersByEventAndCategory(Long eventId, Long categoryId) {
-        return eventParticipationRepository.findByEventIdAndCategoryIdAndRole(eventId, categoryId, ParticipationRole.VOTER)
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<EventParticipation> participations = eventParticipationRepository
+                .findByEventIdAndCategoryIdAndRole(eventId, categoryId, ParticipationRole.VOTER);
+        List<EventParticipationDto> result = new ArrayList<>();
+        for (EventParticipation p : participations) {
+            result.add(toDto(p));
+        }
+        return result;
     }
 
     public List<EventParticipationDto> getParticipationsByUser(Long userId) {
-        return eventParticipationRepository.findByUserId(userId)
-                .stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<EventParticipation> participations = eventParticipationRepository.findByUserId(userId);
+        List<EventParticipationDto> result = new ArrayList<>();
+        for (EventParticipation p : participations) {
+            result.add(toDto(p));
+        }
+        return result;
     }
 
     public void removeParticipation(Long eventId, Long userId, Long categoryId) {
-        if (eventId == null || userId == null || categoryId == null) throw new RuntimeException("IDs are required for removal");
+        if (eventId == null || userId == null || categoryId == null) {
+            throw new RuntimeException("IDs are required for removal");
+        }
         EventParticipation participation = eventParticipationRepository
-                .findByEventIdAndUserIdAndCategoryId(Objects.requireNonNull(eventId), Objects.requireNonNull(userId), Objects.requireNonNull(categoryId))
+                .findByEventIdAndUserIdAndCategoryId(
+                        Objects.requireNonNull(eventId), Objects.requireNonNull(userId), Objects.requireNonNull(categoryId))
                 .orElseThrow(() -> new RuntimeException("Participation not found"));
         eventParticipationRepository.delete(Objects.requireNonNull(participation));
     }
@@ -125,7 +137,6 @@ public class EventParticipationService {
         return registerNew(eventId, name, email, categoryId, new VoterCreator());
     }
 
-
     private EventParticipationDto registerNew(Long eventId, String name, String email,
                                               Long categoryId, ParticipantCreator creator) {
         validateNewParticipant(name, email);
@@ -138,7 +149,6 @@ public class EventParticipationService {
         return registerParticipation(eventId, user.getId(), categoryId, creator.getRole());
     }
 
-    //Validamos que el nombre sea no nulo ni vacío, y que el email tenga formato válido
     private void validateNewParticipant(String name, String email) {
         if (name == null || name.isBlank()) {
             throw new RuntimeException("Name is required");

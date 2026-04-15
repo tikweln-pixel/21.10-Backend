@@ -7,20 +7,11 @@ import com.votify.service.factory.evaluacion.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-/**
- * Client del patrón Factory Method (GoF) — ADR-006.
- *
- * Usa un Map&lt;TipoEvaluacion, EvaluacionCreator&gt; para seleccionar el Creator
- * concreto sin if/else. Al añadir un nuevo tipo de evaluación, solo hay que:
- * 1) Crear el ConcreteProduct (entidad)
- * 2) Crear el ConcreteCreator
- * 3) Añadir una entrada al Map
- */
 @SuppressWarnings("null")
 @Service
 public class EvaluacionService {
@@ -44,8 +35,6 @@ public class EvaluacionService {
         this.categoryRepository = categoryRepository;
         this.criterionRepository = criterionRepository;
 
-        // Registro de creators — el único punto donde se enumeran los tipos.
-        // Añadir un tipo nuevo = 1 línea aquí + 2 clases nuevas (Product + Creator).
         this.creators = Map.of(
                 TipoEvaluacion.NUMERICA,    new EvaluacionNumericaCreator(),
                 TipoEvaluacion.CHECKLIST,   new EvaluacionChecklistCreator(),
@@ -56,12 +45,13 @@ public class EvaluacionService {
         );
     }
 
-    // CRUD
-
     public List<EvaluacionDto> findAll() {
-        return evaluacionRepository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Evaluacion> evaluaciones = evaluacionRepository.findAll();
+        List<EvaluacionDto> result = new ArrayList<>();
+        for (Evaluacion evaluacion : evaluaciones) {
+            result.add(toDto(evaluacion));
+        }
+        return result;
     }
 
     public EvaluacionDto findById(Long id) {
@@ -72,7 +62,6 @@ public class EvaluacionService {
 
     @Transactional
     public EvaluacionDto create(EvaluacionDto dto) {
-        // 1. Parsear tipo y obtener creator (sin if/else)
         TipoEvaluacion tipo;
         try {
             tipo = TipoEvaluacion.valueOf(dto.getTipo());
@@ -85,10 +74,8 @@ public class EvaluacionService {
             throw new RuntimeException("No hay creator registrado para el tipo: " + tipo);
         }
 
-        // 2. Factory Method — crea la instancia correcta con validación
         Evaluacion evaluacion = creator.createAndValidate(dto);
 
-        // 3. Resolver relaciones vía repositorios
         User evaluador = userRepository.findById(dto.getEvaluadorId())
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + dto.getEvaluadorId()));
         evaluacion.setEvaluador(evaluador);
@@ -108,8 +95,6 @@ public class EvaluacionService {
         }
 
         evaluacion.setCreatedAt(new Date());
-
-        // 4. Persistir y devolver con score calculado
         return toDto(evaluacionRepository.save(evaluacion));
     }
 
@@ -159,27 +144,32 @@ public class EvaluacionService {
         evaluacionRepository.deleteById(id);
     }
 
-    // Queries
-
     public List<EvaluacionDto> findByCategory(Long categoryId) {
-        return evaluacionRepository.findByCategoryId(categoryId).stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Evaluacion> evaluaciones = evaluacionRepository.findByCategoryId(categoryId);
+        List<EvaluacionDto> result = new ArrayList<>();
+        for (Evaluacion evaluacion : evaluaciones) {
+            result.add(toDto(evaluacion));
+        }
+        return result;
     }
 
     public List<EvaluacionDto> findByCompetitor(Long competitorId) {
-        return evaluacionRepository.findByCompetitorId(competitorId).stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Evaluacion> evaluaciones = evaluacionRepository.findByCompetitorId(competitorId);
+        List<EvaluacionDto> result = new ArrayList<>();
+        for (Evaluacion evaluacion : evaluaciones) {
+            result.add(toDto(evaluacion));
+        }
+        return result;
     }
 
     public List<EvaluacionDto> findByCategoryAndCompetitor(Long categoryId, Long competitorId) {
-        return evaluacionRepository.findByCategoryIdAndCompetitorId(categoryId, competitorId).stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Evaluacion> evaluaciones = evaluacionRepository.findByCategoryIdAndCompetitorId(categoryId, competitorId);
+        List<EvaluacionDto> result = new ArrayList<>();
+        for (Evaluacion evaluacion : evaluaciones) {
+            result.add(toDto(evaluacion));
+        }
+        return result;
     }
-
-    // Helper
 
     private EvaluacionDto toDto(Evaluacion evaluacion) {
         Long evaluadorId = evaluacion.getEvaluador() != null ? evaluacion.getEvaluador().getId() : null;
@@ -187,7 +177,6 @@ public class EvaluacionService {
         Long categoryId = evaluacion.getCategory() != null ? evaluacion.getCategory().getId() : null;
         Long criterionId = evaluacion.getCriterion() != null ? evaluacion.getCriterion().getId() : null;
 
-        // Obtener el tipo desde el discriminator JPA
         String tipo = evaluacion.getClass().getAnnotation(jakarta.persistence.DiscriminatorValue.class) != null
                 ? evaluacion.getClass().getAnnotation(jakarta.persistence.DiscriminatorValue.class).value()
                 : "UNKNOWN";

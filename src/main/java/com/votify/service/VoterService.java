@@ -5,9 +5,9 @@ import com.votify.entity.Voter;
 import com.votify.persistence.VoterRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Service
 public class VoterService {
@@ -19,9 +19,12 @@ public class VoterService {
     }
 
     public List<VoterDto> findAll() {
-        return voterRepository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Voter> voters = voterRepository.findAll();
+        List<VoterDto> result = new ArrayList<>();
+        for (Voter voter : voters) {
+            result.add(toDto(voter));
+        }
+        return result;
     }
 
     public VoterDto findById(Long id) {

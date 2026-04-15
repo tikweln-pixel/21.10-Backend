@@ -5,10 +5,9 @@ import com.votify.entity.Competitor;
 import com.votify.persistence.CompetitorRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
-
 
 @Service
 public class CompetitorService {
@@ -20,9 +19,12 @@ public class CompetitorService {
     }
 
     public List<CompetitorDto> findAll() {
-        return competitorRepository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Competitor> competitors = competitorRepository.findAll();
+        List<CompetitorDto> result = new ArrayList<>();
+        for (Competitor competitor : competitors) {
+            result.add(toDto(competitor));
+        }
+        return result;
     }
 
     public CompetitorDto findById(Long id) {

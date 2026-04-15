@@ -5,9 +5,9 @@ import com.votify.entity.User;
 import com.votify.persistence.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -19,9 +19,12 @@ public class UserService {
     }
 
     public List<UserDto> findAll() {
-        return userRepository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<User> users = userRepository.findAll();
+        List<UserDto> result = new ArrayList<>();
+        for (User user : users) {
+            result.add(toDto(user));
+        }
+        return result;
     }
 
     public UserDto findById(Long id) {

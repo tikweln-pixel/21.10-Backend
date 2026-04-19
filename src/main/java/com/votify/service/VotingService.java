@@ -59,11 +59,24 @@ public class VotingService {
         Competitor competitor = competitorRepository.findById(Objects.requireNonNull(dto.getCompetitorId()))
                 .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
 
+        if (voter.getId().equals(competitor.getId())) {
+            throw new RuntimeException("No puedes votar tu propio proyecto.");
+        }
+
         if (dto.getCriterionId() == null) throw new RuntimeException("Criterion ID cannot be null");
         Criterion criterion = criterionRepository.findById(Objects.requireNonNull(dto.getCriterionId()))
                 .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
 
         Long categoryId = dto.getCategoryId();
+        Category category = null;
+        if (categoryId != null) {
+            category = categoryRepository.findById(Objects.requireNonNull(categoryId))
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+            if (!isPeriodActive(category)) {
+                throw new RuntimeException("El periodo de votación no está activo para la categoría '" + category.getName() + "'.");
+            }
+        }
+
         java.util.Optional<Voting> existingOpt = votingRepository
                 .findExistingVote(voter.getId(), competitor.getId(), criterion.getId(), categoryId);
 
@@ -78,22 +91,28 @@ public class VotingService {
                 existing.setScore(current + add);
             }
             if (categoryId != null && existing.getCategory() == null) {
-                Category category = categoryRepository.findById(Objects.requireNonNull(categoryId))
-                        .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
                 existing.setCategory(category);
             }
+            existing.setComentario(normalizeComment(dto.getComentario()));
             evaluateVote(existing);
             return toDto(votingRepository.save(Objects.requireNonNull(existing)));
         }
 
         Voting voting = new Voting(voter, competitor, criterion, dto.getScore());
-        if (categoryId != null) {
-            Category category = categoryRepository.findById(Objects.requireNonNull(categoryId))
-                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+        if (category != null) {
             voting.setCategory(category);
         }
+        voting.setComentario(normalizeComment(dto.getComentario()));
         evaluateVote(voting);
         return toDto(votingRepository.save(Objects.requireNonNull(voting)));
+    }
+
+    private boolean isPeriodActive(Category cat) {
+        if (cat == null) return true;
+        long now = System.currentTimeMillis();
+        if (cat.getTimeInitial() != null && cat.getTimeInitial().getTime() > now) return false;
+        if (cat.getTimeFinal() != null && cat.getTimeFinal().getTime() < now) return false;
+        return true;
     }
 
     private void evaluateVote(Voting voting) {
@@ -191,6 +210,9 @@ public class VotingService {
         if (dto.getManuallyModified() != null) {
             voting.setManuallyModified(dto.getManuallyModified());
         }
+        if (dto.getComentario() != null) {
+            voting.setComentario(normalizeComment(dto.getComentario()));
+        }
         return toDto(votingRepository.save(Objects.requireNonNull(voting)));
     }
 
@@ -235,7 +257,7 @@ public class VotingService {
         Long voterId      = voting.getVoter()       != null ? voting.getVoter().getId()      : null;
         Long competitorId = voting.getCompetitor()  != null ? voting.getCompetitor().getId() : null;
         Long criterionId  = voting.getCriterion()   != null ? voting.getCriterion().getId()  : null;
-        return new VotingDto(
+        VotingDto dto = new VotingDto(
                 voting.getId(),
                 voterId,
                 competitorId,
@@ -244,5 +266,20 @@ public class VotingService {
                 categoryId,
                 voting.getManuallyModified()
         );
+        dto.setComentario(voting.getComentario());
+        return dto;
+    }
+
+    private static final int COMENTARIO_MAX_LEN = 500;
+
+    private String normalizeComment(String raw) {
+        if (raw == null) return null;
+        String trimmed = raw.trim();
+        if (trimmed.isEmpty()) return null;
+        if (trimmed.length() > COMENTARIO_MAX_LEN) {
+            throw new RuntimeException("El comentario excede el máximo de "
+                    + COMENTARIO_MAX_LEN + " caracteres.");
+        }
+        return trimmed;
     }
 }

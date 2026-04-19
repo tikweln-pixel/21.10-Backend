@@ -144,4 +144,21 @@ class VotingRepositoryTest {
         long count = votingRepository.count();
         assertThat(count).isGreaterThanOrEqualTo(2);
     }
+
+    // ── Comentarios por criterio (UT Votar con Comentarios — Sprint 1) ────
+
+    @Test
+    @DisplayName("save → persiste el comentario junto al voto y lo devuelve al releer")
+    void saveAndLoad_withComentario_persists() {
+        Voting v = new Voting(voter, competitor2, criterion1, 15);
+        v.setComentario("La innovación es el punto más fuerte del proyecto");
+        Voting saved = votingRepository.save(v);
+        em.flush(); em.clear();
+
+        Long sId = saved.getId();
+        Optional<Voting> reloaded = votingRepository.findById(Objects.requireNonNull(sId));
+        assertThat(reloaded).isPresent();
+        assertThat(reloaded.get().getComentario())
+                .isEqualTo("La innovación es el punto más fuerte del proyecto");
+    }
 }

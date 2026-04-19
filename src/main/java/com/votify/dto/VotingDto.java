@@ -15,6 +15,7 @@ public class VotingDto {
      */
     private Long categoryId;
     private Boolean manuallyModified;
+    private String comentario;
 
     public VotingDto() {
     }
@@ -100,5 +101,13 @@ public class VotingDto {
 
     public void setManuallyModified(Boolean manuallyModified) {
         this.manuallyModified = manuallyModified;
+    }
+
+    public String getComentario() {
+        return comentario;
+    }
+
+    public void setComentario(String comentario) {
+        this.comentario = comentario;
     }
 }

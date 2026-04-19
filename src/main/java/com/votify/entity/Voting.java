@@ -36,6 +36,9 @@ public class Voting {
     @Column(name = "manually_modified")
     private Boolean manuallyModified;
 
+    @Column(name = "comentario", columnDefinition = "TEXT")
+    private String comentario;
+
     public Voting() {
     }
 
@@ -100,5 +103,13 @@ public class Voting {
 
     public void setManuallyModified(Boolean manuallyModified) {
         this.manuallyModified = manuallyModified;
+    }
+
+    public String getComentario() {
+        return comentario;
+    }
+
+    public void setComentario(String comentario) {
+        this.comentario = comentario;
     }
 }

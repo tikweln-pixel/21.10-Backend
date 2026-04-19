@@ -99,7 +99,7 @@ public class ProjectService {
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
         Competitor competitor = competitorRepository.findByEmail(user.getEmail())
-                .orElseGet(() -> competitorRepository.save(new Competitor(user.getName(), user.getEmail())));
+                .orElseGet(() -> competitorRepository.save(new Competitor(user.getName(), user.getEmail(), null)));
 
         project.getCompetitors().add(competitor);
         Project saved = projectRepository.save(project);

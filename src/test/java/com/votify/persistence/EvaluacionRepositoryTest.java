@@ -31,10 +31,10 @@ class EvaluacionRepositoryTest {
         event = new Event("Hackathon Test");
         em.persist(event);
 
-        evaluador = new User("Admin", "admin@test.com");
+        evaluador = new User("Admin", "admin@test.com", null);
         em.persist(evaluador);
 
-        competitor = new Competitor("Carlos", "carlos@test.com");
+        competitor = new Competitor("Carlos", "carlos@test.com", null);
         em.persist(competitor);
 
         category = new Category("Proyectos", event);

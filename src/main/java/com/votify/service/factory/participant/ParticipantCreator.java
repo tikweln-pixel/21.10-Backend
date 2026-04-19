@@ -22,7 +22,10 @@ public abstract class ParticipantCreator {
 
     // Operación común que usa el factory method internamente
     public User register(String name, String email, UserRepository userRepository) {
-        return userRepository.findByEmail(email)
-                .orElseGet(() -> userRepository.save(createUser(name, email)));
+        User existing = userRepository.findByEmail(email);
+        if (existing != null) {
+            return existing;
+        }
+        return userRepository.save(createUser(name, email));
     }
 }

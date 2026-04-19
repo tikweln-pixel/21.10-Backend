@@ -41,7 +41,7 @@ class EventParticipationServiceTest {
         event = new Event("Hackathon 2026");
         event.setId(1L);
 
-        user = new User("Carlos", "carlos@test.com");
+        user = new User("Carlos", "carlos@test.com", null);
         user.setId(2L);
 
         category = new Category("Jurado", event);

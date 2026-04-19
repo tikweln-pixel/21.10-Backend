@@ -35,7 +35,7 @@ public class CompetitorService {
     }
 
     public CompetitorDto create(CompetitorDto dto) {
-        Competitor competitor = new Competitor(dto.getName(), dto.getEmail());
+        Competitor competitor = new Competitor(dto.getName(), dto.getEmail(), null);
         return toDto(competitorRepository.save(Objects.requireNonNull(competitor)));
     }
 

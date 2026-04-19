@@ -31,13 +31,13 @@ class VotingRepositoryTest {
     @BeforeEach
     void setUp() {
         // Users base → Participants → Voter / Competitor (herencia JOINED)
-        voter = new Voter("Jurado Test", "jurado_repo@test.com");
+        voter = new Voter("Jurado Test", "jurado_repo@test.com", null);
         em.persist(voter);
 
-        competitor1 = new Competitor("Carlos Test", "carlos_repo@test.com");
+        competitor1 = new Competitor("Carlos Test", "carlos_repo@test.com", null);
         em.persist(competitor1);
 
-        competitor2 = new Competitor("Ana Test", "ana_repo@test.com");
+        competitor2 = new Competitor("Ana Test", "ana_repo@test.com", null);
         em.persist(competitor2);
 
         criterion1 = new Criterion("Innovación");

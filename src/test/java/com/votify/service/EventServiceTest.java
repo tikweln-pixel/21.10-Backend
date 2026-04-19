@@ -122,7 +122,7 @@ class EventServiceTest {
     @Test
     @DisplayName("createForOrganizer → crea evento asociado al organizador")
     void createForOrganizer_createsEventWithOrganizer() {
-        User organizer = new User("Org", "org@test.com");
+        User organizer = new User("Org", "org@test.com", null);
         organizer.setId(10L);
 
         Event saved = new Event("Nuevo Evento");

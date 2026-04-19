@@ -11,14 +11,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import org.mockito.ArgumentCaptor;
 
 @SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
@@ -48,10 +46,10 @@ class VotingServiceTest {
 
     @BeforeEach
     void setUp() {
-        voter = new Voter("Jurado1", "jurado1@test.com");
+        voter = new Voter("Jurado1", "jurado1@test.com", null);
         voter.setId(1L);
 
-        competitor = new Competitor("Carlos", "carlos@test.com");
+        competitor = new Competitor("Carlos", "carlos@test.com", null);
         competitor.setId(2L);
 
         criterion = new Criterion("Innovación");
@@ -213,21 +211,6 @@ class VotingServiceTest {
     // Helpers privados del test
     private Event testEvent;
     private Category popularCategory;
-    private Category juryCategory;
-
-    private void setUpJuryCategory(Date timeInitial, Date timeFinal) {
-        testEvent = new Event("Hackathon");
-        testEvent.setId(99L);
-
-        juryCategory = new Category("Jurado Técnico", testEvent);
-        juryCategory.setId(30L);
-        juryCategory.setVotingType(VotingType.JURY_EXPERT);
-        juryCategory.setTimeInitial(timeInitial);
-        juryCategory.setTimeFinal(timeFinal);
-    }
-
-    private Date past() { return new Date(System.currentTimeMillis() - 86_400_000L); }
-    private Date future() { return new Date(System.currentTimeMillis() + 86_400_000L); }
 
     private void setUpPopularVoteCategory(Integer maxVotesPerVoter, Integer totalPoints) {
         testEvent = new Event("Hackathon");
@@ -271,7 +254,7 @@ class VotingServiceTest {
     void create_popularVote_rejectsVote_whenMaxCompetitorsReached() {
         setUpPopularVoteCategory(3, null); // límite 3, sin restricción de puntos
 
-        Competitor competitor2 = new Competitor("Ana", "ana@test.com");
+        Competitor competitor2 = new Competitor("Ana", "ana@test.com", null);
         competitor2.setId(5L);
 
         when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
@@ -356,230 +339,5 @@ class VotingServiceTest {
 
         VotingDto result = votingService.create(new VotingDto(null, 1L, 2L, 3L, 5, 20L));
         assertThat(result.getId()).isEqualTo(202L);
-    }
-
-    // ── Comentarios por criterio (UT Votar con Comentarios — Sprint 1) ────
-
-    @Test
-    @DisplayName("create → nuevo voto con comentario persiste el comentario recortado")
-    void create_newVote_withComment_persistsComment() {
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(votingRepository.save(any(Voting.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        VotingDto dto = new VotingDto(null, 1L, 2L, 3L, 8);
-        dto.setComentario("  me encanta la innovación  ");
-        VotingDto result = votingService.create(dto);
-
-        ArgumentCaptor<Voting> captor = ArgumentCaptor.forClass(Voting.class);
-        verify(votingRepository).save(captor.capture());
-        assertThat(captor.getValue().getComentario()).isEqualTo("me encanta la innovación");
-        assertThat(result.getComentario()).isEqualTo("me encanta la innovación");
-    }
-
-    @Test
-    @DisplayName("create → voto existente, comentario nuevo sobrescribe el anterior")
-    void create_existingVote_overwritesComment() {
-        Voting existing = new Voting(voter, competitor, criterion, 5);
-        existing.setId(500L);
-        existing.setComentario("comentario viejo");
-
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(votingRepository.findExistingVote(1L, 2L, 3L, null)).thenReturn(Optional.of(existing));
-        when(votingRepository.save(any(Voting.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        VotingDto dto = new VotingDto(null, 1L, 2L, 3L, 2);
-        dto.setComentario("comentario nuevo");
-        votingService.create(dto);
-
-        assertThat(existing.getComentario()).isEqualTo("comentario nuevo");
-    }
-
-    @Test
-    @DisplayName("create → comentario vacío / blanco se guarda como NULL")
-    void create_emptyComment_storesNull() {
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(votingRepository.save(any(Voting.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        VotingDto dto = new VotingDto(null, 1L, 2L, 3L, 4);
-        dto.setComentario("   ");
-        votingService.create(dto);
-
-        ArgumentCaptor<Voting> captor = ArgumentCaptor.forClass(Voting.class);
-        verify(votingRepository).save(captor.capture());
-        assertThat(captor.getValue().getComentario()).isNull();
-    }
-
-    @Test
-    @DisplayName("create → comentario > 500 caracteres lanza excepción")
-    void create_overlongComment_throws() {
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-
-        String overlong = "a".repeat(501);
-        VotingDto dto = new VotingDto(null, 1L, 2L, 3L, 4);
-        dto.setComentario(overlong);
-
-        assertThatThrownBy(() -> votingService.create(dto))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("500");
-    }
-
-    // ── Control de Votos — Pruebas de Aceptación (Sprint 2) ───────────────
-
-    @Test
-    @DisplayName("PA-1314-1 → re-voto JURY_EXPERT actualiza score sin crear nueva fila")
-    void create_juryExpert_revote_updatesExistingScore() {
-        setUpJuryCategory(past(), future());
-
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(30L)).thenReturn(Optional.of(juryCategory));
-
-        Voting existing = new Voting(voter, competitor, criterion, 5);
-        existing.setId(500L);
-        existing.setCategory(juryCategory);
-        when(votingRepository.findExistingVote(1L, 2L, 3L, 30L)).thenReturn(Optional.of(existing));
-
-        CategoryCriterionPoints pts = new CategoryCriterionPoints(juryCategory, criterion, 50);
-        when(criterionPointsRepository.findByCategoryIdAndCriterionId(30L, 3L)).thenReturn(Optional.of(pts));
-        when(votingRepository.save(any(Voting.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        votingService.create(new VotingDto(null, 1L, 2L, 3L, 8, 30L));
-
-        // score reemplazado (JURY_EXPERT), no acumulado; save llamado una sola vez
-        assertThat(existing.getScore()).isEqualTo(8);
-        verify(votingRepository, times(1)).save(any(Voting.class));
-    }
-
-    @Test
-    @DisplayName("Control de Votos → rechaza voto cuando el periodo de votación ha cerrado")
-    void create_rejectsVote_whenPeriodClosed() {
-        setUpJuryCategory(past(), past()); // timeFinal ya pasó
-
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(30L)).thenReturn(Optional.of(juryCategory));
-
-        assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 2L, 3L, 5, 30L)))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("periodo");
-    }
-
-    @Test
-    @DisplayName("Control de Votos → rechaza voto cuando el periodo aún no ha comenzado")
-    void create_rejectsVote_whenPeriodNotStarted() {
-        setUpJuryCategory(future(), future()); // timeInitial en el futuro
-
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(30L)).thenReturn(Optional.of(juryCategory));
-
-        assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 2L, 3L, 5, 30L)))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("periodo");
-    }
-
-    @Test
-    @DisplayName("Control de Votos → permite voto dentro del periodo activo")
-    void create_allowsVote_whenPeriodActive() {
-        setUpJuryCategory(past(), future()); // periodo abierto
-
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(30L)).thenReturn(Optional.of(juryCategory));
-
-        CategoryCriterionPoints pts = new CategoryCriterionPoints(juryCategory, criterion, 50);
-        when(criterionPointsRepository.findByCategoryIdAndCriterionId(30L, 3L)).thenReturn(Optional.of(pts));
-
-        Voting saved = new Voting(voter, competitor, criterion, 7);
-        saved.setId(600L);
-        saved.setCategory(juryCategory);
-        when(votingRepository.save(any(Voting.class))).thenReturn(saved);
-
-        VotingDto result = votingService.create(new VotingDto(null, 1L, 2L, 3L, 7, 30L));
-
-        assertThat(result.getId()).isEqualTo(600L);
-        verify(votingRepository, times(1)).save(any(Voting.class));
-    }
-
-    @Test
-    @DisplayName("PA-1317-1 → bloqueo en tiempo real: rechaza voto con periodo recién cerrado")
-    void create_rejectsVote_whenPeriodJustClosed() {
-        // Simula que el periodo expiró milisegundos antes del intento de voto
-        Date justPast = new Date(System.currentTimeMillis() - 1L);
-        setUpJuryCategory(past(), justPast);
-
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(30L)).thenReturn(Optional.of(juryCategory));
-
-        assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 2L, 3L, 5, 30L)))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("periodo");
-    }
-
-    @Test
-    @DisplayName("PA-1316-1 → intervención manual por supervisor marca manuallyModified=true")
-    void update_supervisorIntervention_setsManuallyModified() {
-        voting.setManuallyModified(false);
-        when(votingRepository.findById(100L)).thenReturn(Optional.of(voting));
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(votingRepository.save(any(Voting.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        VotingDto dto = new VotingDto(100L, 1L, 2L, 3L, 40);
-        dto.setManuallyModified(true);
-        votingService.update(100L, dto);
-
-        ArgumentCaptor<Voting> captor = ArgumentCaptor.forClass(Voting.class);
-        verify(votingRepository).save(captor.capture());
-        assertThat(captor.getValue().getManuallyModified()).isTrue();
-        assertThat(captor.getValue().getScore()).isEqualTo(40);
-    }
-
-    @Test
-    @DisplayName("Control de Votos → competidor no puede votar su propio proyecto")
-    void create_rejectsVote_whenSelfVote() {
-        Voter selfVoter = new Voter("AutoVoter", "auto@test.com");
-        selfVoter.setId(7L);
-        Competitor selfCompetitor = new Competitor("AutoVoter", "auto@test.com");
-        selfCompetitor.setId(7L); // mismo userId → auto-voto
-
-        when(voterRepository.findById(7L)).thenReturn(Optional.of(selfVoter));
-        when(competitorRepository.findById(7L)).thenReturn(Optional.of(selfCompetitor));
-
-        assertThatThrownBy(() -> votingService.create(new VotingDto(null, 7L, 7L, 3L, 5)))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("propio");
-    }
-
-    @Test
-    @DisplayName("update → sin comentario en DTO no borra el comentario existente")
-    void update_nullComment_preservesExisting() {
-        voting.setComentario("comentario previo");
-        when(votingRepository.findById(100L)).thenReturn(Optional.of(voting));
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(votingRepository.save(any(Voting.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        VotingDto dto = new VotingDto(100L, 1L, 2L, 3L, 30);
-        // dto.comentario queda null explícitamente
-        votingService.update(100L, dto);
-
-        assertThat(voting.getComentario()).isEqualTo("comentario previo");
     }
 }

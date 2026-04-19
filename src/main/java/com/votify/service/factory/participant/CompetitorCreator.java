@@ -13,7 +13,7 @@ public class CompetitorCreator extends ParticipantCreator {
 
     @Override
     public User createUser(String name, String email) {
-        return new Competitor(name, email);   // decide el tipo concreto
+        return new Competitor(name, email, null);   // decide el tipo concreto
     }
 
     @Override

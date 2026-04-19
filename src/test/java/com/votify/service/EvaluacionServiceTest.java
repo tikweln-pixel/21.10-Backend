@@ -43,10 +43,10 @@ class EvaluacionServiceTest {
         event = new Event("Hackathon 2026");
         event.setId(1L);
 
-        evaluador = new User("Admin", "admin@test.com");
+        evaluador = new User("Admin", "admin@test.com", null);
         evaluador.setId(10L);
 
-        competitor = new Competitor("Carlos", "carlos@test.com");
+        competitor = new Competitor("Carlos", "carlos@test.com", null);
         competitor.setId(20L);
 
         category = new Category("Proyectos Sociales", event);

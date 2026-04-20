@@ -37,10 +37,10 @@ class EventParticipationRepositoryTest {
         catPopular = new Category("Popular", event);
         em.persist(catPopular);
 
-        userComp = new User("Comp User", "comp_part@test.com");
+        userComp = new User("Comp User", "comp_part@test.com", null);
         em.persist(userComp);
 
-        userVoter = new User("Voter User", "voter_part@test.com");
+        userVoter = new User("Voter User", "voter_part@test.com", null);
         em.persist(userVoter);
 
         // Competitor in Jury category

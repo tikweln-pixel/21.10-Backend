@@ -51,10 +51,10 @@ class ProjectServiceTest {
         project = new Project("EcoTrack", "App de carbono", event);
         project.setId(10L);
 
-        voter = new Voter("Jurado1", "jurado@test.com");
+        voter = new Voter("Jurado1", "jurado@test.com", null);
         voter.setId(5L);
 
-        competitor = new Competitor("Carlos", "carlos@test.com");
+        competitor = new Competitor("Carlos", "carlos@test.com", null);
         competitor.setId(2L);
     }
 
@@ -147,7 +147,7 @@ class ProjectServiceTest {
     @Test
     @DisplayName("addCompetitor → asocia competidor al proyecto")
     void addCompetitor_linksCompetitorToProject() {
-        User user = new User("Carlos", "carlos@test.com");
+        User user = new User("Carlos", "carlos@test.com", null);
         user.setId(2L);
 
         when(projectRepository.findById(10L)).thenReturn(Optional.of(project));

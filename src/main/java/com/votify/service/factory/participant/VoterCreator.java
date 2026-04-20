@@ -13,7 +13,7 @@ public class VoterCreator extends ParticipantCreator {
 
     @Override
     public User createUser(String name, String email) {
-        return new Voter(name, email);         // decide el tipo concreto
+        return new Voter(name, email, null);         // decide el tipo concreto
     }
 
     @Override

@@ -35,7 +35,7 @@ public class VoterService {
     }
 
     public VoterDto create(VoterDto dto) {
-        Voter voter = new Voter(dto.getName(), dto.getEmail());
+        Voter voter = new Voter(dto.getName(), dto.getEmail(), null);
         return toDto(voterRepository.save(Objects.requireNonNull(voter)));
     }
 

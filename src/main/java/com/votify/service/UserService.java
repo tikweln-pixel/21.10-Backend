@@ -34,9 +34,38 @@ public class UserService {
         return toDto(user);
     }
 
+    //Antigua implementacion de creacion de usuarios (cuando no teniamos implementado el login/registrer)
     public UserDto create(UserDto dto) {
-        User user = new User(dto.getName(), dto.getEmail());
+        User user = new User(dto.getName(), dto.getEmail(), dto.getPassword());
         return toDto(userRepository.save(Objects.requireNonNull(user)));
+    }
+
+    //Metodo que permite crear/registrar un usuario nuevo
+    public UserDto register (String name, String email, String password) {
+        User existingUser = userRepository.findByEmail(email);
+        //Comprobamos que el email no este registrado
+        if (existingUser != null) {
+            throw new RuntimeException("El email ya está registrado");
+        }
+
+        User newUser = new User(name, email, password);
+        return toDto(userRepository.save(newUser));
+
+    }
+
+    //Metodo que hace la lógica de logueo de un usuario
+    public UserDto login (String email, String password) {
+        User user = userRepository.findByEmail(email);
+
+        if (user == null) {
+            throw new RuntimeException("Usuario no encontrado con el email: " + email);
+        }
+
+        if (!user.getPassword().equals(password)) {
+            throw new RuntimeException("Contraseña incorrecta");
+        }
+
+        return toDto(user);
     }
 
     public UserDto update(Long id, UserDto dto) {

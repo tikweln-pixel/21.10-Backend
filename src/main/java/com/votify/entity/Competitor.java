@@ -10,8 +10,8 @@ public class Competitor extends User {
     public Competitor() {
     }
 
-    public Competitor(String name, String email) {
-        super(name, email);
+    public Competitor(String name, String email, String password) {
+        super(name, email, password);
     }
 
     //Permite a un usuario crear un proyecto para un evento concreto

@@ -10,7 +10,7 @@ public class Voter extends User {
     public Voter() {
     }
 
-    public Voter(String name, String email) {
-        super(name, email);
+    public Voter(String name, String email, String password) {
+        super(name, email, password);
     }
 }

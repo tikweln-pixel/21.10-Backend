@@ -14,21 +14,18 @@ import java.util.Objects;
 public class VotingService {
 
     private final VotingRepository votingRepository;
-    private final VoterRepository voterRepository;
-    private final CompetitorRepository competitorRepository;
+    private final UserRepository userRepository;
     private final CriterionRepository criterionRepository;
     private final CategoryRepository categoryRepository;
     private final CategoryCriterionPointsRepository criterionPointsRepository;
 
     public VotingService(VotingRepository votingRepository,
-                         VoterRepository voterRepository,
-                         CompetitorRepository competitorRepository,
+                         UserRepository userRepository,
                          CriterionRepository criterionRepository,
                          CategoryRepository categoryRepository,
                          CategoryCriterionPointsRepository criterionPointsRepository) {
         this.votingRepository = votingRepository;
-        this.voterRepository = voterRepository;
-        this.competitorRepository = competitorRepository;
+        this.userRepository = userRepository;
         this.criterionRepository = criterionRepository;
         this.categoryRepository = categoryRepository;
         this.criterionPointsRepository = criterionPointsRepository;
@@ -52,11 +49,11 @@ public class VotingService {
 
     public VotingDto create(VotingDto dto) {
         if (dto.getVoterId() == null) throw new RuntimeException("Voter ID cannot be null");
-        Voter voter = voterRepository.findById(Objects.requireNonNull(dto.getVoterId()))
+        User voter = userRepository.findById(Objects.requireNonNull(dto.getVoterId()))
                 .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
 
         if (dto.getCompetitorId() == null) throw new RuntimeException("Competitor ID cannot be null");
-        Competitor competitor = competitorRepository.findById(Objects.requireNonNull(dto.getCompetitorId()))
+        User competitor = userRepository.findById(Objects.requireNonNull(dto.getCompetitorId()))
                 .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
 
         if (voter.getId().equals(competitor.getId())) {
@@ -188,13 +185,13 @@ public class VotingService {
 
         if (dto.getVoterId() != null && dto.getVoterId() > 0) {
             Long vId = dto.getVoterId();
-            Voter voter = voterRepository.findById(Objects.requireNonNull(vId))
+            User voter = userRepository.findById(Objects.requireNonNull(vId))
                     .orElseThrow(() -> new RuntimeException("Voter not found with id: " + vId));
             voting.setVoter(voter);
         }
         if (dto.getCompetitorId() != null && dto.getCompetitorId() > 0) {
             Long cId = dto.getCompetitorId();
-            Competitor competitor = competitorRepository.findById(Objects.requireNonNull(cId))
+            User competitor = userRepository.findById(Objects.requireNonNull(cId))
                     .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + cId));
             voting.setCompetitor(competitor);
         }

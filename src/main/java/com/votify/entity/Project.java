@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
 
+
 @Entity
 @Table(name = "projects")
 public class Project {
@@ -33,7 +34,7 @@ public class Project {
             joinColumns = @JoinColumn(name = "project_id"),
             inverseJoinColumns = @JoinColumn(name = "competitor_id")
     )
-    private Set<Competitor> competitors = new HashSet<>();
+    private Set<User> competitors = new HashSet<>();
 
     public Project() {
     }
@@ -84,11 +85,11 @@ public class Project {
         this.category = category;
     }
 
-    public Set<Competitor> getCompetitors() {
+    public Set<User> getCompetitors() {
         return competitors;
     }
 
-    public void setCompetitors(Set<Competitor> competitors) {
+    public void setCompetitors(Set<User> competitors) {
         this.competitors = competitors;
     }
 }

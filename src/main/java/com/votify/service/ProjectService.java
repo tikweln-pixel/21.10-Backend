@@ -20,8 +20,6 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
-    private final CompetitorRepository competitorRepository;
-    private final VoterRepository voterRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final EventParticipationRepository eventParticipationRepository;
@@ -31,8 +29,6 @@ public class ProjectService {
     public ProjectService(ProjectRepository projectRepository,
                           EventRepository eventRepository,
                           CategoryRepository categoryRepository,
-                          CompetitorRepository competitorRepository,
-                          VoterRepository voterRepository,
                           CommentRepository commentRepository,
                           UserRepository userRepository,
                           EventParticipationRepository eventParticipationRepository,
@@ -41,8 +37,6 @@ public class ProjectService {
         this.projectRepository = projectRepository;
         this.eventRepository = eventRepository;
         this.categoryRepository = categoryRepository;
-        this.competitorRepository = competitorRepository;
-        this.voterRepository = voterRepository;
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.eventParticipationRepository = eventParticipationRepository;
@@ -98,10 +92,7 @@ public class ProjectService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
-        Competitor competitor = competitorRepository.findByEmail(user.getEmail())
-                .orElseGet(() -> competitorRepository.save(new Competitor(user.getName(), user.getEmail(), null)));
-
-        project.getCompetitors().add(competitor);
+        project.getCompetitors().add(user);
         Project saved = projectRepository.save(project);
 
         Event event = project.getEvent();
@@ -109,10 +100,10 @@ public class ProjectService {
         if (!categories.isEmpty()) {
             Category firstCategory = categories.get(0);
             boolean alreadyRegistered = eventParticipationRepository
-                    .existsByEventIdAndUserIdAndCategoryId(event.getId(), competitor.getId(), firstCategory.getId());
+                    .existsByEventIdAndUserIdAndCategoryId(event.getId(), user.getId(), firstCategory.getId());
             if (!alreadyRegistered) {
                 eventParticipationRepository.save(
-                        new EventParticipation(event, competitor, firstCategory, ParticipationRole.COMPETITOR));
+                        new EventParticipation(event, user, firstCategory, ParticipationRole.COMPETITOR));
             }
         }
 
@@ -123,7 +114,7 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
-        Voter voter = voterRepository.findById(dto.getVoterId())
+        User voter = userRepository.findById(dto.getVoterId())
                 .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
 
         Comment comment = new Comment();
@@ -152,7 +143,7 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
         List<Long> result = new ArrayList<>();
-        for (Competitor c : project.getCompetitors()) {
+        for (User c : project.getCompetitors()) {
             result.add(c.getId());
         }
         return result;
@@ -162,8 +153,8 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
         List<CompetitorDto> result = new ArrayList<>();
-        for (Competitor c : project.getCompetitors()) {
-            result.add(new CompetitorDto(c.getId(), c.getName(), c.getEmail()));
+        for (User c : project.getCompetitors()) {
+            result.add(new CompetitorDto(c.getId(), c.getName(), c.getEmail())); // CompetitorDto kept for API compatibility
         }
         return result;
     }
@@ -173,7 +164,7 @@ public class ProjectService {
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
         List<Long> competitorIds = new ArrayList<>();
-        for (Competitor c : project.getCompetitors()) {
+        for (User c : project.getCompetitors()) {
             competitorIds.add(c.getId());
         }
 
@@ -208,7 +199,7 @@ public class ProjectService {
 
     private ProjectDto toDto(Project project) {
         List<Long> competitorIds = new ArrayList<>();
-        for (Competitor c : project.getCompetitors()) {
+        for (User c : project.getCompetitors()) {
             competitorIds.add(c.getId());
         }
 

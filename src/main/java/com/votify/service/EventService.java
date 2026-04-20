@@ -6,7 +6,6 @@ import com.votify.dto.EventParticipationDto;
 import com.votify.dto.ProjectDto;
 import com.votify.dto.UserDto;
 import com.votify.entity.Category;
-import com.votify.entity.Competitor;
 import com.votify.entity.Event;
 import com.votify.entity.Project;
 import com.votify.entity.User;
@@ -237,7 +236,7 @@ public class EventService {
         List<ProjectDto> projectDtos = new ArrayList<>();
         for (Project p : event.getProjects()) {
             List<Long> compIds = new ArrayList<>();
-            for (Competitor c : p.getCompetitors()) {
+            for (User c : p.getCompetitors()) {
                 compIds.add(c.getId());
             }
             projectDtos.add(new ProjectDto(p.getId(), p.getName(), p.getDescription(), event.getId(), compIds));

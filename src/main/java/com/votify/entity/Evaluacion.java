@@ -30,7 +30,7 @@ public abstract class Evaluacion {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "competitor_id", nullable = false)
-    private Competitor competitor;
+    private User competitor;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
@@ -63,7 +63,7 @@ public abstract class Evaluacion {
     protected Evaluacion() {
     }
 
-    protected Evaluacion(User evaluador, Competitor competitor, Category category,
+    protected Evaluacion(User evaluador, User competitor, Category category,
                          Criterion criterion, Double peso, String datos) {
         this.evaluador = evaluador;
         this.competitor = competitor;
@@ -92,11 +92,11 @@ public abstract class Evaluacion {
         this.evaluador = evaluador;
     }
 
-    public Competitor getCompetitor() {
+    public User getCompetitor() {
         return competitor;
     }
 
-    public void setCompetitor(Competitor competitor) {
+    public void setCompetitor(User competitor) {
         this.competitor = competitor;
     }
 

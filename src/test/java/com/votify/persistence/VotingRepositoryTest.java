@@ -23,21 +23,20 @@ class VotingRepositoryTest {
     @Autowired TestEntityManager em;
     @Autowired VotingRepository  votingRepository;
 
-    private Voter      voter;
-    private Competitor competitor1, competitor2;
+    private User       voter;
+    private User       competitor1, competitor2;
     private Criterion  criterion1, criterion2;
     private Voting     voting1, voting2;
 
     @BeforeEach
     void setUp() {
-        // Users base → Participants → Voter / Competitor (herencia JOINED)
-        voter = new Voter("Jurado Test", "jurado_repo@test.com", null);
+        voter = new User("Jurado Test", "jurado_repo@test.com", null);
         em.persist(voter);
 
-        competitor1 = new Competitor("Carlos Test", "carlos_repo@test.com", null);
+        competitor1 = new User("Carlos Test", "carlos_repo@test.com", null);
         em.persist(competitor1);
 
-        competitor2 = new Competitor("Ana Test", "ana_repo@test.com", null);
+        competitor2 = new User("Ana Test", "ana_repo@test.com", null);
         em.persist(competitor2);
 
         criterion1 = new Criterion("Innovación");

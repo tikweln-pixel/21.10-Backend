@@ -22,7 +22,7 @@ class EvaluacionRepositoryTest {
     @Autowired private EvaluacionRepository evaluacionRepository;
 
     private User evaluador;
-    private Competitor competitor;
+    private User competitor;
     private Category category;
     private Event event;
 
@@ -34,7 +34,7 @@ class EvaluacionRepositoryTest {
         evaluador = new User("Admin", "admin@test.com", null);
         em.persist(evaluador);
 
-        competitor = new Competitor("Carlos", "carlos@test.com", null);
+        competitor = new User("Carlos", "carlos@test.com", null);
         em.persist(competitor);
 
         category = new Category("Proyectos", event);

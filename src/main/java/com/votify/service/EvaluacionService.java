@@ -18,7 +18,6 @@ public class EvaluacionService {
 
     private final EvaluacionRepository evaluacionRepository;
     private final UserRepository userRepository;
-    private final CompetitorRepository competitorRepository;
     private final CategoryRepository categoryRepository;
     private final CriterionRepository criterionRepository;
 
@@ -26,12 +25,10 @@ public class EvaluacionService {
 
     public EvaluacionService(EvaluacionRepository evaluacionRepository,
                              UserRepository userRepository,
-                             CompetitorRepository competitorRepository,
                              CategoryRepository categoryRepository,
                              CriterionRepository criterionRepository) {
         this.evaluacionRepository = evaluacionRepository;
         this.userRepository = userRepository;
-        this.competitorRepository = competitorRepository;
         this.categoryRepository = categoryRepository;
         this.criterionRepository = criterionRepository;
 
@@ -80,7 +77,7 @@ public class EvaluacionService {
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + dto.getEvaluadorId()));
         evaluacion.setEvaluador(evaluador);
 
-        Competitor competitor = competitorRepository.findById(dto.getCompetitorId())
+        User competitor = userRepository.findById(dto.getCompetitorId())
                 .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
         evaluacion.setCompetitor(competitor);
 
@@ -118,7 +115,7 @@ public class EvaluacionService {
             evaluacion.setEvaluador(evaluador);
         }
         if (dto.getCompetitorId() != null) {
-            Competitor competitor = competitorRepository.findById(dto.getCompetitorId())
+            User competitor = userRepository.findById(dto.getCompetitorId())
                     .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
             evaluacion.setCompetitor(competitor);
         }

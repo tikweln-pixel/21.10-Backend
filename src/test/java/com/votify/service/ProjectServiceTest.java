@@ -27,8 +27,6 @@ class ProjectServiceTest {
 
     @Mock private ProjectRepository                    projectRepository;
     @Mock private EventRepository                      eventRepository;
-    @Mock private CompetitorRepository                 competitorRepository;
-    @Mock private VoterRepository                      voterRepository;
     @Mock private CommentRepository                    commentRepository;
     @Mock private UserRepository                       userRepository;
     @Mock private EventParticipationRepository         eventParticipationRepository;
@@ -40,8 +38,8 @@ class ProjectServiceTest {
 
     private Event      event;
     private Project    project;
-    private Voter      voter;
-    private Competitor competitor;
+    private User       voter;
+    private User       competitor;
 
     @BeforeEach
     void setUp() {
@@ -51,10 +49,10 @@ class ProjectServiceTest {
         project = new Project("EcoTrack", "App de carbono", event);
         project.setId(10L);
 
-        voter = new Voter("Jurado1", "jurado@test.com", null);
+        voter = new User("Jurado1", "jurado@test.com", null);
         voter.setId(5L);
 
-        competitor = new Competitor("Carlos", "carlos@test.com", null);
+        competitor = new User("Carlos", "carlos@test.com", null);
         competitor.setId(2L);
     }
 
@@ -108,7 +106,7 @@ class ProjectServiceTest {
     @DisplayName("addComment → guarda comentario correctamente")
     void addComment_savesComment() {
         when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(voterRepository.findById(5L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(voter));
 
         Comment savedComment = new Comment("Muy buena idea", voter, project);
         savedComment.setId(50L);
@@ -137,7 +135,7 @@ class ProjectServiceTest {
     @DisplayName("addComment → lanza excepción si el votante no existe")
     void addComment_throwsException_whenVoterNotFound() {
         when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(voterRepository.findById(99L)).thenReturn(Optional.empty());
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> projectService.addComment(10L, new CommentDto(null, 99L, "Texto")))
                 .isInstanceOf(RuntimeException.class)
@@ -152,12 +150,11 @@ class ProjectServiceTest {
 
         when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
-        when(competitorRepository.findByEmail("carlos@test.com")).thenReturn(Optional.of(competitor));
         when(projectRepository.save(any(Project.class))).thenReturn(Objects.requireNonNull(project));
 
         projectService.addCompetitor(10L, 2L);
 
-        assertThat(project.getCompetitors()).contains(competitor);
+        assertThat(project.getCompetitors()).contains(user);
         verify(projectRepository, times(1)).save(Objects.requireNonNull(project));
     }
 

@@ -26,7 +26,6 @@ class EvaluacionServiceTest {
 
     @Mock private EvaluacionRepository evaluacionRepository;
     @Mock private UserRepository userRepository;
-    @Mock private CompetitorRepository competitorRepository;
     @Mock private CategoryRepository categoryRepository;
     @Mock private CriterionRepository criterionRepository;
 
@@ -34,7 +33,7 @@ class EvaluacionServiceTest {
     private EvaluacionService evaluacionService;
 
     private User evaluador;
-    private Competitor competitor;
+    private User competitor;
     private Category category;
     private Event event;
 
@@ -46,7 +45,7 @@ class EvaluacionServiceTest {
         evaluador = new User("Admin", "admin@test.com", null);
         evaluador.setId(10L);
 
-        competitor = new Competitor("Carlos", "carlos@test.com", null);
+        competitor = new User("Carlos", "carlos@test.com", null);
         competitor.setId(20L);
 
         category = new Category("Proyectos Sociales", event);
@@ -106,7 +105,7 @@ class EvaluacionServiceTest {
         EvaluacionDto dto = new EvaluacionDto("NUMERICA", 10L, 20L, 30L, null, 1.0, "{\"valores\":[8,7,9]}");
 
         when(userRepository.findById(10L)).thenReturn(Optional.of(evaluador));
-        when(competitorRepository.findById(20L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(20L)).thenReturn(Optional.of(competitor));
         when(categoryRepository.findById(30L)).thenReturn(Optional.of(category));
         when(evaluacionRepository.save(any(Evaluacion.class))).thenAnswer(inv -> {
             Evaluacion e = inv.getArgument(0);
@@ -128,7 +127,7 @@ class EvaluacionServiceTest {
         EvaluacionDto dto = new EvaluacionDto("CHECKLIST", 10L, 20L, 30L, null, 1.0, "{\"items\":[true,true,false]}");
 
         when(userRepository.findById(10L)).thenReturn(Optional.of(evaluador));
-        when(competitorRepository.findById(20L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(20L)).thenReturn(Optional.of(competitor));
         when(categoryRepository.findById(30L)).thenReturn(Optional.of(category));
         when(evaluacionRepository.save(any(Evaluacion.class))).thenAnswer(inv -> {
             Evaluacion e = inv.getArgument(0);
@@ -148,7 +147,7 @@ class EvaluacionServiceTest {
         EvaluacionDto dto = new EvaluacionDto("COMENTARIO", 10L, 20L, 30L, null, 0.0, "{\"texto\":\"Buen trabajo\"}");
 
         when(userRepository.findById(10L)).thenReturn(Optional.of(evaluador));
-        when(competitorRepository.findById(20L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(20L)).thenReturn(Optional.of(competitor));
         when(categoryRepository.findById(30L)).thenReturn(Optional.of(category));
         when(evaluacionRepository.save(any(Evaluacion.class))).thenAnswer(inv -> {
             Evaluacion e = inv.getArgument(0);

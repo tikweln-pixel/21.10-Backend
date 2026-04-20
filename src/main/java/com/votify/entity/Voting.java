@@ -12,11 +12,11 @@ public class Voting {
 
     @ManyToOne
     @JoinColumn(name = "voter_id", nullable = false)
-    private Voter voter;
+    private User voter;
 
     @ManyToOne
     @JoinColumn(name = "competitor_id", nullable = false)
-    private Competitor competitor;
+    private User competitor;
 
     @ManyToOne
     @JoinColumn(name = "criterion_id", nullable = false)
@@ -42,7 +42,7 @@ public class Voting {
     public Voting() {
     }
 
-    public Voting(Voter voter, Competitor competitor, Criterion criterion, Integer score) {
+    public Voting(User voter, User competitor, Criterion criterion, Integer score) {
         this.voter = voter;
         this.competitor = competitor;
         this.criterion = criterion;
@@ -57,19 +57,19 @@ public class Voting {
         this.id = id;
     }
 
-    public Voter getVoter() {
+    public User getVoter() {
         return voter;
     }
 
-    public void setVoter(Voter voter) {
+    public void setVoter(User voter) {
         this.voter = voter;
     }
 
-    public Competitor getCompetitor() {
+    public User getCompetitor() {
         return competitor;
     }
 
-    public void setCompetitor(Competitor competitor) {
+    public void setCompetitor(User competitor) {
         this.competitor = competitor;
     }
 

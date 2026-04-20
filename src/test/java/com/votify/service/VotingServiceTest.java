@@ -26,9 +26,7 @@ class VotingServiceTest {
     @Mock
     private VotingRepository votingRepository;
     @Mock
-    private VoterRepository voterRepository;
-    @Mock
-    private CompetitorRepository competitorRepository;
+    private UserRepository userRepository;
     @Mock
     private CriterionRepository criterionRepository;
     @Mock
@@ -39,17 +37,17 @@ class VotingServiceTest {
     @InjectMocks
     private VotingService votingService;
 
-    private Voter voter;
-    private Competitor competitor;
+    private User voter;
+    private User competitor;
     private Criterion criterion;
     private Voting voting;
 
     @BeforeEach
     void setUp() {
-        voter = new Voter("Jurado1", "jurado1@test.com", null);
+        voter = new User("Jurado1", "jurado1@test.com", null);
         voter.setId(1L);
 
-        competitor = new Competitor("Carlos", "carlos@test.com", null);
+        competitor = new User("Carlos", "carlos@test.com", null);
         competitor.setId(2L);
 
         criterion = new Criterion("Innovación");
@@ -111,8 +109,8 @@ class VotingServiceTest {
     @Test
     @DisplayName("create → crea y guarda voto con entidades correctas")
     void create_savesVotingWithCorrectEntities() {
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(competitor));
         when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
         when(votingRepository.save(any(Voting.class))).thenReturn(voting);
 
@@ -126,7 +124,7 @@ class VotingServiceTest {
     @Test
     @DisplayName("create → lanza excepción si el votante no existe")
     void create_throwsException_whenVoterNotFound() {
-        when(voterRepository.findById(99L)).thenReturn(Optional.empty());
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 99L, 2L, 3L, 10)))
                 .isInstanceOf(RuntimeException.class)
@@ -136,8 +134,8 @@ class VotingServiceTest {
     @Test
     @DisplayName("create → lanza excepción si el competidor no existe")
     void create_throwsException_whenCompetitorNotFound() {
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(99L)).thenReturn(Optional.empty());
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 99L, 3L, 10)))
                 .isInstanceOf(RuntimeException.class)
@@ -147,8 +145,8 @@ class VotingServiceTest {
     @Test
     @DisplayName("create → lanza excepción si el criterio no existe")
     void create_throwsException_whenCriterionNotFound() {
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(competitor));
         when(criterionRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 2L, 99L, 10)))
@@ -162,8 +160,8 @@ class VotingServiceTest {
     @DisplayName("update → modifica puntuación del voto existente")
     void update_changesScore() {
         when(votingRepository.findById(100L)).thenReturn(Optional.of(voting));
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(competitor));
         when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
 
         Voting updatedVoting = new Voting(voter, competitor, criterion, 30);
@@ -193,8 +191,8 @@ class VotingServiceTest {
     @DisplayName("update (intervención) → permite cambiar score a 0")
     void update_allowsScoreZero() {
         when(votingRepository.findById(100L)).thenReturn(Optional.of(voting));
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(competitor));
         when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
 
         Voting zeroVoting = new Voting(voter, competitor, criterion, 0);
@@ -228,8 +226,8 @@ class VotingServiceTest {
     void create_popularVote_allowsVote_whenBelowMaxCompetitors() {
         setUpPopularVoteCategory(3, 10);
 
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(competitor));
         when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
         when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
 
@@ -254,11 +252,11 @@ class VotingServiceTest {
     void create_popularVote_rejectsVote_whenMaxCompetitorsReached() {
         setUpPopularVoteCategory(3, null); // límite 3, sin restricción de puntos
 
-        Competitor competitor2 = new Competitor("Ana", "ana@test.com", null);
+        User competitor2 = new User("Ana", "ana@test.com", null);
         competitor2.setId(5L);
 
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(5L)).thenReturn(Optional.of(competitor2));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(5L)).thenReturn(Optional.of(competitor2));
         when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
         when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
 
@@ -281,8 +279,8 @@ class VotingServiceTest {
     void create_popularVote_allowsRevote_whenSameCompetitor() {
         setUpPopularVoteCategory(3, 10);
 
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(competitor));
         when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
         when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
 
@@ -308,8 +306,8 @@ class VotingServiceTest {
     void create_popularVote_rejectsVote_whenExceedsTotalPoints() {
         setUpPopularVoteCategory(null, 10); // sin límite de competidores, totalPoints = 10
 
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(competitor));
         when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
         when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
 
@@ -327,8 +325,8 @@ class VotingServiceTest {
     void create_popularVote_allowsVote_whenNoLimitsConfigured() {
         setUpPopularVoteCategory(null, null); // sin ninguna restricción
 
-        when(voterRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(competitorRepository.findById(2L)).thenReturn(Optional.of(competitor));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(competitor));
         when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
         when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
 

@@ -3,22 +3,14 @@ package com.votify.service;
 import com.votify.dto.EventParticipationDto;
 import com.votify.entity.*;
 import com.votify.persistence.*;
-import com.votify.service.factory.participant.CompetitorCreator;
-import com.votify.service.factory.participant.ParticipantCreator;
-import com.votify.service.factory.participant.VoterCreator;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 import java.util.Objects;
 
 
 @Service
 public class EventParticipationService {
-
-    private static final Pattern EMAIL_REGEX = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
 
     private final EventParticipationRepository eventParticipationRepository;
     private final EventRepository eventRepository;
@@ -125,37 +117,6 @@ public class EventParticipationService {
                         Objects.requireNonNull(eventId), Objects.requireNonNull(userId), Objects.requireNonNull(categoryId))
                 .orElseThrow(() -> new RuntimeException("Participation not found"));
         eventParticipationRepository.delete(Objects.requireNonNull(participation));
-    }
-
-    @Transactional
-    public EventParticipationDto registerNewCompetitor(Long eventId, String name, String email, Long categoryId) {
-        return registerNew(eventId, name, email, categoryId, new CompetitorCreator());
-    }
-
-    @Transactional
-    public EventParticipationDto registerNewVoter(Long eventId, String name, String email, Long categoryId) {
-        return registerNew(eventId, name, email, categoryId, new VoterCreator());
-    }
-
-    private EventParticipationDto registerNew(Long eventId, String name, String email,
-                                              Long categoryId, ParticipantCreator creator) {
-        validateNewParticipant(name, email);
-        User user = creator.register(name.trim(), email.trim(), userRepository);
-
-        if (categoryId == null) {
-            throw new RuntimeException("Debes asignar una categoría al proyecto antes de registrar competidores.");
-        }
-
-        return registerParticipation(eventId, user.getId(), categoryId, creator.getRole());
-    }
-
-    private void validateNewParticipant(String name, String email) {
-        if (name == null || name.isBlank()) {
-            throw new RuntimeException("Name is required");
-        }
-        if (email == null || !EMAIL_REGEX.matcher(email).matches()) {
-            throw new RuntimeException("Valid email is required");
-        }
     }
 
     private EventParticipationDto toDto(EventParticipation participation) {

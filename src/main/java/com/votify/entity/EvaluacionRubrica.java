@@ -20,7 +20,7 @@ public class EvaluacionRubrica extends Evaluacion {
     public EvaluacionRubrica() {
     }
 
-    public EvaluacionRubrica(User evaluador, Competitor competitor, Category category,
+    public EvaluacionRubrica(User evaluador, User competitor, Category category,
                              Criterion criterion, Double peso, String datos) {
         super(evaluador, competitor, category, criterion, peso, datos);
     }

@@ -15,7 +15,7 @@ public class Comment {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "voter_id", nullable = true)
-    private Voter voter;
+    private User voter;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "project_id", nullable = false)
@@ -24,7 +24,7 @@ public class Comment {
     public Comment() {
     }
 
-    public Comment(String text, Voter voter, Project project) {
+    public Comment(String text, User voter, Project project) {
         this.text = text;
         this.voter = voter;
         this.project = project;
@@ -46,11 +46,11 @@ public class Comment {
         this.text = text;
     }
 
-    public Voter getVoter() {
+    public User getVoter() {
         return voter;
     }
 
-    public void setVoter(Voter voter) {
+    public void setVoter(User voter) {
         this.voter = voter;
     }
 

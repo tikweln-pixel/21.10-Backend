@@ -20,7 +20,7 @@ public class EvaluacionVideo extends Evaluacion {
     public EvaluacionVideo() {
     }
 
-    public EvaluacionVideo(User evaluador, Competitor competitor, Category category,
+    public EvaluacionVideo(User evaluador, User competitor, Category category,
                            Criterion criterion, Double peso, String datos) {
         super(evaluador, competitor, category, criterion, peso, datos);
     }

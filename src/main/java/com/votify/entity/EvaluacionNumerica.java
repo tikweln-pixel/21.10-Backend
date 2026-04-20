@@ -20,7 +20,7 @@ public class EvaluacionNumerica extends Evaluacion {
     public EvaluacionNumerica() {
     }
 
-    public EvaluacionNumerica(User evaluador, Competitor competitor, Category category,
+    public EvaluacionNumerica(User evaluador, User competitor, Category category,
                               Criterion criterion, Double peso, String datos) {
         super(evaluador, competitor, category, criterion, peso, datos);
     }

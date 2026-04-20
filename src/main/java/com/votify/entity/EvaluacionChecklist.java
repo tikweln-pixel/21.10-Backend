@@ -20,7 +20,7 @@ public class EvaluacionChecklist extends Evaluacion {
     public EvaluacionChecklist() {
     }
 
-    public EvaluacionChecklist(User evaluador, Competitor competitor, Category category,
+    public EvaluacionChecklist(User evaluador, User competitor, Category category,
                                Criterion criterion, Double peso, String datos) {
         super(evaluador, competitor, category, criterion, peso, datos);
     }

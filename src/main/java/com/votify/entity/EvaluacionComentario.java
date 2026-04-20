@@ -16,7 +16,7 @@ public class EvaluacionComentario extends Evaluacion {
     public EvaluacionComentario() {
     }
 
-    public EvaluacionComentario(User evaluador, Competitor competitor, Category category,
+    public EvaluacionComentario(User evaluador, User competitor, Category category,
                                 Criterion criterion, Double peso, String datos) {
         super(evaluador, competitor, category, criterion, peso, datos);
     }

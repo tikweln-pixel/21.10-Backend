@@ -45,7 +45,7 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
                                       @Param("criterionId") Long criterionId,
                                       @Param("categoryId") Long categoryId);
 
-    /* ── Cascade delete support ── */
+    /* ── Soporte para eliminación en cascada ── */
 
     @Modifying
     @Query("DELETE FROM Voting v WHERE v.category.id IN :categoryIds")
@@ -59,7 +59,7 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
     @Query("DELETE FROM Voting v WHERE v.criterion.id = :criterionId")
     void deleteByCriterionId(@Param("criterionId") Long criterionId);
 
-    /* ── Query endpoints for frontend ── */
+    /* ── Consultas para el frontend ── */
 
     List<Voting> findByCompetitorIdIn(List<Long> competitorIds);
 

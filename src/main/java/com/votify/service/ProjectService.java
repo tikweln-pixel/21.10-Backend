@@ -128,7 +128,7 @@ public class ProjectService {
 
     public List<CommentDto> getCommentsByProject(Long projectId) {
         if (!projectRepository.existsById(projectId)) {
-            throw new RuntimeException("Project not found with id: " + projectId);
+            throw new RuntimeException("Proyecto no encontrado con id: " + projectId);
         }
         List<Comment> comments = commentRepository.findByProjectId(projectId);
         List<CommentDto> result = new ArrayList<>();

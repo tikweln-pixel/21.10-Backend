@@ -28,24 +28,24 @@ public class EventParticipationService {
     }
 
     public EventParticipationDto registerParticipation(Long eventId, Long userId, Long categoryId, ParticipationRole role) {
-        if (eventId == null) throw new RuntimeException("Event ID is required");
-        if (userId == null) throw new RuntimeException("User ID is required");
-        if (categoryId == null) throw new RuntimeException("Category is required for participation");
+        if (eventId == null) throw new RuntimeException("El ID del evento es obligatorio");
+        if (userId == null) throw new RuntimeException("El ID del usuario es obligatorio");
+        if (categoryId == null) throw new RuntimeException("La categoría es obligatoria para la participación");
 
         Event event = eventRepository.findById(Objects.requireNonNull(eventId))
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
+                .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
         User user = userRepository.findById(Objects.requireNonNull(userId))
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + userId));
         Category category = categoryRepository.findById(Objects.requireNonNull(categoryId))
-                .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + categoryId));
 
         if (!category.getEvent().getId().equals(eventId)) {
-            throw new RuntimeException("Category does not belong to this event");
+            throw new RuntimeException("La categoría no pertenece a este evento");
         }
 
         if (eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(
                 Objects.requireNonNull(eventId), Objects.requireNonNull(userId), Objects.requireNonNull(categoryId))) {
-            throw new RuntimeException("User " + userId + " is already registered in category " + categoryId + " of event " + eventId);
+            throw new RuntimeException("El usuario " + userId + " ya está registrado en la categoría " + categoryId + " del evento " + eventId);
         }
 
         EventParticipation participation = new EventParticipation(
@@ -110,12 +110,12 @@ public class EventParticipationService {
 
     public void removeParticipation(Long eventId, Long userId, Long categoryId) {
         if (eventId == null || userId == null || categoryId == null) {
-            throw new RuntimeException("IDs are required for removal");
+            throw new RuntimeException("Los IDs son obligatorios para eliminar la participación");
         }
         EventParticipation participation = eventParticipationRepository
                 .findByEventIdAndUserIdAndCategoryId(
                         Objects.requireNonNull(eventId), Objects.requireNonNull(userId), Objects.requireNonNull(categoryId))
-                .orElseThrow(() -> new RuntimeException("Participation not found"));
+                .orElseThrow(() -> new RuntimeException("Participación no encontrada"));
         eventParticipationRepository.delete(Objects.requireNonNull(participation));
     }
 

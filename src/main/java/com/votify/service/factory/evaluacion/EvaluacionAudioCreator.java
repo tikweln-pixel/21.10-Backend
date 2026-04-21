@@ -6,7 +6,7 @@ import com.votify.entity.EvaluacionAudio;
 import com.votify.entity.TipoEvaluacion;
 
 /**
- * ConcreteCreator — crea instancias de EvaluacionAudio.
+ * Creador concreto — crea instancias de EvaluacionAudio.
  */
 public class EvaluacionAudioCreator extends EvaluacionCreator {
 

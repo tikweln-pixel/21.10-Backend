@@ -6,7 +6,7 @@ import com.votify.entity.EvaluacionChecklist;
 import com.votify.entity.TipoEvaluacion;
 
 /**
- * ConcreteCreator — crea instancias de EvaluacionChecklist.
+ * Creador concreto — crea instancias de EvaluacionChecklist.
  */
 public class EvaluacionChecklistCreator extends EvaluacionCreator {
 

@@ -41,7 +41,7 @@ public class CriterionService {
     }
 
     public CriterionDto findById(Long id) {
-        if (id == null) throw new RuntimeException("Criterion ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del criterio no puede ser nulo");
         Criterion criterion = criterionRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + id));
         return toDto(criterion);
@@ -53,7 +53,7 @@ public class CriterionService {
     }
 
     public CriterionDto update(Long id, CriterionDto dto) {
-        if (id == null) throw new RuntimeException("Criterion ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del criterio no puede ser nulo");
         Criterion criterion = criterionRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + id));
         criterion.setName(dto.getName());
@@ -62,9 +62,9 @@ public class CriterionService {
 
     @Transactional
     public void delete(Long id) {
-        if (id == null) throw new RuntimeException("Criterion ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del criterio no puede ser nulo");
         if (!criterionRepository.existsById(id)) {
-            throw new RuntimeException("Criterion not found with id: " + id);
+            throw new RuntimeException("Criterio no encontrado con id: " + id);
         }
         votingRepository.deleteByCriterionId(id);
         evaluacionRepository.deleteByCriterionId(id);

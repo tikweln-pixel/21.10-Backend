@@ -6,7 +6,7 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 
 /**
- * ConcreteProduct — Evaluación tipo rúbrica.
+ * Producto concreto — Evaluación tipo rúbrica.
  *
  * Datos esperados: {"niveles": [{"nivel": 3, "max": 5}, {"nivel": 4, "max": 5}]}
  * Score = media de (nivel / max) × 100 para cada criterio de la rúbrica.

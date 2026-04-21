@@ -27,7 +27,7 @@ public class TimeWindowService {
     }
 
     public TimeWindowDto findById(Long id) {
-        if (id == null) throw new RuntimeException("TimeWindow ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID de la ventana de tiempo no puede ser nulo");
         TimeWindow timeWindow = timeWindowRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("TimeWindow not found with id: " + id));
         return toDto(timeWindow);
@@ -39,7 +39,7 @@ public class TimeWindowService {
     }
 
     public TimeWindowDto update(Long id, TimeWindowDto dto) {
-        if (id == null) throw new RuntimeException("TimeWindow ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID de la ventana de tiempo no puede ser nulo");
         TimeWindow timeWindow = timeWindowRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("TimeWindow not found with id: " + id));
         timeWindow.setStartTime(dto.getStartTime());
@@ -48,7 +48,7 @@ public class TimeWindowService {
     }
 
     public void delete(Long id) {
-        if (id == null) throw new RuntimeException("TimeWindow ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID de la ventana de tiempo no puede ser nulo");
         timeWindowRepository.deleteById(Objects.requireNonNull(id));
     }
 

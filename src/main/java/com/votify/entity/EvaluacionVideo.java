@@ -6,7 +6,7 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 
 /**
- * ConcreteProduct — Evaluación tipo vídeo.
+ * Producto concreto — Evaluación tipo vídeo.
  *
  * Datos esperados: {"url": "https://storage.example.com/video.mp4", "scoreManual": 90}
  * Score = scoreManual si está presente, null en caso contrario (pendiente de evaluar).

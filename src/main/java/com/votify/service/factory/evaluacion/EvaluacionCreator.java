@@ -5,22 +5,22 @@ import com.votify.entity.Evaluacion;
 import com.votify.entity.TipoEvaluacion;
 
 /**
- * Creator abstracto del patrón Factory Method (GoF) — ADR-006.
+ * Creador abstracto del patrón Método Fábrica (GoF) — ADR-006.
  *
- * Declara el factory method {@code create()} que cada subclase concreta
+ * Declara el método fábrica {@code create()} que cada subclase concreta
  * implementa para decidir qué subtipo de Evaluacion instanciar.
  *
- * La operación {@code createAndValidate()} usa el factory method internamente
- * sin conocer el tipo concreto que se va a crear (Template Method).
+ * La operación {@code createAndValidate()} usa el método fábrica internamente
+ * sin conocer el tipo concreto que se va a crear (Método Plantilla).
  */
 public abstract class EvaluacionCreator {
 
-    // Factory Method — las subclases deciden qué tipo concreto crear
+    // Método fábrica — las subclases deciden qué tipo concreto crear
     public abstract Evaluacion create(EvaluacionDto dto);
 
     public abstract TipoEvaluacion getTipo();
 
-    // Template Method — valida reglas comunes antes de delegar en create()
+    // Método plantilla — valida reglas comunes antes de delegar en create()
     public Evaluacion createAndValidate(EvaluacionDto dto) {
         if (dto.getPeso() != null && dto.getPeso() < 0) {
             throw new RuntimeException("El peso de la evaluación no puede ser negativo");

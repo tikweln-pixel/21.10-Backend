@@ -6,7 +6,7 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 
 /**
- * ConcreteProduct — Evaluación tipo checklist.
+ * Producto concreto — Evaluación tipo checklist.
  *
  * Datos esperados: {"items": [true, false, true, true]}
  * Score = (número de items marcados / total de items) × 100.

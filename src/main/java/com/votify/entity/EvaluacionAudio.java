@@ -6,7 +6,7 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 
 /**
- * ConcreteProduct — Evaluación tipo audio.
+ * Producto concreto — Evaluación tipo audio.
  *
  * Datos esperados: {"url": "https://storage.example.com/audio.mp3", "scoreManual": 85}
  * Score = scoreManual si está presente, null en caso contrario (pendiente de evaluar).

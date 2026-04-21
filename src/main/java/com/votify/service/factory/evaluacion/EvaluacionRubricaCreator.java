@@ -6,7 +6,7 @@ import com.votify.entity.EvaluacionRubrica;
 import com.votify.entity.TipoEvaluacion;
 
 /**
- * ConcreteCreator — crea instancias de EvaluacionRubrica.
+ * Creador concreto — crea instancias de EvaluacionRubrica.
  */
 public class EvaluacionRubricaCreator extends EvaluacionCreator {
 

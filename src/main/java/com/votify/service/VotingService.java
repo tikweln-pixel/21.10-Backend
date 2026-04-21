@@ -41,18 +41,18 @@ public class VotingService {
     }
 
     public VotingDto findById(Long id) {
-        if (id == null) throw new RuntimeException("Voting ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del voto no puede ser nulo");
         Voting voting = votingRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Voting not found with id: " + id));
         return toDto(voting);
     }
 
     public VotingDto create(VotingDto dto) {
-        if (dto.getVoterId() == null) throw new RuntimeException("Voter ID cannot be null");
+        if (dto.getVoterId() == null) throw new RuntimeException("El ID del votante no puede ser nulo");
         User voter = userRepository.findById(Objects.requireNonNull(dto.getVoterId()))
                 .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
 
-        if (dto.getCompetitorId() == null) throw new RuntimeException("Competitor ID cannot be null");
+        if (dto.getCompetitorId() == null) throw new RuntimeException("El ID del competidor no puede ser nulo");
         User competitor = userRepository.findById(Objects.requireNonNull(dto.getCompetitorId()))
                 .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
 
@@ -60,7 +60,7 @@ public class VotingService {
             throw new RuntimeException("No puedes votar tu propio proyecto.");
         }
 
-        if (dto.getCriterionId() == null) throw new RuntimeException("Criterion ID cannot be null");
+        if (dto.getCriterionId() == null) throw new RuntimeException("El ID del criterio no puede ser nulo");
         Criterion criterion = criterionRepository.findById(Objects.requireNonNull(dto.getCriterionId()))
                 .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
 
@@ -126,7 +126,7 @@ public class VotingService {
             );
         } else if (category.getVotingType() == VotingType.JURY_EXPERT) {
             if (criterionPointsRepository == null) {
-                throw new RuntimeException("CategoryCriterionPointsRepository no disponible para validar JURY_EXPERT");
+                throw new RuntimeException("CategoryCriterionPointsRepository no disponible para validar el tipo JURY_EXPERT");
             }
             Long categoryId = category.getId();
             Long criterionId = voting.getCriterion().getId();
@@ -214,7 +214,7 @@ public class VotingService {
     }
 
     public void delete(Long id) {
-        if (id == null) throw new RuntimeException("Voting ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del voto no puede ser nulo");
         votingRepository.deleteById(Objects.requireNonNull(id));
     }
 

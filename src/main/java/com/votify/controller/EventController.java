@@ -62,8 +62,8 @@ public class EventController {
     }
 
     @PostMapping("/{eventId}/categories")
-    public ResponseEntity<CategoryDto> addCategory(@PathVariable Long eventId, @RequestBody CreateCategoryRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.createForEvent(eventId, request.getName()));
+    public ResponseEntity<CategoryDto> addCategory(@PathVariable Long eventId, @RequestBody CategoryDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.createForEvent(eventId, dto));
     }
 
     @PostMapping("/{eventId}/participations")

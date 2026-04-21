@@ -70,10 +70,11 @@ public class CategoryService {
         return toDto(category);
     }
 
-    public CategoryDto createForEvent(Long eventId, String name) {
+    public CategoryDto createForEvent(Long eventId, CategoryDto dto) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
-        Category category = new Category(name, event);
+        Category category = new Category(dto.getName(), event);
+        category.setVotingType(dto.getVotingType());
         return toDto(categoryRepository.save(category));
     }
 

@@ -124,7 +124,8 @@ class CategoryServiceTest {
         saved.setId(20L);
         when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(saved));
 
-        CategoryDto result = categoryService.createForEvent(1L, "Nueva Cat");
+        CategoryDto dto = new CategoryDto(null, "Nueva Cat", null, null, null, null, null, null, null);
+        CategoryDto result = categoryService.createForEvent(1L, dto);
 
         assertThat(result.getId()).isEqualTo(20L);
         assertThat(result.getName()).isEqualTo("Nueva Cat");
@@ -136,7 +137,8 @@ class CategoryServiceTest {
     void createForEvent_throwsException_whenEventNotFound() {
         when(eventRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> categoryService.createForEvent(99L, "Test"))
+        CategoryDto dto = new CategoryDto(null, "Test", null, null, null, null, null, null, null);
+        assertThatThrownBy(() -> categoryService.createForEvent(99L, dto))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("99");
     }
@@ -203,7 +205,7 @@ class CategoryServiceTest {
 
         assertThatThrownBy(() -> categoryService.setCriterionPointsBulk(10L, input))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("non-negative");
+                .hasMessageContaining("no negativo");
     }
 
     @Test
@@ -285,7 +287,7 @@ class CategoryServiceTest {
         // Fecha anterior al inicio del evento
         assertThatThrownBy(() -> categoryService.setTimeInitial(10L, new Date(1L)))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("start time");
+                .hasMessageContaining("inicio");
     }
 
     @Test
@@ -298,7 +300,7 @@ class CategoryServiceTest {
         // Fecha fin anterior a la de inicio de la categoría
         assertThatThrownBy(() -> categoryService.setTimeFinal(10L, new Date(1L)))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("end time");
+                .hasMessageContaining("fin");
     }
 
     // ── setTotalPoints ─────────────────────────────────────────────────────
@@ -333,11 +335,11 @@ class CategoryServiceTest {
     void setTotalPoints_throwsException_whenZeroOrNegative() {
         assertThatThrownBy(() -> categoryService.setTotalPoints(10L, 0))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("positive");
+                .hasMessageContaining("positivo");
 
         assertThatThrownBy(() -> categoryService.setTotalPoints(10L, -5))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("positive");
+                .hasMessageContaining("positivo");
     }
 
     // ── setMaxVotesPerVoter ────────────────────────────────────────────────
@@ -371,7 +373,7 @@ class CategoryServiceTest {
     void setMaxVotesPerVoter_throwsException_whenZeroOrNegative() {
         assertThatThrownBy(() -> categoryService.setMaxVotesPerVoter(10L, 0))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("positive");
+                .hasMessageContaining("positivo");
     }
 
     // ── Guard JURY_EXPERT en setCriterionPointsBulk ────────────────────────

@@ -70,6 +70,7 @@ public class CategoryService {
         return toDto(category);
     }
 
+    //metodo no funcional actual. 
     public CategoryDto createForEvent(Long eventId, CategoryDto dto) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
@@ -77,7 +78,7 @@ public class CategoryService {
         category.setVotingType(dto.getVotingType());
         return toDto(categoryRepository.save(category));
     }
-
+    
     public CategoryDto create(CategoryDto dto) {
         if (dto.getEventId() == null) {
             throw new RuntimeException("Se requiere el evento para crear una categoría");

@@ -163,15 +163,9 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
-        List<Long> competitorIds = new ArrayList<>();
-        for (User c : project.getCompetitors()) {
-            competitorIds.add(c.getId());
-        }
-
         List<CategoryCriterionPoints> weights = criterionPointsRepository.findByCategoryId(categoryId);
-        List<Voting> votings = competitorIds.isEmpty()
-                ? new ArrayList<>()
-                : votingRepository.findByCompetitorIdInAndCategoryId(competitorIds, categoryId);
+        List<Voting> votings = votingRepository.findByProjectIdInAndCategoryId(
+                java.util.List.of(projectId), categoryId);
 
         Map<Long, Integer> scoresByCriterion = new HashMap<>();
         for (Voting v : votings) {

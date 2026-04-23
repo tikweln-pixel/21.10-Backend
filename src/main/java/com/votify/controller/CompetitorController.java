@@ -31,6 +31,15 @@ public class CompetitorController {
         this.commentRepository = commentRepository;
     }
 
+    @GetMapping
+    public ResponseEntity<List<CompetitorDto>> getAll() {
+        List<CompetitorDto> result = new ArrayList<>();
+        for (User user : userRepository.findAll()) {
+            result.add(new CompetitorDto(user.getId(), user.getName(), user.getEmail()));
+        }
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<CompetitorDto> getById(@PathVariable Long id) {
         User user = userRepository.findById(id)

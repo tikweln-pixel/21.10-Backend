@@ -235,3 +235,136 @@ No se recomienda reducir ahora; la regla adoptada es evitar tests triviales en n
 - `src/main/java/com/votify/service/VotingService.java`
 - `src/test/java/com/votify/service/VotingServiceTest.java`
 - `docs/adr/ADR-010-estrategia-tests.md`
+
+---
+
+## Sesión 3 — 26-04-2026 · Corrección de PAs de UT-3482 + Refactoring + Documento entrega
+
+**Herramienta:** Claude Sonnet (Cowork mode, acceso a ambos repos)
+**UT cubierta:** UT-3482 — "Control de Votos" (Sprint 2, corrección de PAs).
+
+---
+
+### 1) Herramientas usadas
+
+- **Claude Sonnet (Cowork mode — agente con acceso a ficheros):**
+  - Evaluación completa de las 7 PAs de UT-3482 contra el código real de backend y frontend.
+  - Diagnóstico diferenciado por PA: qué cumple, qué no cumple y por qué, separando
+    responsabilidad backend vs. frontend.
+  - Implementación de correcciones en `VotingService.java` y `VotingServiceTest.java`.
+  - Implementación de correcciones en `Votar.tsx`.
+  - Creación del documento `docs/UT3482-refactoring-tests.md` con formato Fowler.
+  - Creación de ADR-011.
+  - Actualización de este AI Usage Log.
+
+---
+
+### 2) Prompts clave
+
+- **Prompt 1:** `"evaluame las pruebas de aceptacion que se cumplen y las que no: UT 3482 - Control de Votos"` + 7 PAs descritas.
+  → Diagnóstico detallado de cada PA contra el código real. Resultado: 1 cumple, 2 parciales, 4 no cumplen.
+
+- **Prompt 2:** `"puedes evaluar el frontend para ver que se cumple la parte que se implica el frontend?"` (tras conectar la carpeta `votify-frontend`).
+  → Segunda evaluación cruzando `Votar.tsx`, `App.tsx`, `UserContext.tsx`, `IntervencionManual.tsx` y `client.ts`.
+  Tabla resumen final con estado Backend + Frontend por PA.
+
+- **Prompt 3:** `"vamos a corregir cada prueba de aceptacion paso a paso y crea un documento en docs del backend referente a pruebas unitarias que siga este patrón [formato Fowler]"`
+  → Implementación de todos los cambios + documento de refactoring y tests.
+
+- **Prompt 4:** `"actualizame adr y ia-logs en doc"`
+  → ADR-011 y esta entrada de log.
+
+---
+
+### 3) Salidas relevantes
+
+- **Prompt 1 →** Diagnóstico completo:
+  - ✅ PA-1315 (backend): guard `voter.id == competitor.id` ya existía.
+  - ⚠️ PA-1312 (parcial): voto se registra en `votings`, no en `valores`/`evaluaciones_multicriterio`.
+  - ⚠️ PA-1313 (parcial): bloqueo existe en POST pero sin Realtime.
+  - ❌ PA-1314: `create()` actualizaba en vez de rechazar.
+  - ❌ PA-1316: sin control de rol supervisor ni `permite_metodo_manual`.
+  - ❌ PA-1317: sin mecanismo de tiempo real.
+  - ❌ PA-1318: sin autorización por rol en ninguna capa.
+
+- **Prompt 2 →** Diagnóstico frontend añade:
+  - ✅ PA-1312 frontend: confirmación visual (badge "✓ Votado" + botón disabled).
+  - ⚠️ PA-1313 frontend: botón deshabilitado cuando `!periodActive`, pero sin refresco reactivo.
+  - ⚠️ PA-1314 frontend: `saved[proj.id]` desactiva el botón en sesión, sin persistencia.
+  - ❌ PA-1315 frontend: formulario siempre visible aunque el usuario sea competidor.
+  - ⚠️ PA-1316 frontend: pantalla `IntervencionManual.tsx` existe con log en `localStorage`.
+  - ❌ PA-1317 frontend: sin polling ni WebSocket.
+  - ❌ PA-1318 frontend: `ProtectedRoute` solo verifica autenticación, no rol.
+
+- **Prompt 3 →** Implementación completa:
+  - **`VotingService.java`:** bloque de actualización (16 líneas) → Guard Clause (3 líneas). Fowler: *Introduce Guard Clause*.
+  - **`VotingServiceTest.java`:** 8 nuevos tests (PA-1313 ×2, PA-1314 ×2, PA-1315 ×2, PA-1316 ×2).
+  - **`Votar.tsx`:**
+    - Polling 30 s con `useCallback` + `setInterval`. Fowler: *Extract Function*.
+    - Precarga `projectCompIds` + helper `isOwnProject()` + aviso inline. Fowler: *Decompose Conditional*.
+    - Early return `role !== 'VOTER'` con mensaje y redirect. Fowler: *Decompose Conditional*.
+  - **`docs/UT3482-refactoring-tests.md`:** documento con antes/después, nombre Fowler, tabla de tests.
+
+- **Prompt 4 →** Este ADR-011 y esta entrada de log.
+
+---
+
+### 4) Qué aceptamos y qué rechazamos
+
+- **Aceptado:** Guard Clause en `create()` → elimina responsabilidad mixta (crear + actualizar)
+  del mismo endpoint. El PUT sigue siendo el único punto de actualización.
+
+- **Aceptado:** Polling 30 s en frontend → solución pragmática sin introducir dependencias nuevas.
+  Supabase Realtime queda como mejora futura.
+
+- **Aceptado:** Mostrar formulario bloqueado (no oculto) en PA-1315 → mejor UX que pantalla vacía;
+  el aviso `"No puedes votar tu propio proyecto"` queda visible antes del botón.
+
+- **Aceptado:** Guard de rol con `UserContext.role` → válido para el sprint actual;
+  la deuda técnica (rol desde backend en login) queda documentada en ADR-011 §4.
+
+- **Rechazado:** Supabase Realtime para PA-1317 → el backend usa JDBC puro; añadir el SDK
+  de Supabase al frontend solo para esta feature introduce una dependencia nueva de alto coste.
+
+- **Rechazado:** Spring Security + JWT en este sprint para PA-1318 → excede el alcance de
+  corrección de PAs; requeriría refactorizar la capa de autenticación completa.
+
+- **Rechazado (PA-1316 completa):** verificación de `permite_metodo_manual` y log en BD →
+  `configuracion` y tabla de auditoría no existen en el modelo actual; implementar en Sprint 3
+  junto al módulo de Auditoría (UT prevista).
+
+---
+
+### 5) Cómo lo verificamos
+
+- [X] `tsc --noEmit` en `votify-frontend` → sin errores en `Votar.tsx`.
+- [ ] `mvn test -Dtest="VotingServiceTest"` → 22 tests en verde (requiere Java 21 local).
+- [ ] Flujo manual PA-1314: intentar votar dos veces → error "Ya has votado este proyecto".
+- [ ] Flujo manual PA-1315: usuario logueado como competidor → aviso visible, botón bloqueado.
+- [ ] Flujo manual PA-1317: supervisor cierra periodo → en ≤ 30 s la UI bloquea el botón.
+- [ ] Flujo manual PA-1318: usuario con rol `JURY` → pantalla "No tienes permiso para votar".
+
+---
+
+### 6) Resultado final / decisión humana
+
+Se corrigieron 4 PAs en backend + frontend (PA-1314, PA-1315, PA-1317, PA-1318) y se añadieron
+tests para PA-1313 y PA-1316. Las correcciones están documentadas en `UT3482-refactoring-tests.md`
+con el formato Fowler requerido para la entrega.
+
+Deuda técnica registrada en ADR-011:
+- Enriquecer `/auth/login` con rol de participación activo (necesario para PA-1318 real).
+- Migrar polling a Supabase Realtime en Sprint 3 (PA-1317 completa).
+- Módulo de Auditoría en BD para PA-1316 completa.
+
+**Ficheros modificados:**
+- Backend: `VotingService.java`, `VotingServiceTest.java`
+- Frontend: `Votar.tsx`
+- Documentación: `docs/UT3482-refactoring-tests.md` (nuevo), `docs/adr/ADR-011-correccion-pa-control-votos.md` (nuevo), `docs/ai-logs/Sprint-S2-ai-log.md` (esta entrada)
+
+**Referencias en el repo:**
+- `src/main/java/com/votify/service/VotingService.java`
+- `src/test/java/com/votify/service/VotingServiceTest.java`
+- `votify-frontend/src/pages/Votar.tsx`
+- `docs/UT3482-refactoring-tests.md`
+- `docs/adr/ADR-011-correccion-pa-control-votos.md`

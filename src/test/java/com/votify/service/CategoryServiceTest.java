@@ -33,6 +33,7 @@ class CategoryServiceTest {
     @Mock private VotingRepository                 votingRepository;
     @Mock private EventParticipationRepository     eventParticipationRepository;
     @Mock private EvaluacionRepository             evaluacionRepository;
+    @Mock private ProjectRepository                projectRepository;
 
     @InjectMocks
     private CategoryService categoryService;
@@ -374,6 +375,26 @@ class CategoryServiceTest {
         assertThatThrownBy(() -> categoryService.setMaxVotesPerVoter(10L, 0))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("positivo");
+    }
+
+    @Test
+    @DisplayName("delete → desvincula proyectos antes de eliminar la categoría")
+    void delete_unlinksProjectsBeforeDeletingCategory() {
+        Project project = new Project("Proyecto 1", "Desc", event);
+        project.setCategory(category);
+
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        when(projectRepository.findByCategoryId(10L)).thenReturn(List.of(project));
+
+        categoryService.delete(10L, 1L);
+
+        assertThat(project.getCategory()).isNull();
+        verify(projectRepository).saveAll(List.of(project));
+        verify(evaluacionRepository).deleteByCategoryId(10L);
+        verify(votingRepository).deleteByCategoryId(10L);
+        verify(eventParticipationRepository).deleteByCategoryId(10L);
+        verify(criterionPointsRepository).deleteByCategoryId(10L);
+        verify(categoryRepository).deleteById(10L);
     }
 
     // ── Guard JURY_EXPERT en setCriterionPointsBulk ────────────────────────

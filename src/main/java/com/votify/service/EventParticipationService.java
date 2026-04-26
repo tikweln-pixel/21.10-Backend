@@ -63,6 +63,32 @@ public class EventParticipationService {
         return result;
     }
 
+    public EventParticipationDto ensureCompetitorRegistration(Long eventId, Long userId, Long categoryId) {
+        if (eventId == null) throw new RuntimeException("El ID del evento es obligatorio");
+        if (userId == null) throw new RuntimeException("El ID del usuario es obligatorio");
+        if (categoryId == null) throw new RuntimeException("La categoría es obligatoria para la participación");
+
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + userId));
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + categoryId));
+
+        if (!category.getEvent().getId().equals(eventId)) {
+            throw new RuntimeException("La categoría no pertenece a este evento");
+        }
+
+        EventParticipation participation = eventParticipationRepository
+                .findByEventIdAndUserIdAndCategoryId(eventId, userId, categoryId)
+                .orElseGet(() -> new EventParticipation(event, user, category, ParticipationRole.COMPETITOR));
+
+        participation.setRole(ParticipationRole.COMPETITOR);
+        EventParticipation saved = eventParticipationRepository.save(participation);
+        autoRegisterSpectatorInOtherCategories(eventId, userId, categoryId);
+        return toDto(saved);
+    }
+
     public EventParticipationDto registerSpectator(Long eventId, Long userId, Long categoryId) {
         return registerParticipation(eventId, userId, categoryId, ParticipationRole.SPECTATOR);
     }

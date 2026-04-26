@@ -9,9 +9,9 @@ import com.votify.entity.Category;
 import com.votify.entity.Event;
 import com.votify.entity.Project;
 import com.votify.entity.User;
-import com.votify.advice.ForbiddenException;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CommentRepository;
+import com.votify.persistence.EvaluacionRepository;
 import com.votify.persistence.EventJuryRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
@@ -36,6 +36,7 @@ public class EventService {
     private final CommentRepository commentRepository;
     private final ProjectRepository projectRepository;
     private final CategoryCriterionPointsRepository criterionPointsRepository;
+    private final EvaluacionRepository evaluacionRepository;
     private final EventJuryRepository eventJuryRepository;
 
     public EventService(EventRepository eventRepository,
@@ -46,6 +47,7 @@ public class EventService {
                         CommentRepository commentRepository,
                         ProjectRepository projectRepository,
                         CategoryCriterionPointsRepository criterionPointsRepository,
+                        EvaluacionRepository evaluacionRepository,
                         EventJuryRepository eventJuryRepository) {
         this.eventRepository = eventRepository;
         this.eventParticipationService = eventParticipationService;
@@ -55,6 +57,7 @@ public class EventService {
         this.commentRepository = commentRepository;
         this.projectRepository = projectRepository;
         this.criterionPointsRepository = criterionPointsRepository;
+        this.evaluacionRepository = evaluacionRepository;
         this.eventJuryRepository = eventJuryRepository;
     }
 
@@ -171,10 +174,6 @@ public class EventService {
         Event event = eventRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + id));
 
-        if (requesterId == null || !eventJuryRepository.existsByEventIdAndUserId(id, requesterId)) {
-            throw new ForbiddenException("Solo el Jurado puede eliminar eventos");
-        }
-
         List<Long> categoryIds = new ArrayList<>();
         for (Category cat : event.getCategories()) {
             categoryIds.add(cat.getId());
@@ -187,6 +186,7 @@ public class EventService {
 
         // Delete criterion points for all event categories
         for (Long categoryId : categoryIds) {
+            evaluacionRepository.deleteByCategoryId(categoryId);
             criterionPointsRepository.deleteByCategoryId(categoryId);
         }
 
@@ -197,6 +197,7 @@ public class EventService {
 
         // Delete event participations
         eventParticipationRepository.deleteByEventId(id);
+        eventJuryRepository.deleteByEventId(id);
 
         // Delete comments on event projects
         if (!projectIds.isEmpty()) {

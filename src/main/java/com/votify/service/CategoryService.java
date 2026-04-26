@@ -7,13 +7,13 @@ import com.votify.entity.CategoryCriterionPoints;
 import com.votify.entity.Criterion;
 import com.votify.entity.Event;
 import com.votify.entity.VotingType;
-import com.votify.advice.ForbiddenException;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CategoryRepository;
 import com.votify.persistence.CriterionRepository;
-import com.votify.persistence.EventJuryRepository;
+import com.votify.persistence.EvaluacionRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
+import com.votify.persistence.ProjectRepository;
 import com.votify.persistence.VotingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +33,8 @@ public class CategoryService {
     private final CategoryCriterionPointsRepository criterionPointsRepository;
     private final VotingRepository votingRepository;
     private final EventParticipationRepository eventParticipationRepository;
-    private final EventJuryRepository eventJuryRepository;
+    private final EvaluacionRepository evaluacionRepository;
+    private final ProjectRepository projectRepository;
 
     public CategoryService(CategoryRepository categoryRepository,
                            EventRepository eventRepository,
@@ -41,14 +42,16 @@ public class CategoryService {
                            CategoryCriterionPointsRepository criterionPointsRepository,
                            VotingRepository votingRepository,
                            EventParticipationRepository eventParticipationRepository,
-                           EventJuryRepository eventJuryRepository) {
+                           EvaluacionRepository evaluacionRepository,
+                           ProjectRepository projectRepository) {
         this.categoryRepository = categoryRepository;
         this.eventRepository = eventRepository;
         this.criterionRepository = criterionRepository;
         this.criterionPointsRepository = criterionPointsRepository;
         this.votingRepository = votingRepository;
         this.eventParticipationRepository = eventParticipationRepository;
-        this.eventJuryRepository = eventJuryRepository;
+        this.evaluacionRepository = evaluacionRepository;
+        this.projectRepository = projectRepository;
     }
 
     public List<CategoryDto> findAll() {
@@ -71,11 +74,10 @@ public class CategoryService {
 
     public CategoryDto findById(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + id));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + id));
         return toDto(category);
     }
 
-    //metodo no funcional actual. 
     public CategoryDto createForEvent(Long eventId, CategoryDto dto) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
@@ -83,10 +85,10 @@ public class CategoryService {
         category.setVotingType(dto.getVotingType());
         return toDto(categoryRepository.save(category));
     }
-    
+
     public CategoryDto create(CategoryDto dto) {
         if (dto.getEventId() == null) {
-            throw new RuntimeException("Se requiere el evento para crear una categoría");
+            throw new RuntimeException("Se requiere el evento para crear una categoria");
         }
         Event event = eventRepository.findById(dto.getEventId())
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + dto.getEventId()));
@@ -103,7 +105,7 @@ public class CategoryService {
 
     public CategoryDto update(Long id, CategoryDto dto) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + id));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + id));
 
         if (dto.getEventId() != null && (category.getEvent() == null || !dto.getEventId().equals(category.getEvent().getId()))) {
             Event event = eventRepository.findById(dto.getEventId())
@@ -125,29 +127,31 @@ public class CategoryService {
     @Transactional
     public void delete(Long id, Long requesterId) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + id));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + id));
 
-        Long eventId = category.getEvent().getId();
-        if (requesterId == null || !eventJuryRepository.existsByEventIdAndUserId(eventId, requesterId)) {
-            throw new ForbiddenException("Solo el Jurado puede eliminar categorías");
+        List<com.votify.entity.Project> linkedProjects = projectRepository.findByCategoryId(id);
+        for (com.votify.entity.Project project : linkedProjects) {
+            project.setCategory(null);
         }
+        projectRepository.saveAll(linkedProjects);
 
+        evaluacionRepository.deleteByCategoryId(id);
         votingRepository.deleteByCategoryId(id);
         eventParticipationRepository.deleteByCategoryId(id);
         criterionPointsRepository.deleteByCategoryId(id);
-        categoryRepository.deleteById(id);
+        categoryRepository.deleteById(category.getId());
     }
 
     public CategoryDto setVotingType(Long categoryId, VotingType votingType) {
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + categoryId));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + categoryId));
         category.setVotingType(votingType);
         return toDto(categoryRepository.save(category));
     }
 
     public List<CategoryCriterionPointsDto> getCriterionPoints(Long categoryId) {
         if (!categoryRepository.existsById(categoryId)) {
-            throw new RuntimeException("Categoría no encontrada con id: " + categoryId);
+            throw new RuntimeException("Categoria no encontrada con id: " + categoryId);
         }
         List<CategoryCriterionPoints> points = criterionPointsRepository.findByCategoryId(categoryId);
         List<CategoryCriterionPointsDto> result = new ArrayList<>();
@@ -164,7 +168,7 @@ public class CategoryService {
         }
 
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + categoryId));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + categoryId));
 
         Criterion criterion = criterionRepository.findById(criterionId)
                 .orElseThrow(() -> new RuntimeException("Criterio no encontrado con id: " + criterionId));
@@ -183,7 +187,7 @@ public class CategoryService {
         if (otherPointsSum + weightPercent > 100) {
             throw new RuntimeException(
                     "El total de porcentajes de todos los criterios no puede superar 100. Suma actual de otros criterios: "
-                    + otherPointsSum + ", valor solicitado: " + weightPercent);
+                            + otherPointsSum + ", valor solicitado: " + weightPercent);
         }
 
         CategoryCriterionPoints points = existing.orElseGet(() -> new CategoryCriterionPoints(category, criterion, weightPercent));
@@ -194,14 +198,14 @@ public class CategoryService {
 
     @Transactional
     public List<CategoryCriterionPointsDto> setCriterionPointsBulk(Long categoryId,
-                                                                    List<CategoryCriterionPointsDto> pointsDtos) {
+                                                                   List<CategoryCriterionPointsDto> pointsDtos) {
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + categoryId));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + categoryId));
 
         if (category.getVotingType() == VotingType.POPULAR_VOTE) {
             throw new RuntimeException(
-                    "La configuración masiva de puntos solo es válida para categorías JURY_EXPERT. " +
-                    "Para POPULAR_VOTE, usa setTotalPoints para configurar los puntos totales de la categoría.");
+                    "La configuracion masiva de puntos solo es valida para categorias JURY_EXPERT. " +
+                            "Para POPULAR_VOTE, usa setTotalPoints para configurar los puntos totales de la categoria.");
         }
 
         for (CategoryCriterionPointsDto dto : pointsDtos) {
@@ -237,7 +241,7 @@ public class CategoryService {
         CategoryCriterionPoints points = criterionPointsRepository
                 .findByCategoryIdAndCriterionId(categoryId, criterionId)
                 .orElseThrow(() -> new RuntimeException(
-                        "No se encontró configuración de puntos para categoryId=" + categoryId + " criterionId=" + criterionId));
+                        "No se encontro configuracion de puntos para categoryId=" + categoryId + " criterionId=" + criterionId));
         criterionPointsRepository.delete(points);
     }
 
@@ -247,12 +251,12 @@ public class CategoryService {
             throw new RuntimeException("Los puntos totales deben ser un entero positivo");
         }
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + categoryId));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + categoryId));
 
         if (category.getVotingType() != VotingType.POPULAR_VOTE) {
             throw new RuntimeException(
-                    "setTotalPoints solo es válido para categorías POPULAR_VOTE. " +
-                    "Para JURY_EXPERT, usa setCriterionPointsBulk para configurar los pesos por criterio.");
+                    "setTotalPoints solo es valido para categorias POPULAR_VOTE. " +
+                            "Para JURY_EXPERT, usa setCriterionPointsBulk para configurar los pesos por criterio.");
         }
         category.setTotalPoints(totalPoints);
         return toDto(categoryRepository.save(category));
@@ -260,20 +264,20 @@ public class CategoryService {
 
     public CategoryDto getTotalPoints(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + categoryId));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + categoryId));
         return toDto(category);
     }
 
     @Transactional
     public CategoryDto setMaxVotesPerVoter(Long categoryId, Integer maxVotesPerVoter) {
         if (maxVotesPerVoter == null || maxVotesPerVoter <= 0) {
-            throw new RuntimeException("El máximo de votos por votante debe ser un entero positivo");
+            throw new RuntimeException("El maximo de votos por votante debe ser un entero positivo");
         }
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + categoryId));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + categoryId));
 
         if (category.getVotingType() != VotingType.POPULAR_VOTE) {
-            throw new RuntimeException("setMaxVotesPerVoter solo es válido para categorías POPULAR_VOTE.");
+            throw new RuntimeException("setMaxVotesPerVoter solo es valido para categorias POPULAR_VOTE.");
         }
         category.setMaxVotesPerVoter(maxVotesPerVoter);
         return toDto(categoryRepository.save(category));
@@ -281,7 +285,7 @@ public class CategoryService {
 
     public CategoryDto setTimeInitial(Long id, Date timeInitial) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + id));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + id));
         validateCategoryTimesWithinEvent(category.getEvent(), timeInitial, category.getTimeFinal());
         category.setTimeInitial(timeInitial);
         return toDto(categoryRepository.save(category));
@@ -289,7 +293,7 @@ public class CategoryService {
 
     public CategoryDto setTimeFinal(Long id, Date timeFinal) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + id));
+                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + id));
         validateCategoryTimesWithinEvent(category.getEvent(), category.getTimeInitial(), timeFinal);
         category.setTimeFinal(timeFinal);
         return toDto(categoryRepository.save(category));
@@ -312,7 +316,7 @@ public class CategoryService {
 
     private CategoryCriterionPointsDto toCriterionPointsDto(CategoryCriterionPoints ccp) {
         String criterionName = ccp.getCriterion() != null ? ccp.getCriterion().getName() : null;
-        Long categoryId  = ccp.getCategory()  != null ? ccp.getCategory().getId()  : null;
+        Long categoryId = ccp.getCategory() != null ? ccp.getCategory().getId() : null;
         Long criterionId = ccp.getCriterion() != null ? ccp.getCriterion().getId() : null;
         return new CategoryCriterionPointsDto(ccp.getId(), categoryId, criterionId, criterionName, ccp.getWeightPercent());
     }
@@ -321,16 +325,16 @@ public class CategoryService {
         if (event == null) return;
 
         Date evStart = event.getTimeInitial();
-        Date evEnd   = event.getTimeFinal();
+        Date evEnd = event.getTimeFinal();
 
         if (start != null && evStart != null && start.before(evStart)) {
-            throw new RuntimeException("La fecha de inicio de la categoría no puede ser anterior a la del evento");
+            throw new RuntimeException("La fecha de inicio de la categoria no puede ser anterior a la del evento");
         }
         if (end != null && evEnd != null && end.after(evEnd)) {
-            throw new RuntimeException("La fecha de fin de la categoría no puede ser posterior a la del evento");
+            throw new RuntimeException("La fecha de fin de la categoria no puede ser posterior a la del evento");
         }
         if (start != null && end != null && end.before(start)) {
-            throw new RuntimeException("La fecha de fin de la categoría no puede ser anterior a su fecha de inicio");
+            throw new RuntimeException("La fecha de fin de la categoria no puede ser anterior a su fecha de inicio");
         }
     }
 }

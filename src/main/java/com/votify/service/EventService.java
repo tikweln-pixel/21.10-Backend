@@ -30,6 +30,7 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final EventParticipationService eventParticipationService;
+    private final EventJuryService eventJuryService;
     private final UserRepository userRepository;
     private final VotingRepository votingRepository;
     private final EventParticipationRepository eventParticipationRepository;
@@ -41,6 +42,7 @@ public class EventService {
 
     public EventService(EventRepository eventRepository,
                         EventParticipationService eventParticipationService,
+                        EventJuryService eventJuryService,
                         UserRepository userRepository,
                         VotingRepository votingRepository,
                         EventParticipationRepository eventParticipationRepository,
@@ -51,6 +53,7 @@ public class EventService {
                         EventJuryRepository eventJuryRepository) {
         this.eventRepository = eventRepository;
         this.eventParticipationService = eventParticipationService;
+        this.eventJuryService = eventJuryService;
         this.userRepository = userRepository;
         this.votingRepository = votingRepository;
         this.eventParticipationRepository = eventParticipationRepository;
@@ -138,6 +141,14 @@ public class EventService {
                     Objects.requireNonNull(event.getId()),
                     Objects.requireNonNull(creatorId),
                     Objects.requireNonNull(firstCategory.getId()));
+        }
+
+        if (dto.getJuryUserIds() != null) {
+            for (Long juryUserId : dto.getJuryUserIds()) {
+                if (juryUserId != null) {
+                    eventJuryService.registerJury(event.getId(), juryUserId);
+                }
+            }
         }
 
         return toDto(event);

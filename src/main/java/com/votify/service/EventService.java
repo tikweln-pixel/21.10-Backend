@@ -9,8 +9,10 @@ import com.votify.entity.Category;
 import com.votify.entity.Event;
 import com.votify.entity.Project;
 import com.votify.entity.User;
+import com.votify.advice.ForbiddenException;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CommentRepository;
+import com.votify.persistence.EventJuryRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.ProjectRepository;
@@ -34,6 +36,7 @@ public class EventService {
     private final CommentRepository commentRepository;
     private final ProjectRepository projectRepository;
     private final CategoryCriterionPointsRepository criterionPointsRepository;
+    private final EventJuryRepository eventJuryRepository;
 
     public EventService(EventRepository eventRepository,
                         EventParticipationService eventParticipationService,
@@ -42,7 +45,8 @@ public class EventService {
                         EventParticipationRepository eventParticipationRepository,
                         CommentRepository commentRepository,
                         ProjectRepository projectRepository,
-                        CategoryCriterionPointsRepository criterionPointsRepository) {
+                        CategoryCriterionPointsRepository criterionPointsRepository,
+                        EventJuryRepository eventJuryRepository) {
         this.eventRepository = eventRepository;
         this.eventParticipationService = eventParticipationService;
         this.userRepository = userRepository;
@@ -51,6 +55,7 @@ public class EventService {
         this.commentRepository = commentRepository;
         this.projectRepository = projectRepository;
         this.criterionPointsRepository = criterionPointsRepository;
+        this.eventJuryRepository = eventJuryRepository;
     }
 
     public List<EventDto> findAll() {
@@ -161,10 +166,14 @@ public class EventService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, Long requesterId) {
         if (id == null) throw new RuntimeException("El ID del evento no puede ser nulo");
         Event event = eventRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + id));
+
+        if (requesterId == null || !eventJuryRepository.existsByEventIdAndUserId(id, requesterId)) {
+            throw new ForbiddenException("Solo el Jurado puede eliminar eventos");
+        }
 
         List<Long> categoryIds = new ArrayList<>();
         for (Category cat : event.getCategories()) {

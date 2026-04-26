@@ -28,6 +28,7 @@ class EventParticipationServiceTest {
     @Mock private EventRepository              eventRepository;
     @Mock private UserRepository               userRepository;
     @Mock private CategoryRepository           categoryRepository;
+    @Mock private EventJuryRepository          eventJuryRepository;
 
     @InjectMocks
     private EventParticipationService service;
@@ -62,6 +63,8 @@ class EventParticipationServiceTest {
         saved.setId(99L);
         when(eventParticipationRepository.save(any(EventParticipation.class))).thenReturn(Objects.requireNonNull(saved));
 
+        when(categoryRepository.findByEventId(1L)).thenReturn(List.of());
+
         EventParticipationDto result = service.registerCompetitor(1L, 2L, 10L);
 
         assertThat(result.getRole()).isEqualTo(ParticipationRole.COMPETITOR);
@@ -69,20 +72,20 @@ class EventParticipationServiceTest {
     }
 
     @Test
-    @DisplayName("registerParticipation → registra votante correctamente")
-    void registerParticipation_registersVoter() {
+    @DisplayName("registerParticipation → registra espectador correctamente")
+    void registerParticipation_registersSpectator() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
         when(eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(1L, 2L, 10L)).thenReturn(false);
 
-        EventParticipation saved = new EventParticipation(event, user, category, ParticipationRole.VOTER);
+        EventParticipation saved = new EventParticipation(event, user, category, ParticipationRole.SPECTATOR);
         saved.setId(100L);
         when(eventParticipationRepository.save(any(EventParticipation.class))).thenReturn(Objects.requireNonNull(saved));
 
-        EventParticipationDto result = service.registerVoter(1L, 2L, 10L);
+        EventParticipationDto result = service.registerSpectator(1L, 2L, 10L);
 
-        assertThat(result.getRole()).isEqualTo(ParticipationRole.VOTER);
+        assertThat(result.getRole()).isEqualTo(ParticipationRole.SPECTATOR);
     }
 
     @Test
@@ -90,7 +93,7 @@ class EventParticipationServiceTest {
     void registerParticipation_throwsException_whenCategoryIsNull() {
         assertThatThrownBy(() -> service.registerParticipation(1L, 2L, null, ParticipationRole.COMPETITOR))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Category is required");
+                .hasMessageContaining("categoría es obligatoria");
     }
 
     @Test
@@ -103,7 +106,7 @@ class EventParticipationServiceTest {
 
         assertThatThrownBy(() -> service.registerParticipation(1L, 2L, 10L, ParticipationRole.COMPETITOR))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("already registered");
+                .hasMessageContaining("ya está registrado");
     }
 
     @Test
@@ -121,7 +124,7 @@ class EventParticipationServiceTest {
 
         assertThatThrownBy(() -> service.registerParticipation(1L, 2L, 10L, ParticipationRole.COMPETITOR))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("belong");
+                .hasMessageContaining("no pertenece");
     }
 
     // ── getParticipations ──────────────────────────────────────────────────

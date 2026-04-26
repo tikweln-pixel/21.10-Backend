@@ -6,6 +6,7 @@ import com.votify.entity.User;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CategoryRepository;
 import com.votify.persistence.CommentRepository;
+import com.votify.persistence.EventJuryRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.ProjectRepository;
@@ -36,6 +37,7 @@ class EventServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private EventParticipationRepository eventParticipationRepository;
     @Mock private CategoryRepository categoryRepository;
+    @Mock private EventJuryRepository eventJuryRepository;
     @Mock private VotingRepository votingRepository;
     @Mock private CommentRepository commentRepository;
     @Mock private ProjectRepository projectRepository;
@@ -51,7 +53,8 @@ class EventServiceTest {
                 eventParticipationRepository,
                 eventRepository,
                 userRepository,
-                categoryRepository
+                categoryRepository,
+                eventJuryRepository
         );
         eventService = new EventService(
                 eventRepository,
@@ -61,7 +64,8 @@ class EventServiceTest {
                 eventParticipationRepository,
                 commentRepository,
                 projectRepository,
-                criterionPointsRepository
+                criterionPointsRepository,
+                eventJuryRepository
         );
 
         event1 = new Event("Hackathon 2026");
@@ -181,9 +185,10 @@ class EventServiceTest {
     @DisplayName("delete → llama a delete una sola vez")
     void delete_callsDeleteOnce() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event1));
+        when(eventJuryRepository.existsByEventIdAndUserId(1L, 10L)).thenReturn(true);
         doNothing().when(eventRepository).delete(Objects.requireNonNull(event1));
 
-        eventService.delete(1L);
+        eventService.delete(1L, 10L);
 
         verify(eventRepository, times(1)).delete(Objects.requireNonNull(event1));
     }
@@ -193,7 +198,7 @@ class EventServiceTest {
     void delete_throwsException_whenNotFound() {
         when(eventRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> eventService.delete(99L))
+        assertThatThrownBy(() -> eventService.delete(99L, 10L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("99");
     }

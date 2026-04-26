@@ -2,6 +2,7 @@ package com.votify.controller;
 
 import com.votify.dto.*;
 import com.votify.service.CategoryService;
+import com.votify.service.EventJuryService;
 import com.votify.service.EventParticipationService;
 import com.votify.service.EventService;
 import org.springframework.http.HttpStatus;
@@ -17,11 +18,16 @@ public class EventController {
     private final EventService eventService;
     private final EventParticipationService eventParticipationService;
     private final CategoryService categoryService;
+    private final EventJuryService eventJuryService;
 
-    public EventController(EventService eventService, EventParticipationService eventParticipationService, CategoryService categoryService) {
+    public EventController(EventService eventService,
+                           EventParticipationService eventParticipationService,
+                           CategoryService categoryService,
+                           EventJuryService eventJuryService) {
         this.eventService = eventService;
         this.eventParticipationService = eventParticipationService;
         this.categoryService = categoryService;
+        this.eventJuryService = eventJuryService;
     }
 
     @GetMapping
@@ -51,10 +57,12 @@ public class EventController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        eventService.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id, @RequestParam Long userId) {
+        eventService.delete(id, userId);
         return ResponseEntity.noContent().build();
     }
+
+    // ── Categories ────────────────────────────────────────────────────────────
 
     @GetMapping("/{eventId}/categories")
     public ResponseEntity<List<CategoryDto>> getCategories(@PathVariable Long eventId) {
@@ -66,6 +74,8 @@ public class EventController {
         return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.createForEvent(eventId, dto));
     }
 
+    // ── Participations ────────────────────────────────────────────────────────
+
     @PostMapping("/{eventId}/participations")
     public ResponseEntity<EventParticipationDto> registerParticipation(
             @PathVariable Long eventId,
@@ -73,6 +83,11 @@ public class EventController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(eventParticipationService.registerParticipation(
                         eventId, request.getUserId(), request.getCategoryId(), request.getRole()));
+    }
+
+    @GetMapping("/{eventId}/users")
+    public ResponseEntity<List<UserDto>> getUsersByEvent(@PathVariable Long eventId) {
+        return ResponseEntity.ok(eventParticipationService.getUsersByEvent(eventId));
     }
 
     @GetMapping("/{eventId}/participations")
@@ -92,10 +107,10 @@ public class EventController {
         return ResponseEntity.ok(eventParticipationService.getCompetitorsByEventAndCategory(eventId, categoryId));
     }
 
-    @GetMapping("/{eventId}/categories/{categoryId}/voters")
-    public ResponseEntity<List<EventParticipationDto>> getVoters(
+    @GetMapping("/{eventId}/categories/{categoryId}/spectators")
+    public ResponseEntity<List<EventParticipationDto>> getSpectators(
             @PathVariable Long eventId, @PathVariable Long categoryId) {
-        return ResponseEntity.ok(eventParticipationService.getVotersByEventAndCategory(eventId, categoryId));
+        return ResponseEntity.ok(eventParticipationService.getSpectatorsByEventAndCategory(eventId, categoryId));
     }
 
     @PostMapping("/{eventId}/competitors")
@@ -106,12 +121,22 @@ public class EventController {
                 .body(eventParticipationService.registerCompetitor(eventId, request.getUserId(), request.getCategoryId()));
     }
 
-    @PostMapping("/{eventId}/voters")
-    public ResponseEntity<EventParticipationDto> registerVoter(
+    @PostMapping("/{eventId}/spectators")
+    public ResponseEntity<EventParticipationDto> registerSpectator(
             @PathVariable Long eventId,
             @RequestBody RegisterCompetitorRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(eventParticipationService.registerVoter(eventId, request.getUserId(), request.getCategoryId()));
+                .body(eventParticipationService.registerSpectator(eventId, request.getUserId(), request.getCategoryId()));
+    }
+
+    @PatchMapping("/{eventId}/users/{userId}/categories/{categoryId}/role")
+    public ResponseEntity<EventParticipationDto> changeRole(
+            @PathVariable Long eventId,
+            @PathVariable Long userId,
+            @PathVariable Long categoryId,
+            @RequestBody ChangeRoleRequest request) {
+        return ResponseEntity.ok(
+                eventParticipationService.changeRole(eventId, userId, categoryId, request.getRole()));
     }
 
     @DeleteMapping("/{eventId}/participations")
@@ -123,4 +148,35 @@ public class EventController {
         return ResponseEntity.noContent().build();
     }
 
+    // ── Roles summary (for UI) ────────────────────────────────────────────────
+
+    @GetMapping("/{eventId}/users/{userId}/roles")
+    public ResponseEntity<UserEventRolesDto> getUserRoles(
+            @PathVariable Long eventId,
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(eventParticipationService.getUserRolesInEvent(eventId, userId));
+    }
+
+    // ── Jury ─────────────────────────────────────────────────────────────────
+
+    @GetMapping("/{eventId}/jury")
+    public ResponseEntity<List<EventJuryDto>> getJury(@PathVariable Long eventId) {
+        return ResponseEntity.ok(eventJuryService.getJuryByEvent(eventId));
+    }
+
+    @PostMapping("/{eventId}/jury")
+    public ResponseEntity<EventJuryDto> registerJury(
+            @PathVariable Long eventId,
+            @RequestBody RegisterCompetitorRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventJuryService.registerJury(eventId, request.getUserId()));
+    }
+
+    @DeleteMapping("/{eventId}/jury/{userId}")
+    public ResponseEntity<Void> removeJury(
+            @PathVariable Long eventId,
+            @PathVariable Long userId) {
+        eventJuryService.removeJury(eventId, userId);
+        return ResponseEntity.noContent().build();
+    }
 }

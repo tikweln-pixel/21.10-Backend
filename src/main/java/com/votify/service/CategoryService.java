@@ -7,9 +7,11 @@ import com.votify.entity.CategoryCriterionPoints;
 import com.votify.entity.Criterion;
 import com.votify.entity.Event;
 import com.votify.entity.VotingType;
+import com.votify.advice.ForbiddenException;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CategoryRepository;
 import com.votify.persistence.CriterionRepository;
+import com.votify.persistence.EventJuryRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.VotingRepository;
@@ -31,19 +33,22 @@ public class CategoryService {
     private final CategoryCriterionPointsRepository criterionPointsRepository;
     private final VotingRepository votingRepository;
     private final EventParticipationRepository eventParticipationRepository;
+    private final EventJuryRepository eventJuryRepository;
 
     public CategoryService(CategoryRepository categoryRepository,
                            EventRepository eventRepository,
                            CriterionRepository criterionRepository,
                            CategoryCriterionPointsRepository criterionPointsRepository,
                            VotingRepository votingRepository,
-                           EventParticipationRepository eventParticipationRepository) {
+                           EventParticipationRepository eventParticipationRepository,
+                           EventJuryRepository eventJuryRepository) {
         this.categoryRepository = categoryRepository;
         this.eventRepository = eventRepository;
         this.criterionRepository = criterionRepository;
         this.criterionPointsRepository = criterionPointsRepository;
         this.votingRepository = votingRepository;
         this.eventParticipationRepository = eventParticipationRepository;
+        this.eventJuryRepository = eventJuryRepository;
     }
 
     public List<CategoryDto> findAll() {
@@ -118,10 +123,15 @@ public class CategoryService {
     }
 
     @Transactional
-    public void delete(Long id) {
-        if (!categoryRepository.existsById(id)) {
-            throw new RuntimeException("Categoría no encontrada con id: " + id);
+    public void delete(Long id, Long requesterId) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + id));
+
+        Long eventId = category.getEvent().getId();
+        if (requesterId == null || !eventJuryRepository.existsByEventIdAndUserId(eventId, requesterId)) {
+            throw new ForbiddenException("Solo el Jurado puede eliminar categorías");
         }
+
         votingRepository.deleteByCategoryId(id);
         eventParticipationRepository.deleteByCategoryId(id);
         criterionPointsRepository.deleteByCategoryId(id);

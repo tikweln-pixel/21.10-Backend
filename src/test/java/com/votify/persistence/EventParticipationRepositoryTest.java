@@ -40,15 +40,15 @@ class EventParticipationRepositoryTest {
         userComp = new User("Comp User", "comp_part@test.com", null);
         em.persist(userComp);
 
-        userVoter = new User("Voter User", "voter_part@test.com", null);
+        userVoter = new User("Spectator User", "spectator_part@test.com", null);
         em.persist(userVoter);
 
         // Competitor in Jury category
         EventParticipation p1 = new EventParticipation(event, userComp, catJury, ParticipationRole.COMPETITOR);
         em.persist(p1);
 
-        // Voter in Jury category
-        EventParticipation p2 = new EventParticipation(event, userVoter, catJury, ParticipationRole.VOTER);
+        // Spectator in Jury category
+        EventParticipation p2 = new EventParticipation(event, userVoter, catJury, ParticipationRole.SPECTATOR);
         em.persist(p2);
 
         // Competitor in Popular category
@@ -89,13 +89,13 @@ class EventParticipationRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByEventIdAndCategoryIdAndRole → retorna solo votantes del jurado")
-    void findByEventIdAndCategoryIdAndRole_returnsOnlyVoters() {
-        List<EventParticipation> voters = repo.findByEventIdAndCategoryIdAndRole(
-                event.getId(), catJury.getId(), ParticipationRole.VOTER);
+    @DisplayName("findByEventIdAndCategoryIdAndRole → retorna solo espectadores del jurado")
+    void findByEventIdAndCategoryIdAndRole_returnsOnlySpectators() {
+        List<EventParticipation> spectators = repo.findByEventIdAndCategoryIdAndRole(
+                event.getId(), catJury.getId(), ParticipationRole.SPECTATOR);
 
-        assertThat(voters).hasSize(1);
-        assertThat(voters.get(0).getUser().getId()).isEqualTo(userVoter.getId());
+        assertThat(spectators).hasSize(1);
+        assertThat(spectators.get(0).getUser().getId()).isEqualTo(userVoter.getId());
     }
 
     // ── existsByEventIdAndUserIdAndCategoryId ─────────────────────────────

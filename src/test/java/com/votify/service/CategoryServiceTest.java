@@ -124,6 +124,7 @@ class CategoryServiceTest {
         Category saved = new Category("Nueva Cat", event);
         saved.setId(20L);
         when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(saved));
+        when(eventParticipationRepository.findByEventId(1L)).thenReturn(List.of());
 
         CategoryDto dto = new CategoryDto(null, "Nueva Cat", null, null, null, null, null, null, null);
         CategoryDto result = categoryService.createForEvent(1L, dto);
@@ -131,6 +132,37 @@ class CategoryServiceTest {
         assertThat(result.getId()).isEqualTo(20L);
         assertThat(result.getName()).isEqualTo("Nueva Cat");
         assertThat(result.getEventId()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("createForEvent â†’ registra spectators para usuarios ya presentes en el evento")
+    void createForEvent_registersSpectatorsForExistingEventUsers() {
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
+
+        Category saved = new Category("Nueva Cat", event);
+        saved.setId(20L);
+        when(categoryRepository.save(any(Category.class))).thenReturn(saved);
+
+        Category previousCategory = new Category("Otra", event);
+        previousCategory.setId(30L);
+
+        User user1 = new User("Ana", "ana@test.com", null);
+        user1.setId(2L);
+        User user2 = new User("Luis", "luis@test.com", null);
+        user2.setId(3L);
+
+        EventParticipation p1 = new EventParticipation(event, user1, previousCategory, ParticipationRole.COMPETITOR);
+        EventParticipation p2 = new EventParticipation(event, user1, category, ParticipationRole.SPECTATOR);
+        EventParticipation p3 = new EventParticipation(event, user2, previousCategory, ParticipationRole.SPECTATOR);
+
+        when(eventParticipationRepository.findByEventId(1L)).thenReturn(List.of(p1, p2, p3));
+        when(eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(1L, 2L, 20L)).thenReturn(false);
+        when(eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(1L, 3L, 20L)).thenReturn(false);
+
+        CategoryDto dto = new CategoryDto(null, "Nueva Cat", null, null, null, null, null, null, null);
+        categoryService.createForEvent(1L, dto);
+
+        verify(eventParticipationRepository, times(2)).save(any(EventParticipation.class));
     }
 
     @Test

@@ -6,6 +6,8 @@ import com.votify.entity.Category;
 import com.votify.entity.CategoryCriterionPoints;
 import com.votify.entity.Criterion;
 import com.votify.entity.Event;
+import com.votify.entity.EventParticipation;
+import com.votify.entity.ParticipationRole;
 import com.votify.entity.VotingType;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CategoryRepository;
@@ -20,8 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @SuppressWarnings("null")
 @Service
@@ -83,7 +87,9 @@ public class CategoryService {
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
         Category category = new Category(dto.getName(), event);
         category.setVotingType(dto.getVotingType());
-        return toDto(categoryRepository.save(category));
+        Category savedCategory = categoryRepository.save(category);
+        registerExistingEventUsersAsSpectators(savedCategory);
+        return toDto(savedCategory);
     }
 
     public CategoryDto create(CategoryDto dto) {
@@ -100,7 +106,9 @@ public class CategoryService {
         category.setTimeInitial(dto.getTimeInitial());
         category.setTimeFinal(dto.getTimeFinal());
         category.setReminderMinutes(dto.getReminderMinutes());
-        return toDto(categoryRepository.save(category));
+        Category savedCategory = categoryRepository.save(category);
+        registerExistingEventUsersAsSpectators(savedCategory);
+        return toDto(savedCategory);
     }
 
     public CategoryDto update(Long id, CategoryDto dto) {
@@ -319,6 +327,37 @@ public class CategoryService {
         Long categoryId = ccp.getCategory() != null ? ccp.getCategory().getId() : null;
         Long criterionId = ccp.getCriterion() != null ? ccp.getCriterion().getId() : null;
         return new CategoryCriterionPointsDto(ccp.getId(), categoryId, criterionId, criterionName, ccp.getWeightPercent());
+    }
+
+    private void registerExistingEventUsersAsSpectators(Category category) {
+        if (category == null || category.getId() == null || category.getEvent() == null || category.getEvent().getId() == null) {
+            return;
+        }
+
+        List<EventParticipation> existingParticipations = eventParticipationRepository.findByEventId(category.getEvent().getId());
+        if (existingParticipations == null || existingParticipations.isEmpty()) {
+            return;
+        }
+
+        Set<Long> processedUserIds = new HashSet<>();
+        for (EventParticipation participation : existingParticipations) {
+            if (participation == null || participation.getUser() == null || participation.getUser().getId() == null) {
+                continue;
+            }
+
+            Long userId = participation.getUser().getId();
+            if (!processedUserIds.add(userId)) {
+                continue;
+            }
+
+            if (eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(
+                    category.getEvent().getId(), userId, category.getId())) {
+                continue;
+            }
+
+            eventParticipationRepository.save(
+                    new EventParticipation(category.getEvent(), participation.getUser(), category, ParticipationRole.SPECTATOR));
+        }
     }
 
     private void validateCategoryTimesWithinEvent(Event event, Date start, Date end) {

@@ -121,12 +121,12 @@ public class EventController {
                 .body(eventParticipationService.registerCompetitor(eventId, request.getUserId(), request.getCategoryId()));
     }
 
-    @PostMapping("/{eventId}/spectators")
-    public ResponseEntity<EventParticipationDto> registerSpectator(
+    @PostMapping("/{eventId}/spectators/all-categories")
+    public ResponseEntity<List<EventParticipationDto>> registerSpectatorInAllCategories(
             @PathVariable Long eventId,
-            @RequestBody RegisterCompetitorRequest request) {
+            @RequestBody RegisterEventUserRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(eventParticipationService.registerSpectator(eventId, request.getUserId(), request.getCategoryId()));
+                .body(eventParticipationService.SpectatorRegistrationInAllCategories(eventId, request.getUserId()));
     }
 
     @PatchMapping("/{eventId}/users/{userId}/categories/{categoryId}/role")
@@ -149,6 +149,19 @@ public class EventController {
     }
 
     // ── Roles summary (for UI) ────────────────────────────────────────────────
+
+    @GetMapping("/users/{userId}/joined-event-ids")
+    public ResponseEntity<List<Long>> getJoinedEventIds(@PathVariable Long userId) {
+        return ResponseEntity.ok(eventParticipationService.getEventIdsWithParticipation(userId));
+    }
+
+    @GetMapping("/{eventId}/users/{userId}/has-participation")
+    public ResponseEntity<java.util.Map<String, Boolean>> hasParticipation(
+            @PathVariable Long eventId,
+            @PathVariable Long userId) {
+        boolean result = eventParticipationService.hasParticipationInEvent(eventId, userId);
+        return ResponseEntity.ok(java.util.Map.of("hasParticipation", result));
+    }
 
     @GetMapping("/{eventId}/users/{userId}/roles")
     public ResponseEntity<UserEventRolesDto> getUserRoles(

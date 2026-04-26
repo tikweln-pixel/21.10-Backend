@@ -58,10 +58,9 @@ public class EventParticipationService {
     }
 
     public EventParticipationDto registerCompetitor(Long eventId, Long userId, Long categoryId) {
-        EventParticipationDto result = registerParticipation(eventId, userId, categoryId, ParticipationRole.COMPETITOR);
-        autoRegisterSpectatorInOtherCategories(eventId, userId, categoryId);
-        return result;
+        return ensureCompetitorRegistration(eventId, userId, categoryId);
     }
+
 
     public EventParticipationDto ensureCompetitorRegistration(Long eventId, Long userId, Long categoryId) {
         if (eventId == null) throw new RuntimeException("El ID del evento es obligatorio");
@@ -89,8 +88,34 @@ public class EventParticipationService {
         return toDto(saved);
     }
 
-    public EventParticipationDto registerSpectator(Long eventId, Long userId, Long categoryId) {
-        return registerParticipation(eventId, userId, categoryId, ParticipationRole.SPECTATOR);
+    //Permite registrar a un usuario como espectador en todas las categorías de un evento
+    public List<EventParticipationDto> SpectatorRegistrationInAllCategories(Long eventId, Long userId) {
+        if (eventId == null) throw new RuntimeException("El ID del evento es obligatorio");
+        if (userId == null) throw new RuntimeException("El ID del usuario es obligatorio");
+
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + userId));
+
+        List<Category> allCategories = categoryRepository.findByEventId(eventId);
+        if (allCategories.isEmpty()) {
+            throw new RuntimeException("El evento no tiene categorias para registrar al usuario");
+        }
+
+        List<EventParticipationDto> result = new ArrayList<>();
+        for (Category category : allCategories) {
+            java.util.Optional<EventParticipation> existing = eventParticipationRepository
+                    .findByEventIdAndUserIdAndCategoryId(eventId, userId, category.getId());
+
+            if (existing.isPresent()) {
+                result.add(toDto(existing.get()));
+            } else {
+                EventParticipation participation = new EventParticipation(event, user, category, ParticipationRole.SPECTATOR);
+                result.add(toDto(eventParticipationRepository.save(participation)));
+            }
+        }
+        return result;
     }
 
     private void autoRegisterSpectatorInOtherCategories(Long eventId, Long userId, Long excludedCategoryId) {
@@ -112,7 +137,7 @@ public class EventParticipationService {
                         "Participación no encontrada para usuario " + userId + " en categoría " + categoryId));
 
         if (newRole == ParticipationRole.COMPETITOR && participation.getRole() != ParticipationRole.COMPETITOR) {
-            // Allowed: frontend must ensure project assignment separately
+            
         }
         participation.setRole(newRole);
         return toDto(eventParticipationRepository.save(participation));
@@ -215,6 +240,30 @@ public class EventParticipationService {
         List<EventParticipationDto> result = new ArrayList<>();
         for (EventParticipation p : participations) {
             result.add(toDto(p));
+        }
+        return result;
+    }
+
+    public boolean hasParticipationInEvent(Long eventId, Long userId) {
+        return eventParticipationRepository.existsByEventIdAndUserId(eventId, userId);
+    }
+
+    //Devuelve na lista de IDs de eventos en los que el usuario tiene alguna participación
+    public List<Long> getEventIdsWithParticipation(Long userId) {
+        List<EventParticipation> participations = eventParticipationRepository.findByUserId(userId);
+        List<Long> result = new ArrayList<>();
+        for (EventParticipation p : participations) {
+            Long eventId = p.getEvent().getId();
+            boolean alreadyAdded = false;
+            for (Long id : result) {
+                if (id.equals(eventId)) {
+                    alreadyAdded = true;
+                    break;
+                }
+            }
+            if (!alreadyAdded) {
+                result.add(eventId);
+            }
         }
         return result;
     }

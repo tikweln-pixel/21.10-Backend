@@ -94,7 +94,7 @@ class EvaluacionServiceTest {
 
         assertThatThrownBy(() -> evaluacionService.findById(99L))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("not found");
+                .hasMessageContaining("99");
     }
 
     // ── create ────────────────────────────────────────────────────────
@@ -190,7 +190,7 @@ class EvaluacionServiceTest {
 
         assertThatThrownBy(() -> evaluacionService.create(dto))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("User not found");
+                .hasMessageContaining("999");
     }
 
     // ── delete ────────────────────────────────────────────────────────
@@ -213,7 +213,7 @@ class EvaluacionServiceTest {
 
         assertThatThrownBy(() -> evaluacionService.delete(99L))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("not found");
+                .hasMessageContaining("99");
     }
 
     // ── queries ───────────────────────────────────────────────────────

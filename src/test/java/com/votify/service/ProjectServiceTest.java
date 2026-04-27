@@ -27,17 +27,20 @@ class ProjectServiceTest {
 
     @Mock private ProjectRepository                    projectRepository;
     @Mock private EventRepository                      eventRepository;
+    @Mock private CategoryRepository                   categoryRepository;
     @Mock private CommentRepository                    commentRepository;
     @Mock private UserRepository                       userRepository;
     @Mock private EventParticipationRepository         eventParticipationRepository;
     @Mock private CategoryCriterionPointsRepository    criterionPointsRepository;
     @Mock private VotingRepository                     votingRepository;
+    @Mock private EventParticipationService            eventParticipationService;
 
     @InjectMocks
     private ProjectService projectService;
 
     private Event      event;
     private Project    project;
+    private Category   category;
     private User       voter;
     private User       competitor;
 
@@ -46,8 +49,12 @@ class ProjectServiceTest {
         event = new Event("Hackathon 2026");
         event.setId(1L);
 
+        category = new Category("General", event);
+        category.setId(20L);
+
         project = new Project("EcoTrack", "App de carbono", event);
         project.setId(10L);
+        project.setCategory(category);
 
         voter = new User("Jurado1", "jurado@test.com", null);
         voter.setId(5L);
@@ -151,7 +158,6 @@ class ProjectServiceTest {
         when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
         when(projectRepository.save(any(Project.class))).thenReturn(Objects.requireNonNull(project));
-
         projectService.addCompetitor(10L, 2L);
 
         assertThat(project.getCompetitors()).contains(user);

@@ -176,6 +176,6 @@ class CriterionServiceTest {
 
         assertThatThrownBy(() -> criterionService.delete(99L))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("not found");
+                .hasMessageContaining("99");
     }
 }

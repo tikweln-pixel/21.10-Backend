@@ -57,12 +57,9 @@ class EventParticipationServiceTest {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
-        when(eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(1L, 2L, 10L)).thenReturn(false);
-
         EventParticipation saved = new EventParticipation(event, user, category, ParticipationRole.COMPETITOR);
         saved.setId(99L);
         when(eventParticipationRepository.save(any(EventParticipation.class))).thenReturn(Objects.requireNonNull(saved));
-
         when(categoryRepository.findByEventId(1L)).thenReturn(List.of());
 
         EventParticipationDto result = service.registerCompetitor(1L, 2L, 10L);
@@ -213,6 +210,6 @@ class EventParticipationServiceTest {
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getRole()).isEqualTo(ParticipationRole.COMPETITOR);
         assertThat(result.get(1).getRole()).isEqualTo(ParticipationRole.SPECTATOR);
-        verify(eventParticipationRepository, times(2)).save(any(EventParticipation.class));
+        verify(eventParticipationRepository, times(1)).save(any(EventParticipation.class));
     }
 }

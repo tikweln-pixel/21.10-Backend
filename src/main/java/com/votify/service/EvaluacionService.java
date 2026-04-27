@@ -53,7 +53,7 @@ public class EvaluacionService {
 
     public EvaluacionDto findById(Long id) {
         Evaluacion evaluacion = evaluacionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Evaluacion not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Evaluación no encontrada con id: " + id));
         return toDto(evaluacion);
     }
 
@@ -74,20 +74,20 @@ public class EvaluacionService {
         Evaluacion evaluacion = creator.createAndValidate(dto);
 
         User evaluador = userRepository.findById(dto.getEvaluadorId())
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + dto.getEvaluadorId()));
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + dto.getEvaluadorId()));
         evaluacion.setEvaluador(evaluador);
 
         User competitor = userRepository.findById(dto.getCompetitorId())
-                .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
+                .orElseThrow(() -> new RuntimeException("Competidor no encontrado con id: " + dto.getCompetitorId()));
         evaluacion.setCompetitor(competitor);
 
         Category category = categoryRepository.findById(dto.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found with id: " + dto.getCategoryId()));
+                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + dto.getCategoryId()));
         evaluacion.setCategory(category);
 
         if (dto.getCriterionId() != null) {
             Criterion criterion = criterionRepository.findById(dto.getCriterionId())
-                    .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
+                    .orElseThrow(() -> new RuntimeException("Criterio no encontrado con id: " + dto.getCriterionId()));
             evaluacion.setCriterion(criterion);
         }
 
@@ -98,7 +98,7 @@ public class EvaluacionService {
     @Transactional
     public EvaluacionDto update(Long id, EvaluacionDto dto) {
         Evaluacion evaluacion = evaluacionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Evaluacion not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Evaluación no encontrada con id: " + id));
 
         if (dto.getPeso() != null) {
             if (dto.getPeso() < 0) {
@@ -126,7 +126,7 @@ public class EvaluacionService {
         }
         if (dto.getCriterionId() != null) {
             Criterion criterion = criterionRepository.findById(dto.getCriterionId())
-                    .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
+                    .orElseThrow(() -> new RuntimeException("Criterio no encontrado con id: " + dto.getCriterionId()));
             evaluacion.setCriterion(criterion);
         }
 
@@ -136,7 +136,7 @@ public class EvaluacionService {
     @Transactional
     public void delete(Long id) {
         if (!evaluacionRepository.existsById(id)) {
-            throw new RuntimeException("Evaluacion not found with id: " + id);
+            throw new RuntimeException("Evaluación no encontrada con id: " + id);
         }
         evaluacionRepository.deleteById(id);
     }
@@ -192,3 +192,4 @@ public class EvaluacionService {
         );
     }
 }
+

@@ -28,9 +28,9 @@ public class UserService {
     }
 
     public UserDto findById(Long id) {
-        if (id == null) throw new RuntimeException("User ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del usuario no puede ser nulo");
         User user = userRepository.findById(Objects.requireNonNull(id))
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
         return toDto(user);
     }
 
@@ -69,16 +69,16 @@ public class UserService {
     }
 
     public UserDto update(Long id, UserDto dto) {
-        if (id == null) throw new RuntimeException("User ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del usuario no puede ser nulo");
         User user = userRepository.findById(Objects.requireNonNull(id))
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + id));
         user.setName(dto.getName());
         user.setEmail(dto.getEmail());
         return toDto(userRepository.save(Objects.requireNonNull(user)));
     }
 
     public void delete(Long id) {
-        if (id == null) throw new RuntimeException("User ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del usuario no puede ser nulo");
         userRepository.deleteById(Objects.requireNonNull(id));
     }
 
@@ -86,3 +86,4 @@ public class UserService {
         return new UserDto(user.getId(), user.getName(), user.getEmail());
     }
 }
+

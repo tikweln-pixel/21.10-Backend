@@ -33,6 +33,7 @@ class CategoryServiceTest {
     @Mock private VotingRepository                 votingRepository;
     @Mock private EventParticipationRepository     eventParticipationRepository;
     @Mock private EvaluacionRepository             evaluacionRepository;
+    @Mock private ProjectRepository                projectRepository;
 
     @InjectMocks
     private CategoryService categoryService;
@@ -123,8 +124,10 @@ class CategoryServiceTest {
         Category saved = new Category("Nueva Cat", event);
         saved.setId(20L);
         when(categoryRepository.save(any(Category.class))).thenReturn(Objects.requireNonNull(saved));
+        when(eventParticipationRepository.findByEventId(1L)).thenReturn(List.of());
 
-        CategoryDto result = categoryService.createForEvent(1L, "Nueva Cat");
+        CategoryDto dto = new CategoryDto(null, "Nueva Cat", null, null, null, null, null, null, null);
+        CategoryDto result = categoryService.createForEvent(1L, dto);
 
         assertThat(result.getId()).isEqualTo(20L);
         assertThat(result.getName()).isEqualTo("Nueva Cat");
@@ -132,11 +135,43 @@ class CategoryServiceTest {
     }
 
     @Test
+    @DisplayName("createForEvent â†’ registra spectators para usuarios ya presentes en el evento")
+    void createForEvent_registersSpectatorsForExistingEventUsers() {
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
+
+        Category saved = new Category("Nueva Cat", event);
+        saved.setId(20L);
+        when(categoryRepository.save(any(Category.class))).thenReturn(saved);
+
+        Category previousCategory = new Category("Otra", event);
+        previousCategory.setId(30L);
+
+        User user1 = new User("Ana", "ana@test.com", null);
+        user1.setId(2L);
+        User user2 = new User("Luis", "luis@test.com", null);
+        user2.setId(3L);
+
+        EventParticipation p1 = new EventParticipation(event, user1, previousCategory, ParticipationRole.COMPETITOR);
+        EventParticipation p2 = new EventParticipation(event, user1, category, ParticipationRole.SPECTATOR);
+        EventParticipation p3 = new EventParticipation(event, user2, previousCategory, ParticipationRole.SPECTATOR);
+
+        when(eventParticipationRepository.findByEventId(1L)).thenReturn(List.of(p1, p2, p3));
+        when(eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(1L, 2L, 20L)).thenReturn(false);
+        when(eventParticipationRepository.existsByEventIdAndUserIdAndCategoryId(1L, 3L, 20L)).thenReturn(false);
+
+        CategoryDto dto = new CategoryDto(null, "Nueva Cat", null, null, null, null, null, null, null);
+        categoryService.createForEvent(1L, dto);
+
+        verify(eventParticipationRepository, times(2)).save(any(EventParticipation.class));
+    }
+
+    @Test
     @DisplayName("createForEvent → lanza excepción si el evento no existe")
     void createForEvent_throwsException_whenEventNotFound() {
         when(eventRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> categoryService.createForEvent(99L, "Test"))
+        CategoryDto dto = new CategoryDto(null, "Test", null, null, null, null, null, null, null);
+        assertThatThrownBy(() -> categoryService.createForEvent(99L, dto))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("99");
     }
@@ -203,7 +238,7 @@ class CategoryServiceTest {
 
         assertThatThrownBy(() -> categoryService.setCriterionPointsBulk(10L, input))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("non-negative");
+                .hasMessageContaining("no negativo");
     }
 
     @Test
@@ -285,7 +320,7 @@ class CategoryServiceTest {
         // Fecha anterior al inicio del evento
         assertThatThrownBy(() -> categoryService.setTimeInitial(10L, new Date(1L)))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("start time");
+                .hasMessageContaining("inicio");
     }
 
     @Test
@@ -298,7 +333,7 @@ class CategoryServiceTest {
         // Fecha fin anterior a la de inicio de la categoría
         assertThatThrownBy(() -> categoryService.setTimeFinal(10L, new Date(1L)))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("end time");
+                .hasMessageContaining("fin");
     }
 
     // ── setTotalPoints ─────────────────────────────────────────────────────
@@ -333,11 +368,11 @@ class CategoryServiceTest {
     void setTotalPoints_throwsException_whenZeroOrNegative() {
         assertThatThrownBy(() -> categoryService.setTotalPoints(10L, 0))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("positive");
+                .hasMessageContaining("positivo");
 
         assertThatThrownBy(() -> categoryService.setTotalPoints(10L, -5))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("positive");
+                .hasMessageContaining("positivo");
     }
 
     // ── setMaxVotesPerVoter ────────────────────────────────────────────────
@@ -371,7 +406,27 @@ class CategoryServiceTest {
     void setMaxVotesPerVoter_throwsException_whenZeroOrNegative() {
         assertThatThrownBy(() -> categoryService.setMaxVotesPerVoter(10L, 0))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("positive");
+                .hasMessageContaining("positivo");
+    }
+
+    @Test
+    @DisplayName("delete → desvincula proyectos antes de eliminar la categoría")
+    void delete_unlinksProjectsBeforeDeletingCategory() {
+        Project project = new Project("Proyecto 1", "Desc", event);
+        project.setCategory(category);
+
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        when(projectRepository.findByCategoryId(10L)).thenReturn(List.of(project));
+
+        categoryService.delete(10L, 1L);
+
+        assertThat(project.getCategory()).isNull();
+        verify(projectRepository).saveAll(List.of(project));
+        verify(evaluacionRepository).deleteByCategoryId(10L);
+        verify(votingRepository).deleteByCategoryId(10L);
+        verify(eventParticipationRepository).deleteByCategoryId(10L);
+        verify(criterionPointsRepository).deleteByCategoryId(10L);
+        verify(categoryRepository).deleteById(10L);
     }
 
     // ── Guard JURY_EXPERT en setCriterionPointsBulk ────────────────────────
@@ -391,3 +446,4 @@ class CategoryServiceTest {
                 .hasMessageContaining("JURY_EXPERT");
     }
 }
+

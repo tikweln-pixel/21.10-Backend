@@ -6,8 +6,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api")
 public class AuthController {
 
     private final UserService userService;
@@ -16,13 +18,18 @@ public class AuthController {
         this.userService = userService;
     }
 
-    @PostMapping("/register")
+    @GetMapping("/users")
+    public ResponseEntity<List<UserDto>> getAllUsers() {
+        return ResponseEntity.ok(userService.findAll());
+    }
+
+    @PostMapping("/auth/register")
     public ResponseEntity<UserDto> register(@RequestBody UserDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(userService.register(dto.getName(), dto.getEmail(), dto.getPassword()));
     }
 
-    @PostMapping("/login")
+    @PostMapping("/auth/login")
     public ResponseEntity<UserDto> login(@RequestBody UserDto dto) {
         return ResponseEntity.ok(userService.login(dto.getEmail(), dto.getPassword()));
     }

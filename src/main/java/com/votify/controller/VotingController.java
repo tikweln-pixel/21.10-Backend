@@ -1,5 +1,6 @@
 package com.votify.controller;
 
+import com.votify.dto.ProjectRankingDto;
 import com.votify.dto.VotingDto;
 import com.votify.service.VotingService;
 import org.springframework.http.HttpStatus;
@@ -44,22 +45,28 @@ public class VotingController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/by-competitors")
-    public ResponseEntity<List<VotingDto>> getByCompetitors(@RequestParam List<Long> ids) {
-        return ResponseEntity.ok(votingService.findByCompetitorIds(ids));
+    @GetMapping("/by-projects")
+    public ResponseEntity<List<VotingDto>> getByProjects(@RequestParam List<Long> ids) {
+        return ResponseEntity.ok(votingService.findByProjectIds(ids));
     }
 
-    @GetMapping("/by-voter-competitor")
-    public ResponseEntity<List<VotingDto>> getByVoterAndCompetitor(
-            @RequestParam Long voterId, @RequestParam Long competitorId) {
-        return ResponseEntity.ok(votingService.findByVoterAndCompetitor(voterId, competitorId));
+    @GetMapping("/by-voter-project")
+    public ResponseEntity<List<VotingDto>> getByVoterAndProject(
+            @RequestParam Long voterId, @RequestParam Long projectId) {
+        return ResponseEntity.ok(votingService.findByVoterAndProject(voterId, projectId));
     }
 
-    @GetMapping("/by-voter-competitor-category")
-    public ResponseEntity<List<VotingDto>> getByVoterCompetitorCategory(
+    @GetMapping("/by-voter-project-category")
+    public ResponseEntity<List<VotingDto>> getByVoterProjectCategory(
             @RequestParam Long voterId,
-            @RequestParam Long competitorId,
+            @RequestParam Long projectId,
             @RequestParam Long categoryId) {
-        return ResponseEntity.ok(votingService.findByVoterAndCompetitorAndCategory(voterId, competitorId, categoryId));
+        return ResponseEntity.ok(votingService.findByVoterAndProjectAndCategory(voterId, projectId, categoryId));
+    }
+
+    @GetMapping("/ranking/by-category/{categoryId}")
+    public ResponseEntity<List<ProjectRankingDto>> getRanking(@PathVariable Long categoryId) {
+        return ResponseEntity.ok(votingService.getProjectRanking(categoryId));
     }
 }
+

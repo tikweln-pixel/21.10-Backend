@@ -6,7 +6,7 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 
 /**
- * ConcreteProduct — Evaluación numérica.
+ * Producto concreto — Evaluación numérica.
  *
  * Datos esperados: {"valores": [8, 7, 9]}
  * Score = suma de todos los valores numéricos.

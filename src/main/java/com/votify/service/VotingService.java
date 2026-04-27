@@ -1,12 +1,15 @@
 package com.votify.service;
 
+import com.votify.dto.ProjectRankingDto;
 import com.votify.dto.VotingDto;
 import com.votify.entity.*;
 import com.votify.persistence.*;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 
@@ -18,17 +21,20 @@ public class VotingService {
     private final CriterionRepository criterionRepository;
     private final CategoryRepository categoryRepository;
     private final CategoryCriterionPointsRepository criterionPointsRepository;
+    private final ProjectRepository projectRepository;
 
     public VotingService(VotingRepository votingRepository,
                          UserRepository userRepository,
                          CriterionRepository criterionRepository,
                          CategoryRepository categoryRepository,
-                         CategoryCriterionPointsRepository criterionPointsRepository) {
+                         CategoryCriterionPointsRepository criterionPointsRepository,
+                         ProjectRepository projectRepository) {
         this.votingRepository = votingRepository;
         this.userRepository = userRepository;
         this.criterionRepository = criterionRepository;
         this.categoryRepository = categoryRepository;
         this.criterionPointsRepository = criterionPointsRepository;
+        this.projectRepository = projectRepository;
     }
 
     public List<VotingDto> findAll() {
@@ -41,26 +47,28 @@ public class VotingService {
     }
 
     public VotingDto findById(Long id) {
-        if (id == null) throw new RuntimeException("Voting ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del voto no puede ser nulo");
         Voting voting = votingRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Voting not found with id: " + id));
         return toDto(voting);
     }
 
     public VotingDto create(VotingDto dto) {
-        if (dto.getVoterId() == null) throw new RuntimeException("Voter ID cannot be null");
+        if (dto.getVoterId() == null) throw new RuntimeException("El ID del votante no puede ser nulo");
         User voter = userRepository.findById(Objects.requireNonNull(dto.getVoterId()))
                 .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
 
-        if (dto.getCompetitorId() == null) throw new RuntimeException("Competitor ID cannot be null");
-        User competitor = userRepository.findById(Objects.requireNonNull(dto.getCompetitorId()))
-                .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + dto.getCompetitorId()));
+        if (dto.getProjectId() == null) throw new RuntimeException("El ID del proyecto no puede ser nulo");
+        Project project = projectRepository.findById(Objects.requireNonNull(dto.getProjectId()))
+                .orElseThrow(() -> new RuntimeException("Project not found with id: " + dto.getProjectId()));
 
-        if (voter.getId().equals(competitor.getId())) {
+        boolean isCompetitor = project.getCompetitors().stream()
+                .anyMatch(c -> c.getId().equals(voter.getId()));
+        if (isCompetitor) {
             throw new RuntimeException("No puedes votar tu propio proyecto.");
         }
 
-        if (dto.getCriterionId() == null) throw new RuntimeException("Criterion ID cannot be null");
+        if (dto.getCriterionId() == null) throw new RuntimeException("El ID del criterio no puede ser nulo");
         Criterion criterion = criterionRepository.findById(Objects.requireNonNull(dto.getCriterionId()))
                 .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
 
@@ -75,7 +83,7 @@ public class VotingService {
         }
 
         java.util.Optional<Voting> existingOpt = votingRepository
-                .findExistingVote(voter.getId(), competitor.getId(), criterion.getId(), categoryId);
+                .findExistingVote(voter.getId(), project.getId(), criterion.getId(), categoryId);
 
         if (existingOpt.isPresent()) {
             Voting existing = existingOpt.get();
@@ -95,7 +103,7 @@ public class VotingService {
             return toDto(votingRepository.save(Objects.requireNonNull(existing)));
         }
 
-        Voting voting = new Voting(voter, competitor, criterion, dto.getScore());
+        Voting voting = new Voting(voter, project, criterion, dto.getScore());
         if (category != null) {
             voting.setCategory(category);
         }
@@ -120,13 +128,13 @@ public class VotingService {
         if (category.getVotingType() == VotingType.POPULAR_VOTE) {
             validatePopularVoteRestrictions(
                     voting.getVoter().getId(),
-                    voting.getCompetitor().getId(),
+                    voting.getProject().getId(),
                     category,
                     voting.getScore()
             );
         } else if (category.getVotingType() == VotingType.JURY_EXPERT) {
             if (criterionPointsRepository == null) {
-                throw new RuntimeException("CategoryCriterionPointsRepository no disponible para validar JURY_EXPERT");
+                throw new RuntimeException("CategoryCriterionPointsRepository no disponible para validar el tipo JURY_EXPERT");
             }
             Long categoryId = category.getId();
             Long criterionId = voting.getCriterion().getId();
@@ -146,25 +154,25 @@ public class VotingService {
         }
     }
 
-    private void validatePopularVoteRestrictions(Long voterId, Long competitorId,
+    private void validatePopularVoteRestrictions(Long voterId, Long projectId,
                                                   Category category, Integer score) {
         if (category.getMaxVotesPerVoter() != null) {
             long alreadyVotedCount = votingRepository
-                    .countDistinctCompetitorsByVoterIdAndCategoryId(voterId, category.getId());
+                    .countDistinctProjectsByVoterIdAndCategoryId(voterId, category.getId());
 
-            boolean isNewCompetitor = true;
+            boolean isNewProject = true;
             List<Voting> existingVotes = votingRepository.findByVoterIdAndCategoryId(voterId, category.getId());
             for (Voting v : existingVotes) {
-                if (v.getCompetitor().getId().equals(competitorId)) {
-                    isNewCompetitor = false;
+                if (v.getProject().getId().equals(projectId)) {
+                    isNewProject = false;
                     break;
                 }
             }
 
-            if (isNewCompetitor && alreadyVotedCount >= category.getMaxVotesPerVoter()) {
+            if (isNewProject && alreadyVotedCount >= category.getMaxVotesPerVoter()) {
                 throw new RuntimeException(
                         "El votante ya ha alcanzado el límite de " + category.getMaxVotesPerVoter()
-                        + " competidores distintos permitidos en la categoría '" + category.getName() + "'.");
+                        + " proyectos distintos permitidos en la categoría '" + category.getName() + "'.");
             }
         }
 
@@ -189,11 +197,11 @@ public class VotingService {
                     .orElseThrow(() -> new RuntimeException("Voter not found with id: " + vId));
             voting.setVoter(voter);
         }
-        if (dto.getCompetitorId() != null && dto.getCompetitorId() > 0) {
-            Long cId = dto.getCompetitorId();
-            User competitor = userRepository.findById(Objects.requireNonNull(cId))
-                    .orElseThrow(() -> new RuntimeException("Competitor not found with id: " + cId));
-            voting.setCompetitor(competitor);
+        if (dto.getProjectId() != null && dto.getProjectId() > 0) {
+            Long pId = dto.getProjectId();
+            Project project = projectRepository.findById(Objects.requireNonNull(pId))
+                    .orElseThrow(() -> new RuntimeException("Project not found with id: " + pId));
+            voting.setProject(project);
         }
         if (dto.getCriterionId() != null && dto.getCriterionId() > 0) {
             Long critId = dto.getCriterionId();
@@ -214,12 +222,12 @@ public class VotingService {
     }
 
     public void delete(Long id) {
-        if (id == null) throw new RuntimeException("Voting ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del voto no puede ser nulo");
         votingRepository.deleteById(Objects.requireNonNull(id));
     }
 
-    public List<VotingDto> findByCompetitorIds(List<Long> competitorIds) {
-        List<Voting> votings = votingRepository.findByCompetitorIdIn(competitorIds);
+    public List<VotingDto> findByProjectIds(List<Long> projectIds) {
+        List<Voting> votings = votingRepository.findByProjectIdIn(projectIds);
         List<VotingDto> result = new ArrayList<>();
         for (Voting voting : votings) {
             result.add(toDto(voting));
@@ -231,8 +239,8 @@ public class VotingService {
         return votingRepository.findDistinctVoterIdsByCategoryId(categoryId);
     }
 
-    public List<VotingDto> findByVoterAndCompetitor(Long voterId, Long competitorId) {
-        List<Voting> votings = votingRepository.findByVoterIdAndCompetitorId(voterId, competitorId);
+    public List<VotingDto> findByVoterAndProject(Long voterId, Long projectId) {
+        List<Voting> votings = votingRepository.findByVoterIdAndProjectId(voterId, projectId);
         List<VotingDto> result = new ArrayList<>();
         for (Voting voting : votings) {
             result.add(toDto(voting));
@@ -240,24 +248,40 @@ public class VotingService {
         return result;
     }
 
-    public List<VotingDto> findByVoterAndCompetitorAndCategory(Long voterId, Long competitorId, Long categoryId) {
-        List<Voting> votings = votingRepository.findByVoterIdAndCompetitorIdAndCategoryId(voterId, competitorId, categoryId);
+    public List<VotingDto> findByVoterAndProjectAndCategory(Long voterId, Long projectId, Long categoryId) {
+        List<Voting> votings = votingRepository.findByVoterIdAndProjectIdAndCategoryId(voterId, projectId, categoryId);
         List<VotingDto> result = new ArrayList<>();
         for (Voting voting : votings) {
             result.add(toDto(voting));
         }
         return result;
+    }
+
+    public List<ProjectRankingDto> getProjectRanking(Long categoryId) {
+        // Build score map from votes
+        Map<Long, Long> scoreMap = new HashMap<>();
+        for (Object[] row : votingRepository.findProjectScoresByCategoryId(categoryId)) {
+            scoreMap.put((Long) row[0], (Long) row[1]);
+        }
+
+        // All projects in category → include those with 0 votes
+        List<ProjectRankingDto> ranking = new ArrayList<>();
+        for (Project p : projectRepository.findByCategoryId(categoryId)) {
+            ranking.add(new ProjectRankingDto(p.getId(), p.getName(), scoreMap.getOrDefault(p.getId(), 0L)));
+        }
+        ranking.sort((a, b) -> Long.compare(b.getTotalScore(), a.getTotalScore()));
+        return ranking;
     }
 
     private VotingDto toDto(Voting voting) {
-        Long categoryId   = voting.getCategory()   != null ? voting.getCategory().getId()   : null;
-        Long voterId      = voting.getVoter()       != null ? voting.getVoter().getId()      : null;
-        Long competitorId = voting.getCompetitor()  != null ? voting.getCompetitor().getId() : null;
-        Long criterionId  = voting.getCriterion()   != null ? voting.getCriterion().getId()  : null;
+        Long categoryId  = voting.getCategory() != null ? voting.getCategory().getId() : null;
+        Long voterId     = voting.getVoter()    != null ? voting.getVoter().getId()    : null;
+        Long projectId   = voting.getProject()  != null ? voting.getProject().getId()  : null;
+        Long criterionId = voting.getCriterion() != null ? voting.getCriterion().getId() : null;
         VotingDto dto = new VotingDto(
                 voting.getId(),
                 voterId,
-                competitorId,
+                projectId,
                 criterionId,
                 voting.getScore(),
                 categoryId,
@@ -280,3 +304,4 @@ public class VotingService {
         return trimmed;
     }
 }
+

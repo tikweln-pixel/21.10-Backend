@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.util.Date;
 
 /**
- * Product abstracto del patrón Factory Method (GoF) — ADR-006.
+ * Producto abstracto del patrón Método Fábrica (GoF) — ADR-006.
  *
  * Clase base para las evaluaciones multicriterio. Cada subtipo concreto
  * implementa {@code calcularScore()} con lógica distinta según el tipo
@@ -51,10 +51,10 @@ public abstract class Evaluacion {
     private Date createdAt;
 
     /**
-     * Factory Method del Product — cada subtipo concreto calcula el score
+     * Método fábrica del Producto — cada subtipo concreto calcula la puntuación
      * de forma distinta según su tipo de evaluación.
      *
-     * @return score calculado, o null para tipos cualitativos (COMENTARIO)
+     * @return puntuación calculada, o null para tipos cualitativos (COMENTARIO)
      */
     public abstract Double calcularScore();
 

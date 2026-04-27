@@ -6,6 +6,8 @@ import com.votify.entity.User;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CategoryRepository;
 import com.votify.persistence.CommentRepository;
+import com.votify.persistence.EvaluacionRepository;
+import com.votify.persistence.EventJuryRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.ProjectRepository;
@@ -23,13 +25,17 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
-@DisplayName("EventService — Tests unitarios")
+@DisplayName("EventService - Tests unitarios")
 class EventServiceTest {
 
     @Mock private EventRepository eventRepository;
@@ -40,10 +46,13 @@ class EventServiceTest {
     @Mock private CommentRepository commentRepository;
     @Mock private ProjectRepository projectRepository;
     @Mock private CategoryCriterionPointsRepository criterionPointsRepository;
+    @Mock private EvaluacionRepository evaluacionRepository;
+    @Mock private EventJuryRepository eventJuryRepository;
 
     private EventService eventService;
 
-    private Event event1, event2;
+    private Event event1;
+    private Event event2;
 
     @BeforeEach
     void setUp() {
@@ -51,7 +60,8 @@ class EventServiceTest {
                 eventParticipationRepository,
                 eventRepository,
                 userRepository,
-                categoryRepository
+                categoryRepository,
+                null
         );
         eventService = new EventService(
                 eventRepository,
@@ -61,7 +71,9 @@ class EventServiceTest {
                 eventParticipationRepository,
                 commentRepository,
                 projectRepository,
-                criterionPointsRepository
+                criterionPointsRepository,
+                evaluacionRepository,
+                eventJuryRepository
         );
 
         event1 = new Event("Hackathon 2026");
@@ -73,10 +85,8 @@ class EventServiceTest {
         event2.setId(2L);
     }
 
-    // ── findAll ────────────────────────────────────────────────────────────
-
     @Test
-    @DisplayName("findAll → retorna todos los eventos como DTOs")
+    @DisplayName("findAll -> retorna todos los eventos como DTOs")
     void findAll_returnsAllEventsAsDtos() {
         when(eventRepository.findAll()).thenReturn(List.of(event1, event2));
 
@@ -88,16 +98,14 @@ class EventServiceTest {
     }
 
     @Test
-    @DisplayName("findAll → retorna lista vacía cuando no hay eventos")
+    @DisplayName("findAll -> retorna lista vacia cuando no hay eventos")
     void findAll_returnsEmptyList_whenNoEvents() {
         when(eventRepository.findAll()).thenReturn(List.of());
         assertThat(eventService.findAll()).isEmpty();
     }
 
-    // ── findById ───────────────────────────────────────────────────────────
-
     @Test
-    @DisplayName("findById → retorna DTO del evento correcto")
+    @DisplayName("findById -> retorna DTO del evento correcto")
     void findById_returnsCorrectDto() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event1));
 
@@ -108,7 +116,7 @@ class EventServiceTest {
     }
 
     @Test
-    @DisplayName("findById → lanza excepción cuando el evento no existe")
+    @DisplayName("findById -> lanza excepcion cuando el evento no existe")
     void findById_throwsException_whenNotFound() {
         when(eventRepository.findById(99L)).thenReturn(Optional.empty());
 
@@ -117,10 +125,8 @@ class EventServiceTest {
                 .hasMessageContaining("99");
     }
 
-    // ── createForOrganizer ─────────────────────────────────────────────────
-
     @Test
-    @DisplayName("createForOrganizer → crea evento asociado al organizador")
+    @DisplayName("createForOrganizer -> crea evento asociado al organizador")
     void createForOrganizer_createsEventWithOrganizer() {
         User organizer = new User("Org", "org@test.com", null);
         organizer.setId(10L);
@@ -144,7 +150,7 @@ class EventServiceTest {
     }
 
     @Test
-    @DisplayName("createForOrganizer → lanza excepción si el organizador no existe")
+    @DisplayName("createForOrganizer -> lanza excepcion si el organizador no existe")
     void createForOrganizer_throwsException_whenOrganizerNotFound() {
         when(userRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -157,10 +163,8 @@ class EventServiceTest {
                 .hasMessageContaining("999");
     }
 
-    // ── update ─────────────────────────────────────────────────────────────
-
     @Test
-    @DisplayName("update → actualiza nombre y fechas del evento")
+    @DisplayName("update -> actualiza nombre y fechas del evento")
     void update_updatesEventNameAndDates() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event1));
         Event updated = new Event("Hackathon 2027");
@@ -175,25 +179,23 @@ class EventServiceTest {
         assertThat(result.getName()).isEqualTo("Hackathon 2027");
     }
 
-    // ── delete ─────────────────────────────────────────────────────────────
-
     @Test
-    @DisplayName("delete → llama a delete una sola vez")
+    @DisplayName("delete -> llama a delete una sola vez")
     void delete_callsDeleteOnce() {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event1));
         doNothing().when(eventRepository).delete(Objects.requireNonNull(event1));
 
-        eventService.delete(1L);
+        eventService.delete(1L, 10L);
 
         verify(eventRepository, times(1)).delete(Objects.requireNonNull(event1));
     }
 
     @Test
-    @DisplayName("delete → lanza excepción para id inexistente")
+    @DisplayName("delete -> lanza excepcion para id inexistente")
     void delete_throwsException_whenNotFound() {
         when(eventRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> eventService.delete(99L))
+        assertThatThrownBy(() -> eventService.delete(99L, 10L))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("99");
     }

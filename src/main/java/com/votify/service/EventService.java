@@ -11,6 +11,8 @@ import com.votify.entity.Project;
 import com.votify.entity.User;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CommentRepository;
+import com.votify.persistence.EvaluacionRepository;
+import com.votify.persistence.EventJuryRepository;
 import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.ProjectRepository;
@@ -28,29 +30,38 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final EventParticipationService eventParticipationService;
+    private final EventJuryService eventJuryService;
     private final UserRepository userRepository;
     private final VotingRepository votingRepository;
     private final EventParticipationRepository eventParticipationRepository;
     private final CommentRepository commentRepository;
     private final ProjectRepository projectRepository;
     private final CategoryCriterionPointsRepository criterionPointsRepository;
+    private final EvaluacionRepository evaluacionRepository;
+    private final EventJuryRepository eventJuryRepository;
 
     public EventService(EventRepository eventRepository,
                         EventParticipationService eventParticipationService,
+                        EventJuryService eventJuryService,
                         UserRepository userRepository,
                         VotingRepository votingRepository,
                         EventParticipationRepository eventParticipationRepository,
                         CommentRepository commentRepository,
                         ProjectRepository projectRepository,
-                        CategoryCriterionPointsRepository criterionPointsRepository) {
+                        CategoryCriterionPointsRepository criterionPointsRepository,
+                        EvaluacionRepository evaluacionRepository,
+                        EventJuryRepository eventJuryRepository) {
         this.eventRepository = eventRepository;
         this.eventParticipationService = eventParticipationService;
+        this.eventJuryService = eventJuryService;
         this.userRepository = userRepository;
         this.votingRepository = votingRepository;
         this.eventParticipationRepository = eventParticipationRepository;
         this.commentRepository = commentRepository;
         this.projectRepository = projectRepository;
         this.criterionPointsRepository = criterionPointsRepository;
+        this.evaluacionRepository = evaluacionRepository;
+        this.eventJuryRepository = eventJuryRepository;
     }
 
     public List<EventDto> findAll() {
@@ -63,20 +74,20 @@ public class EventService {
     }
 
     public EventDto findById(Long id) {
-        if (id == null) throw new RuntimeException("Event ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del evento no puede ser nulo");
         Event event = eventRepository.findById(Objects.requireNonNull(id))
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + id));
         return toDto(event);
     }
 
     public EventDto create(EventDto dto) {
         List<CategoryDto> incoming = dto.getCategories();
         if (incoming == null || incoming.isEmpty()) {
-            throw new RuntimeException("At least one category is required");
+            throw new RuntimeException("Se requiere al menos una categoría");
         }
 
         if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new RuntimeException("Event name is required");
+            throw new RuntimeException("El nombre del evento es obligatorio");
         }
 
         Event event = new Event(dto.getName().trim());
@@ -85,7 +96,7 @@ public class EventService {
         if (dto.getOrganizerId() != null) {
             Long orgId = dto.getOrganizerId();
             User organizer = userRepository.findById(Objects.requireNonNull(orgId))
-                    .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + orgId));
+                    .orElseThrow(() -> new RuntimeException("Usuario (organizador) no encontrado con id: " + orgId));
             event.setOrganizer(organizer);
         }
         event = eventRepository.save(Objects.requireNonNull(event));
@@ -120,7 +131,7 @@ public class EventService {
             }
         }
         if (event.getCategories().isEmpty()) {
-            throw new RuntimeException("At least one non-empty category name is required");
+            throw new RuntimeException("Se requiere al menos una categoría con nombre válido");
         }
         eventRepository.save(Objects.requireNonNull(event));
 
@@ -132,39 +143,47 @@ public class EventService {
                     Objects.requireNonNull(firstCategory.getId()));
         }
 
+        if (dto.getJuryUserIds() != null) {
+            for (Long juryUserId : dto.getJuryUserIds()) {
+                if (juryUserId != null) {
+                    eventJuryService.registerJury(event.getId(), juryUserId);
+                }
+            }
+        }
+
         return toDto(event);
     }
 
     public EventDto createForOrganizer(Long organizerId, EventDto dto) {
-        if (organizerId == null) throw new RuntimeException("Organizer ID cannot be null");
+        if (organizerId == null) throw new RuntimeException("El ID del organizador no puede ser nulo");
         User organizer = userRepository.findById(Objects.requireNonNull(organizerId))
-                .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + organizerId));
+                .orElseThrow(() -> new RuntimeException("Usuario (organizador) no encontrado con id: " + organizerId));
 
         Event event = organizer.createEvent(dto.getName(), dto.getTimeInitial(), dto.getTimeFinal());
         return toDto(eventRepository.save(Objects.requireNonNull(event)));
     }
 
     public EventDto update(Long id, EventDto dto) {
-        if (id == null) throw new RuntimeException("Event ID cannot be null");
+        if (id == null) throw new RuntimeException("El ID del evento no puede ser nulo");
         Event event = eventRepository.findById(Objects.requireNonNull(id))
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + id));
         event.setName(dto.getName());
         event.setTimeInitial(dto.getTimeInitial());
         event.setTimeFinal(dto.getTimeFinal());
         if (dto.getOrganizerId() != null) {
             Long orgId = dto.getOrganizerId();
             User organizer = userRepository.findById(Objects.requireNonNull(orgId))
-                    .orElseThrow(() -> new RuntimeException("User (organizer) not found with id: " + orgId));
+                    .orElseThrow(() -> new RuntimeException("Usuario (organizador) no encontrado con id: " + orgId));
             event.setOrganizer(organizer);
         }
         return toDto(eventRepository.save(Objects.requireNonNull(event)));
     }
 
     @Transactional
-    public void delete(Long id) {
-        if (id == null) throw new RuntimeException("Event ID cannot be null");
+    public void delete(Long id, Long requesterId) {
+        if (id == null) throw new RuntimeException("El ID del evento no puede ser nulo");
         Event event = eventRepository.findById(Objects.requireNonNull(id))
-                .orElseThrow(() -> new RuntimeException("Event not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + id));
 
         List<Long> categoryIds = new ArrayList<>();
         for (Category cat : event.getCategories()) {
@@ -178,6 +197,7 @@ public class EventService {
 
         // Delete criterion points for all event categories
         for (Long categoryId : categoryIds) {
+            evaluacionRepository.deleteByCategoryId(categoryId);
             criterionPointsRepository.deleteByCategoryId(categoryId);
         }
 
@@ -188,6 +208,7 @@ public class EventService {
 
         // Delete event participations
         eventParticipationRepository.deleteByEventId(id);
+        eventJuryRepository.deleteByEventId(id);
 
         // Delete comments on event projects
         if (!projectIds.isEmpty()) {
@@ -271,3 +292,4 @@ public class EventService {
         );
     }
 }
+

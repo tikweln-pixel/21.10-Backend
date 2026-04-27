@@ -4,15 +4,10 @@ public class VotingDto {
 
     private Long id;
     private Long voterId;
-    private Long competitorId;
+    private Long projectId;
     private Long criterionId;
     private Integer score;
 
-    /**
-     * Req. 19/23 – ID de la categoría a la que pertenece este voto.
-     * Requerido para POPULAR_VOTE (validación de límite de votos y puntos totales).
-     * Opcional en JURY_EXPERT para mantener compatibilidad.
-     */
     private Long categoryId;
     private Boolean manuallyModified;
     private String comentario;
@@ -20,27 +15,27 @@ public class VotingDto {
     public VotingDto() {
     }
 
-    public VotingDto(Long id, Long voterId, Long competitorId, Long criterionId, Integer score) {
+    public VotingDto(Long id, Long voterId, Long projectId, Long criterionId, Integer score) {
         this.id = id;
         this.voterId = voterId;
-        this.competitorId = competitorId;
+        this.projectId = projectId;
         this.criterionId = criterionId;
         this.score = score;
     }
 
-    public VotingDto(Long id, Long voterId, Long competitorId, Long criterionId, Integer score, Long categoryId) {
+    public VotingDto(Long id, Long voterId, Long projectId, Long criterionId, Integer score, Long categoryId) {
         this.id = id;
         this.voterId = voterId;
-        this.competitorId = competitorId;
+        this.projectId = projectId;
         this.criterionId = criterionId;
         this.score = score;
         this.categoryId = categoryId;
     }
 
-    public VotingDto(Long id, Long voterId, Long competitorId, Long criterionId, Integer score, Long categoryId, Boolean manuallyModified) {
+    public VotingDto(Long id, Long voterId, Long projectId, Long criterionId, Integer score, Long categoryId, Boolean manuallyModified) {
         this.id = id;
         this.voterId = voterId;
-        this.competitorId = competitorId;
+        this.projectId = projectId;
         this.criterionId = criterionId;
         this.score = score;
         this.categoryId = categoryId;
@@ -63,12 +58,12 @@ public class VotingDto {
         this.voterId = voterId;
     }
 
-    public Long getCompetitorId() {
-        return competitorId;
+    public Long getProjectId() {
+        return projectId;
     }
 
-    public void setCompetitorId(Long competitorId) {
-        this.competitorId = competitorId;
+    public void setProjectId(Long projectId) {
+        this.projectId = projectId;
     }
 
     public Long getCriterionId() {
@@ -111,3 +106,4 @@ public class VotingDto {
         this.comentario = comentario;
     }
 }
+

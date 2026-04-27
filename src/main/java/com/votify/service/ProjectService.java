@@ -22,26 +22,26 @@ public class ProjectService {
     private final CategoryRepository categoryRepository;
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
-    private final EventParticipationRepository eventParticipationRepository;
     private final CategoryCriterionPointsRepository criterionPointsRepository;
     private final VotingRepository votingRepository;
+    private final EventParticipationService eventParticipationService;
 
     public ProjectService(ProjectRepository projectRepository,
                           EventRepository eventRepository,
                           CategoryRepository categoryRepository,
                           CommentRepository commentRepository,
                           UserRepository userRepository,
-                          EventParticipationRepository eventParticipationRepository,
                           CategoryCriterionPointsRepository criterionPointsRepository,
-                          VotingRepository votingRepository) {
+                          VotingRepository votingRepository,
+                          EventParticipationService eventParticipationService) {
         this.projectRepository = projectRepository;
         this.eventRepository = eventRepository;
         this.categoryRepository = categoryRepository;
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
-        this.eventParticipationRepository = eventParticipationRepository;
         this.criterionPointsRepository = criterionPointsRepository;
         this.votingRepository = votingRepository;
+        this.eventParticipationService = eventParticipationService;
     }
 
     @Transactional(readOnly = true)
@@ -92,20 +92,20 @@ public class ProjectService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
 
+        if (project.getCategory() == null) {
+            throw new RuntimeException("El proyecto debe tener una categoría antes de añadir competidores");
+        }
+
         project.getCompetitors().add(user);
         Project saved = projectRepository.save(project);
 
         Event event = project.getEvent();
-        List<Category> categories = event.getCategories();
-        if (!categories.isEmpty()) {
-            Category firstCategory = categories.get(0);
-            boolean alreadyRegistered = eventParticipationRepository
-                    .existsByEventIdAndUserIdAndCategoryId(event.getId(), user.getId(), firstCategory.getId());
-            if (!alreadyRegistered) {
-                eventParticipationRepository.save(
-                        new EventParticipation(event, user, firstCategory, ParticipationRole.COMPETITOR));
-            }
+        Category projectCategory = project.getCategory();
+        if (!projectCategory.getEvent().getId().equals(event.getId())) {
+            throw new RuntimeException("La categoría del proyecto no pertenece al evento del proyecto");
         }
+
+        eventParticipationService.ensureCompetitorRegistration(event.getId(), user.getId(), projectCategory.getId());
 
         return toDto(saved);
     }
@@ -128,7 +128,7 @@ public class ProjectService {
 
     public List<CommentDto> getCommentsByProject(Long projectId) {
         if (!projectRepository.existsById(projectId)) {
-            throw new RuntimeException("Project not found with id: " + projectId);
+            throw new RuntimeException("Proyecto no encontrado con id: " + projectId);
         }
         List<Comment> comments = commentRepository.findByProjectId(projectId);
         List<CommentDto> result = new ArrayList<>();
@@ -163,15 +163,9 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
-        List<Long> competitorIds = new ArrayList<>();
-        for (User c : project.getCompetitors()) {
-            competitorIds.add(c.getId());
-        }
-
         List<CategoryCriterionPoints> weights = criterionPointsRepository.findByCategoryId(categoryId);
-        List<Voting> votings = competitorIds.isEmpty()
-                ? new ArrayList<>()
-                : votingRepository.findByCompetitorIdInAndCategoryId(competitorIds, categoryId);
+        List<Voting> votings = votingRepository.findByProjectIdInAndCategoryId(
+                java.util.List.of(projectId), categoryId);
 
         Map<Long, Integer> scoresByCriterion = new HashMap<>();
         for (Voting v : votings) {
@@ -216,3 +210,4 @@ public class ProjectService {
         return dto;
     }
 }
+

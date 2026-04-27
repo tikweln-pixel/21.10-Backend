@@ -11,41 +11,28 @@ import java.util.Optional;
 
 public interface VotingRepository extends JpaRepository<Voting, Long> {
 
-    /**
-     * Req. 19 – Restricción POPULAR_VOTE:
-     * Cuenta cuántos competidores distintos ha votado un votante en una categoría concreta.
-     * Se usa para validar que no supera el límite maxVotesPerVoter de la categoría.
-     */
-    @Query("SELECT COUNT(DISTINCT v.competitor.id) FROM Voting v " +
+    @Query("SELECT COUNT(DISTINCT v.project.id) FROM Voting v " +
            "WHERE v.voter.id = :voterId AND v.category.id = :categoryId")
-    long countDistinctCompetitorsByVoterIdAndCategoryId(
+    long countDistinctProjectsByVoterIdAndCategoryId(
             @Param("voterId") Long voterId,
             @Param("categoryId") Long categoryId);
 
-    /**
-     * Req. 23 – Validación puntos POPULAR_VOTE:
-     * Suma total de puntos ya asignados por un votante en una categoría.
-     * Se usa para verificar que no supera el totalPoints configurado.
-     */
     @Query("SELECT COALESCE(SUM(v.score), 0) FROM Voting v " +
            "WHERE v.voter.id = :voterId AND v.category.id = :categoryId")
     int sumScoreByVoterIdAndCategoryId(
             @Param("voterId") Long voterId,
             @Param("categoryId") Long categoryId);
 
-    /**
-     * Devuelve todos los votos de un votante en una categoría (para auditoría y consulta).
-     */
     List<Voting> findByVoterIdAndCategoryId(Long voterId, Long categoryId);
 
-    @Query("SELECT v FROM Voting v WHERE v.voter.id = :voterId AND v.competitor.id = :competitorId "
+    @Query("SELECT v FROM Voting v WHERE v.voter.id = :voterId AND v.project.id = :projectId "
            + "AND v.criterion.id = :criterionId AND ((:categoryId IS NULL AND v.category IS NULL) OR v.category.id = :categoryId)")
     Optional<Voting> findExistingVote(@Param("voterId") Long voterId,
-                                      @Param("competitorId") Long competitorId,
+                                      @Param("projectId") Long projectId,
                                       @Param("criterionId") Long criterionId,
                                       @Param("categoryId") Long categoryId);
 
-    /* ── Cascade delete support ── */
+    /* ── Soporte para eliminación en cascada ── */
 
     @Modifying
     @Query("DELETE FROM Voting v WHERE v.category.id IN :categoryIds")
@@ -59,18 +46,25 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
     @Query("DELETE FROM Voting v WHERE v.criterion.id = :criterionId")
     void deleteByCriterionId(@Param("criterionId") Long criterionId);
 
-    /* ── Query endpoints for frontend ── */
+    /* ── Consultas para el frontend ── */
 
-    List<Voting> findByCompetitorIdIn(List<Long> competitorIds);
+    List<Voting> findByProjectIdIn(List<Long> projectIds);
 
-    List<Voting> findByVoterIdAndCompetitorId(Long voterId, Long competitorId);
+    List<Voting> findByVoterIdAndProjectId(Long voterId, Long projectId);
 
     @Query("SELECT DISTINCT v.voter.id FROM Voting v WHERE v.category.id = :categoryId")
     List<Long> findDistinctVoterIdsByCategoryId(@Param("categoryId") Long categoryId);
 
-    /** Votos de un jurado (voterId) sobre un competidor en una categoría concreta. */
-    List<Voting> findByVoterIdAndCompetitorIdAndCategoryId(Long voterId, Long competitorId, Long categoryId);
+    List<Voting> findByVoterIdAndProjectIdAndCategoryId(Long voterId, Long projectId, Long categoryId);
 
-    /** Todos los votos de una lista de competidores en una categoría (para calcular nota final). */
-    List<Voting> findByCompetitorIdInAndCategoryId(List<Long> competitorIds, Long categoryId);
+    List<Voting> findByProjectIdInAndCategoryId(List<Long> projectIds, Long categoryId);
+
+    /* ── Ranking de proyectos por categoría ── */
+
+    @Query("SELECT v.project.id, SUM(v.score) FROM Voting v " +
+           "WHERE v.category.id = :categoryId " +
+           "GROUP BY v.project.id " +
+           "ORDER BY SUM(v.score) DESC")
+    List<Object[]> findProjectScoresByCategoryId(@Param("categoryId") Long categoryId);
 }
+

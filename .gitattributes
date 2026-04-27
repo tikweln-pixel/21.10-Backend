@@ -1,2 +1,27 @@
+* text=auto
+
+# Archivos de código: siempre LF (Unix)
+*.java text eol=lf
+*.xml text eol=lf
+*.properties text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.gradle text eol=lf
+
+# Docker y scripts
 Dockerfile text eol=lf
 *.sh text eol=lf
+*.bat text eol=crlf
+
+# Archivos binarios
+*.jar binary
+*.class binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.zip binary
+*.tar binary
+*.gz binary

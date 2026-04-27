@@ -89,7 +89,7 @@ public class EventParticipationService {
     }
 
     //Permite registrar a un usuario como espectador en todas las categorías de un evento
-    public List<EventParticipationDto> SpectatorRegistrationInAllCategories(Long eventId, Long userId) {
+    public List<EventParticipationDto> ensureSpectatorRegistrationInAllCategories(Long eventId, Long userId) {
         if (eventId == null) throw new RuntimeException("El ID del evento es obligatorio");
         if (userId == null) throw new RuntimeException("El ID del usuario es obligatorio");
 

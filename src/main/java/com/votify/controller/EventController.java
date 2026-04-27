@@ -126,7 +126,7 @@ public class EventController {
             @PathVariable Long eventId,
             @RequestBody RegisterEventUserRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(eventParticipationService.SpectatorRegistrationInAllCategories(eventId, request.getUserId()));
+                .body(eventParticipationService.ensureSpectatorRegistrationInAllCategories(eventId, request.getUserId()));
     }
 
     @PatchMapping("/{eventId}/users/{userId}/categories/{categoryId}/role")

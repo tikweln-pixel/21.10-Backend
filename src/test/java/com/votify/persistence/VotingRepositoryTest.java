@@ -57,16 +57,12 @@ class VotingRepositoryTest {
         em.flush();
     }
 
-    // ── findAll ────────────────────────────────────────────────────────────
-
     @Test
     @DisplayName("findAll → retorna todos los votos persistidos")
     void findAll_returnsAllVotings() {
         List<Voting> all = votingRepository.findAll();
         assertThat(all).hasSizeGreaterThanOrEqualTo(2);
     }
-
-    // ── findById ───────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("findById → retorna voto correcto con todas sus relaciones")
@@ -87,8 +83,6 @@ class VotingRepositoryTest {
     void findById_returnsEmpty_whenNotFound() {
         assertThat(votingRepository.findById(99999L)).isEmpty();
     }
-
-    // ── save ───────────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("save → persiste nuevo voto con id generado")
@@ -115,8 +109,6 @@ class VotingRepositoryTest {
         assertThat(updated.getScore()).isEqualTo(40);
     }
 
-    // ── delete ─────────────────────────────────────────────────────────────
-
     @Test
     @DisplayName("deleteById → elimina el voto de la BD")
     void deleteById_removesVoting() {
@@ -138,16 +130,12 @@ class VotingRepositoryTest {
         assertThat(votingRepository.findById(Objects.requireNonNull(v2Id))).isPresent();
     }
 
-    // ── count ──────────────────────────────────────────────────────────────
-
     @Test
     @DisplayName("count → cuenta correctamente los votos totales")
     void count_returnsCorrectTotal() {
         long count = votingRepository.count();
         assertThat(count).isGreaterThanOrEqualTo(2);
     }
-
-    // ── Comentarios por criterio ────────────────────────────────────────────
 
     @Test
     @DisplayName("save → persiste el comentario junto al voto y lo devuelve al releer")

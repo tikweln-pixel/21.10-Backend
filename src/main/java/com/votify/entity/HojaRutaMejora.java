@@ -2,7 +2,6 @@ package com.votify.entity;
 
 import jakarta.persistence.*;
 import java.util.Date;
-import com.votify.entity.User;
 
 /**
  * Entidad que almacena la hoja de ruta de mejora personalizada de un competidor.
@@ -74,8 +73,8 @@ public class HojaRutaMejora {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public User getUser() { return competitor; }
-    public void setUser(User competitor) { this.competitor = competitor; }
+    public User getCompetitor() { return competitor; }
+    public void setCompetitor(User competitor) { this.competitor = competitor; }
 
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }

@@ -24,7 +24,7 @@ class VotingRepositoryTest {
     @Autowired VotingRepository  votingRepository;
 
     private User      voter;
-    private Project   project1, project2;
+    private User      competitor1, competitor2;   // Voting.competitor es User (ADR-007)
     private Criterion criterion1, criterion2;
     private Voting    voting1, voting2;
 
@@ -33,14 +33,11 @@ class VotingRepositoryTest {
         voter = new User("Jurado Test", "jurado_repo@test.com", null);
         em.persist(voter);
 
-        Event event = new Event("Evento Test");
-        em.persist(event);
+        competitor1 = new User("Competidor Alpha", "alpha@test.com", null);
+        em.persist(competitor1);
 
-        project1 = new Project("Proyecto Alpha", "desc", event);
-        em.persist(project1);
-
-        project2 = new Project("Proyecto Beta", "desc", event);
-        em.persist(project2);
+        competitor2 = new User("Competidor Beta", "beta@test.com", null);
+        em.persist(competitor2);
 
         criterion1 = new Criterion("Innovación");
         em.persist(criterion1);
@@ -48,10 +45,10 @@ class VotingRepositoryTest {
         criterion2 = new Criterion("Presentación");
         em.persist(criterion2);
 
-        voting1 = new Voting(voter, project1, criterion1, 25);
+        voting1 = new Voting(voter, competitor1, criterion1, 25);
         em.persist(voting1);
 
-        voting2 = new Voting(voter, project1, criterion2, 18);
+        voting2 = new Voting(voter, competitor1, criterion2, 18);
         em.persist(voting2);
 
         em.flush();
@@ -74,7 +71,7 @@ class VotingRepositoryTest {
         Voting v = result.get();
         assertThat(v.getScore()).isEqualTo(25);
         assertThat(v.getVoter().getId()).isEqualTo(voter.getId());
-        assertThat(v.getProject().getId()).isEqualTo(project1.getId());
+        assertThat(v.getCompetitor().getId()).isEqualTo(competitor1.getId());
         assertThat(v.getCriterion().getId()).isEqualTo(criterion1.getId());
     }
 
@@ -87,7 +84,7 @@ class VotingRepositoryTest {
     @Test
     @DisplayName("save → persiste nuevo voto con id generado")
     void save_persistsNewVoting() {
-        Voting newVoting = new Voting(voter, project2, criterion1, 30);
+        Voting newVoting = new Voting(voter, competitor2, criterion1, 30);
         Voting saved = votingRepository.save(newVoting);
 
         assertThat(saved.getId()).isNotNull();
@@ -140,7 +137,7 @@ class VotingRepositoryTest {
     @Test
     @DisplayName("save → persiste el comentario junto al voto y lo devuelve al releer")
     void saveAndLoad_withComentario_persists() {
-        Voting v = new Voting(voter, project2, criterion1, 15);
+        Voting v = new Voting(voter, competitor2, criterion1, 15);
         v.setComentario("La innovación es el punto más fuerte del proyecto");
         Voting saved = votingRepository.save(v);
         em.flush(); em.clear();
@@ -152,4 +149,3 @@ class VotingRepositoryTest {
                 .isEqualTo("La innovación es el punto más fuerte del proyecto");
     }
 }
-

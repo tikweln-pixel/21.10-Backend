@@ -7,7 +7,8 @@ import com.votify.entity.*;
 import com.votify.persistence.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.votify.entity.User;
+import com.votify.persistence.UserRepository;
 import java.util.*;
 
 /**
@@ -27,16 +28,16 @@ import java.util.*;
 public class HojaRutaMejoraService {
 
     private final HojaRutaMejoraRepository hojaRutaRepository;
-    private final CompetitorRepository competitorRepository;
+    private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final EvaluacionRepository evaluacionRepository;
 
     public HojaRutaMejoraService(HojaRutaMejoraRepository hojaRutaRepository,
-                                  CompetitorRepository competitorRepository,
+                                  UserRepository userRepository,
                                   CategoryRepository categoryRepository,
                                   EvaluacionRepository evaluacionRepository) {
         this.hojaRutaRepository = hojaRutaRepository;
-        this.competitorRepository = competitorRepository;
+        this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.evaluacionRepository = evaluacionRepository;
     }
@@ -65,7 +66,7 @@ public class HojaRutaMejoraService {
      */
     @Transactional
     public HojaRutaMejoraDto generar(Long competitorId, Long categoryId) {
-        Competitor competitor = competitorRepository.findById(competitorId)
+        User competitor = userRepository.findById(competitorId)
                 .orElseThrow(() -> new RuntimeException("Competitor not found: " + competitorId));
 
         Category category = null;
@@ -132,7 +133,7 @@ public class HojaRutaMejoraService {
      * Genera el texto del resumen automático a partir de los datos disponibles.
      * En la implementación parcial no usa IA; simplemente describe el contenido.
      */
-    private String buildResumenAutomatico(Competitor competitor,
+    private String buildResumenAutomatico(User competitor,
                                            List<AreaMejoraDto> areas,
                                            Long categoryId) {
         int totalComentarios = areas.stream()

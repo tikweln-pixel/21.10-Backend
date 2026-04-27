@@ -11,9 +11,9 @@ import java.util.Optional;
 
 public interface VotingRepository extends JpaRepository<Voting, Long> {
 
-    @Query("SELECT COUNT(DISTINCT v.project.id) FROM Voting v " +
+    @Query("SELECT COUNT(DISTINCT v.competitor.id) FROM Voting v " +
            "WHERE v.voter.id = :voterId AND v.category.id = :categoryId")
-    long countDistinctProjectsByVoterIdAndCategoryId(
+    long countDistinctCompetitorsByVoterIdAndCategoryId(
             @Param("voterId") Long voterId,
             @Param("categoryId") Long categoryId);
 
@@ -25,10 +25,10 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
 
     List<Voting> findByVoterIdAndCategoryId(Long voterId, Long categoryId);
 
-    @Query("SELECT v FROM Voting v WHERE v.voter.id = :voterId AND v.project.id = :projectId "
+    @Query("SELECT v FROM Voting v WHERE v.voter.id = :voterId AND v.competitor.id = :competitorId "
            + "AND v.criterion.id = :criterionId AND ((:categoryId IS NULL AND v.category IS NULL) OR v.category.id = :categoryId)")
     Optional<Voting> findExistingVote(@Param("voterId") Long voterId,
-                                      @Param("projectId") Long projectId,
+                                      @Param("competitorId") Long competitorId,
                                       @Param("criterionId") Long criterionId,
                                       @Param("categoryId") Long categoryId);
 
@@ -48,23 +48,22 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
 
     /* ── Consultas para el frontend ── */
 
-    List<Voting> findByProjectIdIn(List<Long> projectIds);
+    List<Voting> findByCompetitorIdIn(List<Long> competitorIds);
 
-    List<Voting> findByVoterIdAndProjectId(Long voterId, Long projectId);
+    List<Voting> findByVoterIdAndCompetitorId(Long voterId, Long competitorId);
 
     @Query("SELECT DISTINCT v.voter.id FROM Voting v WHERE v.category.id = :categoryId")
     List<Long> findDistinctVoterIdsByCategoryId(@Param("categoryId") Long categoryId);
 
-    List<Voting> findByVoterIdAndProjectIdAndCategoryId(Long voterId, Long projectId, Long categoryId);
+    List<Voting> findByVoterIdAndCompetitorIdAndCategoryId(Long voterId, Long competitorId, Long categoryId);
 
-    List<Voting> findByProjectIdInAndCategoryId(List<Long> projectIds, Long categoryId);
+    List<Voting> findByCompetitorIdInAndCategoryId(List<Long> competitorIds, Long categoryId);
 
-    /* ── Ranking de proyectos por categoría ── */
+    /* ── Ranking de competidores por categoría ── */
 
-    @Query("SELECT v.project.id, SUM(v.score) FROM Voting v " +
+    @Query("SELECT v.competitor.id, SUM(v.score) FROM Voting v " +
            "WHERE v.category.id = :categoryId " +
-           "GROUP BY v.project.id " +
+           "GROUP BY v.competitor.id " +
            "ORDER BY SUM(v.score) DESC")
-    List<Object[]> findProjectScoresByCategoryId(@Param("categoryId") Long categoryId);
+    List<Object[]> findCompetitorScoresByCategoryId(@Param("categoryId") Long categoryId);
 }
-

@@ -2,6 +2,7 @@ package com.votify.entity;
 
 import jakarta.persistence.*;
 import java.util.Date;
+import com.votify.entity.User;
 
 /**
  * Entidad que almacena la hoja de ruta de mejora personalizada de un competidor.
@@ -29,7 +30,7 @@ public class HojaRutaMejora {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "competitor_id", nullable = false)
-    private Competitor competitor;
+    private User competitor;
 
     /**
      * Categoría a la que pertenece esta hoja de ruta.
@@ -59,7 +60,7 @@ public class HojaRutaMejora {
     public HojaRutaMejora() {
     }
 
-    public HojaRutaMejora(Competitor competitor, Category category,
+    public HojaRutaMejora(User competitor, Category category,
                            String resumenGenerado, boolean generadoIa) {
         this.competitor = competitor;
         this.category = category;
@@ -73,8 +74,8 @@ public class HojaRutaMejora {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public Competitor getCompetitor() { return competitor; }
-    public void setCompetitor(Competitor competitor) { this.competitor = competitor; }
+    public User getUser() { return competitor; }
+    public void setUser(User competitor) { this.competitor = competitor; }
 
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }

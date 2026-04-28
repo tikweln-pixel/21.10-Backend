@@ -3,6 +3,8 @@ package com.votify.controller;
 import com.votify.dto.CompetitorCommentDto;
 import com.votify.dto.CompetitorDto;
 import com.votify.dto.HojaRutaMejoraDto;
+import com.votify.dto.AreaMejoraDto;
+import com.votify.dto.ComentarioExpertoDto;
 import com.votify.entity.Comment;
 import com.votify.entity.Project;
 import com.votify.entity.User;
@@ -10,9 +12,14 @@ import com.votify.persistence.CommentRepository;
 import com.votify.persistence.ProjectRepository;
 import com.votify.persistence.UserRepository;
 import com.votify.service.HojaRutaMejoraService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -112,6 +119,81 @@ public class CompetitorController {
             @RequestParam(required = false) Long categoryId) {
         HojaRutaMejoraDto dto = hojaRutaService.generar(competitorId, categoryId);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+    }
+
+    /**
+     * Descarga la hoja de ruta del competidor como fichero de texto plano.
+     * Si no existe, la genera automáticamente antes de devolverla.
+     *
+     * @param competitorId ID del competidor
+     * @param categoryId   (opcional) filtrar por categoría
+     */
+    @GetMapping("/{competitorId}/hoja-ruta/pdf")
+    public ResponseEntity<byte[]> descargarHojaRuta(
+            @PathVariable Long competitorId,
+            @RequestParam(required = false) Long categoryId) {
+
+        HojaRutaMejoraDto dto = hojaRutaService.getOrGenerar(competitorId, categoryId);
+        byte[] content = buildTextoDescargable(dto).getBytes(StandardCharsets.UTF_8);
+
+        String filename = "hoja-ruta-competidor-" + competitorId
+                + (categoryId != null ? "-cat" + categoryId : "") + ".txt";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.TEXT_PLAIN)
+                .body(content);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Métodos privados
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Formatea la hoja de ruta como texto plano estructurado para descarga.
+     */
+    private String buildTextoDescargable(HojaRutaMejoraDto dto) {
+        StringBuilder sb = new StringBuilder();
+        String fecha = dto.getFechaGeneracion() != null
+                ? new SimpleDateFormat("dd/MM/yyyy HH:mm").format(dto.getFechaGeneracion())
+                : "—";
+
+        sb.append("═══════════════════════════════════════════════════════\n");
+        sb.append("          HOJA DE RUTA DE MEJORA — VOTIFY\n");
+        sb.append("═══════════════════════════════════════════════════════\n\n");
+        sb.append("Competidor ID : ").append(dto.getCompetitorId()).append("\n");
+        if (dto.getCategoryId() != null) {
+            sb.append("Categoría ID  : ").append(dto.getCategoryId()).append("\n");
+        }
+        sb.append("Generado      : ").append(fecha).append("\n");
+        sb.append("Modo          : ").append(dto.isGeneradoIa() ? "IA generativa" : "Estructurado automático").append("\n\n");
+
+        sb.append("───────────────────────────────────────────────────────\n");
+        sb.append("RESUMEN GENERAL\n");
+        sb.append("───────────────────────────────────────────────────────\n");
+        sb.append(dto.getResumenGeneral()).append("\n\n");
+
+        if (dto.getAreasMejora() != null && !dto.getAreasMejora().isEmpty()) {
+            sb.append("───────────────────────────────────────────────────────\n");
+            sb.append("ÁREAS DE MEJORA POR CRITERIO\n");
+            sb.append("───────────────────────────────────────────────────────\n\n");
+            for (AreaMejoraDto area : dto.getAreasMejora()) {
+                sb.append("▶ ").append(area.getCriterioNombre()).append("\n");
+                if (area.getComentarios() != null) {
+                    for (ComentarioExpertoDto c : area.getComentarios()) {
+                        sb.append("  • [").append(c.getEvaluadorNombre()).append("] ")
+                          .append(c.getTexto()).append("\n");
+                    }
+                }
+                sb.append("\n");
+            }
+        } else {
+            sb.append("Sin comentarios de expertos registrados.\n\n");
+        }
+
+        sb.append("═══════════════════════════════════════════════════════\n");
+        sb.append("Generado por Votify — sistema de votaciones y competiciones\n");
+        return sb.toString();
     }
 }
 

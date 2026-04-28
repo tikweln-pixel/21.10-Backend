@@ -19,7 +19,11 @@ public class CriterionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CriterionDto>> getAll() {
+    public ResponseEntity<List<CriterionDto>> getAll(
+            @RequestParam(required = false) Long categoryId) {
+        if (categoryId != null) {
+            return ResponseEntity.ok(criterionService.findByCategoryId(categoryId));
+        }
         return ResponseEntity.ok(criterionService.findAll());
     }
 

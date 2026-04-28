@@ -1,8 +1,11 @@
 package com.votify.service;
 
 import com.votify.dto.CriterionDto;
+import com.votify.entity.Category;
 import com.votify.entity.Criterion;
+import com.votify.entity.Event;
 import com.votify.persistence.CategoryCriterionPointsRepository;
+import com.votify.persistence.CategoryRepository;
 import com.votify.persistence.CriterionRepository;
 import com.votify.persistence.EvaluacionRepository;
 import com.votify.persistence.VotingRepository;
@@ -39,15 +42,26 @@ class CriterionServiceTest {
     @Mock
     private EvaluacionRepository evaluacionRepository;
 
+    @Mock
+    private CategoryRepository categoryRepository;
+
     @InjectMocks
     private CriterionService criterionService;
 
     private Criterion criterion;
+    private Category category;
 
     @BeforeEach
     void setUp() {
+        Event event = new Event("Hackathon 2026");
+        event.setId(1L);
+
+        category = new Category("Jurado Experto", event);
+        category.setId(10L);
+
         criterion = new Criterion("Innovación");
         criterion.setId(1L);
+        criterion.setCategory(category);
     }
 
     // ── findAll ────────────────────────────────────────────────────────────
@@ -96,34 +110,85 @@ class CriterionServiceTest {
                 .hasMessageContaining("99");
     }
 
+    // ── findByCategoryId ───────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("findByCategoryId → retorna criterios de la categoría")
+    void findByCategoryId_returnsCriteriaForCategory() {
+        Criterion c2 = new Criterion("Calidad");
+        c2.setId(2L);
+        c2.setCategory(category);
+        when(criterionRepository.findByCategoryId(10L)).thenReturn(List.of(criterion, c2));
+
+        List<CriterionDto> result = criterionService.findByCategoryId(10L);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getCategoryId()).isEqualTo(10L);
+        assertThat(result.get(1).getCategoryId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("findByCategoryId → retorna lista vacía si no hay criterios en esa categoría")
+    void findByCategoryId_returnsEmpty_whenNoCriteriaForCategory() {
+        when(criterionRepository.findByCategoryId(99L)).thenReturn(List.of());
+
+        assertThat(criterionService.findByCategoryId(99L)).isEmpty();
+    }
+
     // ── create ─────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("create → guarda y retorna DTO con id generado")
+    @DisplayName("create → guarda y retorna DTO con categoría asignada")
     void create_savesAndReturnsDto() {
-        CriterionDto dto = new CriterionDto(null, "Viabilidad");
+        CriterionDto dto = new CriterionDto(null, "Viabilidad", 10L);
         Criterion saved = new Criterion("Viabilidad");
         saved.setId(3L);
+        saved.setCategory(category);
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
         when(criterionRepository.save(any(Criterion.class))).thenReturn(Objects.requireNonNull(saved));
 
         CriterionDto result = criterionService.create(dto);
 
         assertThat(result.getId()).isEqualTo(3L);
         assertThat(result.getName()).isEqualTo("Viabilidad");
+        assertThat(result.getCategoryId()).isEqualTo(10L);
         verify(criterionRepository, times(1)).save(any(Criterion.class));
     }
 
     @Test
     @DisplayName("create → llama a save exactamente una vez")
     void create_callsSaveOnce() {
-        CriterionDto dto = new CriterionDto(null, "Presentación");
+        CriterionDto dto = new CriterionDto(null, "Presentación", 10L);
         Criterion saved = new Criterion("Presentación");
         saved.setId(4L);
+        saved.setCategory(category);
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
         when(criterionRepository.save(any())).thenReturn(Objects.requireNonNull(saved));
 
         criterionService.create(dto);
 
         verify(criterionRepository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("create → lanza excepción si categoryId es nulo")
+    void create_throwsException_whenCategoryIdIsNull() {
+        CriterionDto dto = new CriterionDto(null, "Viabilidad", null);
+
+        assertThatThrownBy(() -> criterionService.create(dto))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("categoría");
+    }
+
+    @Test
+    @DisplayName("create → lanza excepción si la categoría no existe")
+    void create_throwsException_whenCategoryNotFound() {
+        CriterionDto dto = new CriterionDto(null, "Viabilidad", 99L);
+        when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> criterionService.create(dto))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("99");
     }
 
     // ── update ─────────────────────────────────────────────────────────────

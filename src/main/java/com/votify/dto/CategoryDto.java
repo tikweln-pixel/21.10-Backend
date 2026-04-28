@@ -2,7 +2,9 @@ package com.votify.dto;
 
 import com.votify.entity.VotingType;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class CategoryDto {
 
@@ -31,6 +33,8 @@ public class CategoryDto {
      * Ej: 3 de 5 proyectos.
      */
     private Integer maxVotesPerVoter;
+
+    private List<String> criteriaNames = new ArrayList<>();
 
     public CategoryDto() {
     }
@@ -119,5 +123,13 @@ public class CategoryDto {
 
     public void setMaxVotesPerVoter(Integer maxVotesPerVoter) {
         this.maxVotesPerVoter = maxVotesPerVoter;
+    }
+
+    public List<String> getCriteriaNames() {
+        return criteriaNames;
+    }
+
+    public void setCriteriaNames(List<String> criteriaNames) {
+        this.criteriaNames = criteriaNames;
     }
 }

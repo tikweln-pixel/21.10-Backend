@@ -108,6 +108,17 @@ public class CategoryService {
         category.setReminderMinutes(dto.getReminderMinutes());
         Category savedCategory = categoryRepository.save(category);
         registerExistingEventUsersAsSpectators(savedCategory);
+
+        if (dto.getCriteriaNames() != null) {
+            for (String criterionName : dto.getCriteriaNames()) {
+                if (criterionName != null && !criterionName.trim().isEmpty()) {
+                    Criterion criterion = new Criterion(criterionName.trim());
+                    criterion.setCategory(savedCategory);
+                    criterionRepository.save(criterion);
+                }
+            }
+        }
+
         return toDto(savedCategory);
     }
 
@@ -147,6 +158,12 @@ public class CategoryService {
         votingRepository.deleteByCategoryId(id);
         eventParticipationRepository.deleteByCategoryId(id);
         criterionPointsRepository.deleteByCategoryId(id);
+
+        List<Criterion> criteriaToDelete = criterionRepository.findByCategoryId(id);
+        for (Criterion criterion : criteriaToDelete) {
+            criterionRepository.delete(criterion);
+        }
+
         categoryRepository.deleteById(category.getId());
     }
 
@@ -209,12 +226,6 @@ public class CategoryService {
                                                                    List<CategoryCriterionPointsDto> pointsDtos) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + categoryId));
-
-        if (category.getVotingType() == VotingType.POPULAR_VOTE) {
-            throw new RuntimeException(
-                    "La configuracion masiva de puntos solo es valida para categorias JURY_EXPERT. " +
-                            "Para POPULAR_VOTE, usa setTotalPoints para configurar los puntos totales de la categoria.");
-        }
 
         for (CategoryCriterionPointsDto dto : pointsDtos) {
             if (dto.getWeightPercent() == null || dto.getWeightPercent() < 0) {

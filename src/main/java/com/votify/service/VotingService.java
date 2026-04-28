@@ -5,6 +5,7 @@ import com.votify.dto.VotingDto;
 import com.votify.entity.*;
 import com.votify.persistence.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,17 +22,20 @@ public class VotingService {
     private final CriterionRepository criterionRepository;
     private final CategoryRepository categoryRepository;
     private final CategoryCriterionPointsRepository criterionPointsRepository;
+    private final ProjectRepository projectRepository;
 
     public VotingService(VotingRepository votingRepository,
                          UserRepository userRepository,
                          CriterionRepository criterionRepository,
                          CategoryRepository categoryRepository,
-                         CategoryCriterionPointsRepository criterionPointsRepository) {
+                         CategoryCriterionPointsRepository criterionPointsRepository,
+                         ProjectRepository projectRepository) {
         this.votingRepository = votingRepository;
         this.userRepository = userRepository;
         this.criterionRepository = criterionRepository;
         this.categoryRepository = categoryRepository;
         this.criterionPointsRepository = criterionPointsRepository;
+        this.projectRepository = projectRepository;
     }
 
     public List<VotingDto> findAll() {
@@ -252,16 +256,19 @@ public class VotingService {
         return result;
     }
 
+    @Transactional(readOnly = true)
     public List<ProjectRankingDto> getProjectRanking(Long categoryId) {
-        Map<Long, Long> scoreMap = new HashMap<>();
+        Map<Long, Long> competitorScores = new HashMap<>();
         for (Object[] row : votingRepository.findCompetitorScoresByCategoryId(categoryId)) {
-            scoreMap.put((Long) row[0], (Long) row[1]);
+            competitorScores.put((Long) row[0], (Long) row[1]);
         }
 
-        List<User> competitors = userRepository.findAllById(new ArrayList<>(scoreMap.keySet()));
         List<ProjectRankingDto> ranking = new ArrayList<>();
-        for (User c : competitors) {
-            ranking.add(new ProjectRankingDto(c.getId(), c.getName(), scoreMap.getOrDefault(c.getId(), 0L)));
+        for (Project p : projectRepository.findByCategoryId(categoryId)) {
+            long totalScore = p.getCompetitors().stream()
+                    .mapToLong(c -> competitorScores.getOrDefault(c.getId(), 0L))
+                    .sum();
+            ranking.add(new ProjectRankingDto(p.getId(), p.getName(), totalScore));
         }
         ranking.sort((a, b) -> Long.compare(b.getTotalScore(), a.getTotalScore()));
         return ranking;

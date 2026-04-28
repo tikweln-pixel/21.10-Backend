@@ -410,13 +410,19 @@ class CategoryServiceTest {
     }
 
     @Test
-    @DisplayName("delete → desvincula proyectos antes de eliminar la categoría")
-    void delete_unlinksProjectsBeforeDeletingCategory() {
+    @DisplayName("delete → desvincula proyectos y borra criterios antes de eliminar la categoría")
+    void delete_unlinksProjectsAndDeletesCriteriaBeforeDeletingCategory() {
         Project project = new Project("Proyecto 1", "Desc", event);
         project.setCategory(category);
 
+        Criterion criterionA = new Criterion("Innovación");
+        criterionA.setId(1L);
+        Criterion criterionB = new Criterion("Calidad");
+        criterionB.setId(2L);
+
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
         when(projectRepository.findByCategoryId(10L)).thenReturn(List.of(project));
+        when(criterionRepository.findByCategoryId(10L)).thenReturn(List.of(criterionA, criterionB));
 
         categoryService.delete(10L, 1L);
 
@@ -426,24 +432,34 @@ class CategoryServiceTest {
         verify(votingRepository).deleteByCategoryId(10L);
         verify(eventParticipationRepository).deleteByCategoryId(10L);
         verify(criterionPointsRepository).deleteByCategoryId(10L);
+        verify(criterionRepository).delete(criterionA);
+        verify(criterionRepository).delete(criterionB);
         verify(categoryRepository).deleteById(10L);
     }
 
-    // ── Guard JURY_EXPERT en setCriterionPointsBulk ────────────────────────
+    // ── setCriterionPointsBulk con POPULAR_VOTE ────────────────────────────
 
     @Test
-    @DisplayName("setCriterionPointsBulk → lanza excepción si la categoría es POPULAR_VOTE")
-    void setCriterionPointsBulk_throwsException_whenPopularVote() {
+    @DisplayName("setCriterionPointsBulk → funciona para categorías POPULAR_VOTE")
+    void setCriterionPointsBulk_worksForPopularVote() {
         category.setVotingType(VotingType.POPULAR_VOTE);
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        doNothing().when(criterionPointsRepository).deleteByCategoryId(10L);
+        when(criterionRepository.findById(1L)).thenReturn(Optional.of(criterion));
+
+        CategoryCriterionPoints ccp = new CategoryCriterionPoints(category, criterion, 100);
+        ccp.setId(100L);
+        when(criterionPointsRepository.save(any(CategoryCriterionPoints.class))).thenReturn(Objects.requireNonNull(ccp));
 
         List<CategoryCriterionPointsDto> input = List.of(
                 new CategoryCriterionPointsDto(null, 10L, 1L, "Innovación", 100)
         );
 
-        assertThatThrownBy(() -> categoryService.setCriterionPointsBulk(10L, input))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("JURY_EXPERT");
+        List<CategoryCriterionPointsDto> result = categoryService.setCriterionPointsBulk(10L, input);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getWeightPercent()).isEqualTo(100);
+        verify(criterionPointsRepository, times(1)).save(any(CategoryCriterionPoints.class));
     }
 }
 

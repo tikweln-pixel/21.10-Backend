@@ -118,6 +118,34 @@ public class EventParticipationService {
         return result;
     }
 
+    // Registra al usuario como ORGANIZER en todas las categorías de un evento.
+    public List<EventParticipationDto> ensureOrganizerRegistrationInAllCategories(Long eventId, Long userId) {
+        if (eventId == null) throw new RuntimeException("El ID del evento es obligatorio");
+        if (userId == null) throw new RuntimeException("El ID del usuario es obligatorio");
+
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + userId));
+
+        List<Category> allCategories = categoryRepository.findByEventId(eventId);
+        if (allCategories.isEmpty()) {
+            throw new RuntimeException("El evento no tiene categorias para registrar al organizador");
+        }
+
+        List<EventParticipationDto> result = new ArrayList<>();
+        for (Category category : allCategories) {
+            java.util.Optional<EventParticipation> existing = eventParticipationRepository
+                    .findByEventIdAndUserIdAndCategoryId(eventId, userId, category.getId());
+
+            EventParticipation participation = existing
+                    .orElseGet(() -> new EventParticipation(event, user, category, ParticipationRole.ORGANIZER));
+            participation.setRole(ParticipationRole.ORGANIZER);
+            result.add(toDto(eventParticipationRepository.save(participation)));
+        }
+        return result;
+    }
+
     private void autoRegisterSpectatorInOtherCategories(Long eventId, Long userId, Long excludedCategoryId) {
         Event event = eventRepository.findById(eventId).orElseThrow();
         User user = userRepository.findById(userId).orElseThrow();
@@ -172,6 +200,9 @@ public class EventParticipationService {
 
     private String computePrimaryRole(boolean isJury, List<UserEventRolesDto.CategoryRoleDto> categoryRoles) {
         if (isJury) return "JURY";
+        for (UserEventRolesDto.CategoryRoleDto cr : categoryRoles) {
+            if ("ORGANIZER".equals(cr.getRole())) return "ORGANIZER";
+        }
         for (UserEventRolesDto.CategoryRoleDto cr : categoryRoles) {
             if ("COMPETITOR".equals(cr.getRole())) return "COMPETITOR";
         }
@@ -246,6 +277,16 @@ public class EventParticipationService {
 
     public boolean hasParticipationInEvent(Long eventId, Long userId) {
         return eventParticipationRepository.existsByEventIdAndUserId(eventId, userId);
+    }
+
+    public void ensureUserHasOrganizerRole(Long eventId, Long userId) {
+        if (eventId == null) throw new RuntimeException("El ID del evento es obligatorio");
+        if (userId == null) throw new RuntimeException("El ID del usuario es obligatorio");
+        boolean isOrganizer = eventParticipationRepository
+                .existsByEventIdAndUserIdAndRole(eventId, userId, ParticipationRole.ORGANIZER);
+        if (!isOrganizer) {
+            throw new RuntimeException("Solo los usuarios con rol ORGANIZER pueden realizar esta accion.");
+        }
     }
 
     //Devuelve na lista de IDs de eventos en los que el usuario tiene alguna participación

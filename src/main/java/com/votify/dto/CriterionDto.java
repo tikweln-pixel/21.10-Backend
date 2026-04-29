@@ -4,6 +4,8 @@ public class CriterionDto {
 
     private Long id;
     private String name;
+    private Long userId;
+    private Long eventId;
 
     public CriterionDto() {
     }
@@ -27,5 +29,21 @@ public class CriterionDto {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Long getEventId() {
+        return eventId;
+    }
+
+    public void setEventId(Long eventId) {
+        this.eventId = eventId;
     }
 }

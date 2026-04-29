@@ -93,15 +93,12 @@ public class EventService {
         Event event = new Event(dto.getName().trim());
         event.setTimeInitial(dto.getTimeInitial());
         event.setTimeFinal(dto.getTimeFinal());
-        if (dto.getOrganizerId() != null) {
-            Long orgId = dto.getOrganizerId();
-            User organizer = userRepository.findById(Objects.requireNonNull(orgId))
-                    .orElseThrow(() -> new RuntimeException("Usuario (organizador) no encontrado con id: " + orgId));
-            event.setOrganizer(organizer);
-        }
+        Long creatorId = resolveCreatorUserId(dto);
+        User creator = userRepository.findById(Objects.requireNonNull(creatorId))
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con id: " + creatorId));
+        event.setOrganizer(creator);
         event = eventRepository.save(Objects.requireNonNull(event));
 
-        Category firstCategory = null;
         for (CategoryDto cd : incoming) {
             if (cd == null || cd.getName() == null || cd.getName().isBlank()) {
                 continue;
@@ -126,22 +123,15 @@ public class EventService {
                 category.setMaxVotesPerVoter(cd.getMaxVotesPerVoter());
             }
             event.getCategories().add(category);
-            if (firstCategory == null) {
-                firstCategory = category;
-            }
         }
         if (event.getCategories().isEmpty()) {
             throw new RuntimeException("Se requiere al menos una categoría con nombre válido");
         }
         eventRepository.save(Objects.requireNonNull(event));
 
-        Long creatorId = dto.getOrganizerId();
-        if (creatorId != null && firstCategory != null) {
-            eventParticipationService.registerCompetitor(
-                    Objects.requireNonNull(event.getId()),
-                    Objects.requireNonNull(creatorId),
-                    Objects.requireNonNull(firstCategory.getId()));
-        }
+        eventParticipationService.ensureOrganizerRegistrationInAllCategories(
+                Objects.requireNonNull(event.getId()),
+                Objects.requireNonNull(creatorId));
 
         if (dto.getJuryUserIds() != null) {
             for (Long juryUserId : dto.getJuryUserIds()) {
@@ -156,15 +146,14 @@ public class EventService {
 
     public EventDto createForOrganizer(Long organizerId, EventDto dto) {
         if (organizerId == null) throw new RuntimeException("El ID del organizador no puede ser nulo");
-        User organizer = userRepository.findById(Objects.requireNonNull(organizerId))
-                .orElseThrow(() -> new RuntimeException("Usuario (organizador) no encontrado con id: " + organizerId));
-
-        Event event = organizer.createEvent(dto.getName(), dto.getTimeInitial(), dto.getTimeFinal());
-        return toDto(eventRepository.save(Objects.requireNonNull(event)));
+        dto.setOrganizerId(organizerId);
+        dto.setUserId(organizerId);
+        return create(dto);
     }
 
-    public EventDto update(Long id, EventDto dto) {
+    public EventDto update(Long id, EventDto dto, Long requesterId) {
         if (id == null) throw new RuntimeException("El ID del evento no puede ser nulo");
+        eventParticipationService.ensureUserHasOrganizerRole(id, requesterId);
         Event event = eventRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + id));
         event.setName(dto.getName());
@@ -176,12 +165,19 @@ public class EventService {
                     .orElseThrow(() -> new RuntimeException("Usuario (organizador) no encontrado con id: " + orgId));
             event.setOrganizer(organizer);
         }
-        return toDto(eventRepository.save(Objects.requireNonNull(event)));
+        Event saved = eventRepository.save(Objects.requireNonNull(event));
+        if (saved.getOrganizer() != null) {
+            eventParticipationService.ensureOrganizerRegistrationInAllCategories(
+                    Objects.requireNonNull(saved.getId()),
+                    Objects.requireNonNull(saved.getOrganizer().getId()));
+        }
+        return toDto(saved);
     }
 
     @Transactional
     public void delete(Long id, Long requesterId) {
         if (id == null) throw new RuntimeException("El ID del evento no puede ser nulo");
+        eventParticipationService.ensureUserHasOrganizerRole(id, requesterId);
         Event event = eventRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + id));
 
@@ -233,6 +229,16 @@ public class EventService {
             return dto.getReminderHours() * 60;
         }
         return null;
+    }
+
+    private Long resolveCreatorUserId(EventDto dto) {
+        if (dto.getOrganizerId() != null) {
+            return dto.getOrganizerId();
+        }
+        if (dto.getUserId() != null) {
+            return dto.getUserId();
+        }
+        throw new RuntimeException("Se requiere userId (usuario autenticado) u organizerId para crear el evento");
     }
 
     private EventDto toDto(Event event) {

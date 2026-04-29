@@ -21,6 +21,7 @@ public class EventDto {
     private Integer reminderHours;
     private String visibility;
     private List<Long> juryUserIds;
+    private Long userId;
 
     public EventDto() {
     }
@@ -136,6 +137,14 @@ public class EventDto {
 
     public void setJuryUserIds(List<Long> juryUserIds) {
         this.juryUserIds = juryUserIds;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
 }

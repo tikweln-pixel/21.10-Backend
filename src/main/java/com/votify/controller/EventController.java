@@ -53,7 +53,7 @@ public class EventController {
 
     @PutMapping("/{id}")
     public ResponseEntity<EventDto> update(@PathVariable Long id, @RequestBody EventDto dto) {
-        return ResponseEntity.ok(eventService.update(id, dto));
+        return ResponseEntity.ok(eventService.update(id, dto, dto.getUserId()));
     }
 
     @DeleteMapping("/{id}")
@@ -71,7 +71,7 @@ public class EventController {
 
     @PostMapping("/{eventId}/categories")
     public ResponseEntity<CategoryDto> addCategory(@PathVariable Long eventId, @RequestBody CategoryDto dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.createForEvent(eventId, dto));
+        return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.createForEvent(eventId, dto, dto.getUserId()));
     }
 
     // ── Participations ────────────────────────────────────────────────────────
@@ -182,14 +182,15 @@ public class EventController {
             @PathVariable Long eventId,
             @RequestBody RegisterCompetitorRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(eventJuryService.registerJury(eventId, request.getUserId()));
+                .body(eventJuryService.registerJury(eventId, request.getUserId(), request.getOrganizerUserId()));
     }
 
     @DeleteMapping("/{eventId}/jury/{userId}")
     public ResponseEntity<Void> removeJury(
             @PathVariable Long eventId,
-            @PathVariable Long userId) {
-        eventJuryService.removeJury(eventId, userId);
+            @PathVariable Long userId,
+            @RequestParam Long organizerUserId) {
+        eventJuryService.removeJury(eventId, userId, organizerUserId);
         return ResponseEntity.noContent().build();
     }
 }

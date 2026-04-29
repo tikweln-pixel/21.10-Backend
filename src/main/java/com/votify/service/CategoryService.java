@@ -37,6 +37,7 @@ public class CategoryService {
     private final CategoryCriterionPointsRepository criterionPointsRepository;
     private final VotingRepository votingRepository;
     private final EventParticipationRepository eventParticipationRepository;
+    private final EventParticipationService eventParticipationService;
     private final EvaluacionRepository evaluacionRepository;
     private final ProjectRepository projectRepository;
 
@@ -46,6 +47,7 @@ public class CategoryService {
                            CategoryCriterionPointsRepository criterionPointsRepository,
                            VotingRepository votingRepository,
                            EventParticipationRepository eventParticipationRepository,
+                           EventParticipationService eventParticipationService,
                            EvaluacionRepository evaluacionRepository,
                            ProjectRepository projectRepository) {
         this.categoryRepository = categoryRepository;
@@ -54,6 +56,7 @@ public class CategoryService {
         this.criterionPointsRepository = criterionPointsRepository;
         this.votingRepository = votingRepository;
         this.eventParticipationRepository = eventParticipationRepository;
+        this.eventParticipationService = eventParticipationService;
         this.evaluacionRepository = evaluacionRepository;
         this.projectRepository = projectRepository;
     }
@@ -82,7 +85,8 @@ public class CategoryService {
         return toDto(category);
     }
 
-    public CategoryDto createForEvent(Long eventId, CategoryDto dto) {
+    public CategoryDto createForEvent(Long eventId, CategoryDto dto, Long requesterId) {
+        eventParticipationService.ensureUserHasOrganizerRole(eventId, requesterId);
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
         Category category = new Category(dto.getName(), event);
@@ -96,6 +100,7 @@ public class CategoryService {
         if (dto.getEventId() == null) {
             throw new RuntimeException("Se requiere el evento para crear una categoria");
         }
+        eventParticipationService.ensureUserHasOrganizerRole(dto.getEventId(), dto.getUserId());
         Event event = eventRepository.findById(dto.getEventId())
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + dto.getEventId()));
 
@@ -136,6 +141,10 @@ public class CategoryService {
     public void delete(Long id, Long requesterId) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + id));
+        if (category.getEvent() == null || category.getEvent().getId() == null) {
+            throw new RuntimeException("La categoria no está asociada a un evento");
+        }
+        eventParticipationService.ensureUserHasOrganizerRole(category.getEvent().getId(), requesterId);
 
         List<com.votify.entity.Project> linkedProjects = projectRepository.findByCategoryId(id);
         for (com.votify.entity.Project project : linkedProjects) {
@@ -150,7 +159,8 @@ public class CategoryService {
         categoryRepository.deleteById(category.getId());
     }
 
-    public CategoryDto setVotingType(Long categoryId, VotingType votingType) {
+    public CategoryDto setVotingType(Long categoryId, VotingType votingType, Long requesterId, Long eventId) {
+        eventParticipationService.ensureUserHasOrganizerRole(eventId, requesterId);
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + categoryId));
         category.setVotingType(votingType);

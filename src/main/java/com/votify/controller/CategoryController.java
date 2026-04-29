@@ -35,7 +35,11 @@ public class CategoryController {
     // CRUD básico
 
     @GetMapping
-    public ResponseEntity<List<CategoryDto>> getAll() {
+    public ResponseEntity<List<CategoryDto>> getAll(
+            @RequestParam(required = false) Long eventId) {
+        if (eventId != null) {
+            return ResponseEntity.ok(categoryService.findByEventId(eventId));
+        }
         return ResponseEntity.ok(categoryService.findAll());
     }
 
@@ -55,7 +59,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id, @RequestParam Long userId) {
+    public ResponseEntity<Void> delete(@PathVariable Long id, @RequestParam Long userId, @RequestParam Long eventId) {
         categoryService.delete(id, userId);
         return ResponseEntity.noContent().build();
     }
@@ -70,8 +74,10 @@ public class CategoryController {
     @PutMapping("/{id}/voting-type")
     public ResponseEntity<CategoryDto> setVotingType(
             @PathVariable Long id,
-            @RequestParam VotingType type) {
-        return ResponseEntity.ok(categoryService.setVotingType(id, type));
+            @RequestParam VotingType type,
+            @RequestParam Long userId,
+            @RequestParam Long eventId) {
+        return ResponseEntity.ok(categoryService.setVotingType(id, type, userId, eventId));
     }
 
     // Req. 4 – Configurar Puntos: puntos por criterio por categoría

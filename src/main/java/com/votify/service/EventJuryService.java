@@ -18,16 +18,26 @@ public class EventJuryService {
     private final EventJuryRepository eventJuryRepository;
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
+    private final EventParticipationService eventParticipationService;
 
     public EventJuryService(EventJuryRepository eventJuryRepository,
                              EventRepository eventRepository,
-                             UserRepository userRepository) {
+                             UserRepository userRepository,
+                             EventParticipationService eventParticipationService) {
         this.eventJuryRepository = eventJuryRepository;
         this.eventRepository = eventRepository;
         this.userRepository = userRepository;
+        this.eventParticipationService = eventParticipationService;
     }
 
     public EventJuryDto registerJury(Long eventId, Long userId) {
+        return registerJury(eventId, userId, null);
+    }
+
+    public EventJuryDto registerJury(Long eventId, Long userId, Long organizerUserId) {
+        if (organizerUserId != null) {
+            eventParticipationService.ensureUserHasOrganizerRole(eventId, organizerUserId);
+        }
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
         User user = userRepository.findById(userId)
@@ -50,6 +60,13 @@ public class EventJuryService {
     }
 
     public void removeJury(Long eventId, Long userId) {
+        removeJury(eventId, userId, null);
+    }
+
+    public void removeJury(Long eventId, Long userId, Long organizerUserId) {
+        if (organizerUserId != null) {
+            eventParticipationService.ensureUserHasOrganizerRole(eventId, organizerUserId);
+        }
         EventJury jury = eventJuryRepository.findByEventIdAndUserId(eventId, userId)
                 .orElseThrow(() -> new RuntimeException(
                         "El usuario " + userId + " no es jurado del evento " + eventId));

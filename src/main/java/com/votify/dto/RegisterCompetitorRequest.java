@@ -8,6 +8,7 @@ public class RegisterCompetitorRequest {
 
     private Long userId;
     private Long categoryId;
+    private Long organizerUserId;
 
     public RegisterCompetitorRequest() {
     }
@@ -31,5 +32,13 @@ public class RegisterCompetitorRequest {
 
     public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public Long getOrganizerUserId() {
+        return organizerUserId;
+    }
+
+    public void setOrganizerUserId(Long organizerUserId) {
+        this.organizerUserId = organizerUserId;
     }
 }

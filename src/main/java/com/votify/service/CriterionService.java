@@ -20,15 +20,18 @@ public class CriterionService {
     private final CategoryCriterionPointsRepository criterionPointsRepository;
     private final VotingRepository votingRepository;
     private final EvaluacionRepository evaluacionRepository;
+    private final EventParticipationService eventParticipationService;
 
     public CriterionService(CriterionRepository criterionRepository,
                             CategoryCriterionPointsRepository criterionPointsRepository,
                             VotingRepository votingRepository,
-                            EvaluacionRepository evaluacionRepository) {
+                            EvaluacionRepository evaluacionRepository,
+                            EventParticipationService eventParticipationService) {
         this.criterionRepository = criterionRepository;
         this.criterionPointsRepository = criterionPointsRepository;
         this.votingRepository = votingRepository;
         this.evaluacionRepository = evaluacionRepository;
+        this.eventParticipationService = eventParticipationService;
     }
 
     public List<CriterionDto> findAll() {
@@ -48,12 +51,18 @@ public class CriterionService {
     }
 
     public CriterionDto create(CriterionDto dto) {
+        if (dto.getEventId() != null || dto.getUserId() != null) {
+            eventParticipationService.ensureUserHasOrganizerRole(dto.getEventId(), dto.getUserId());
+        }
         Criterion criterion = new Criterion(dto.getName());
         return toDto(criterionRepository.save(Objects.requireNonNull(criterion)));
     }
 
     public CriterionDto update(Long id, CriterionDto dto) {
         if (id == null) throw new RuntimeException("El ID del criterio no puede ser nulo");
+        if (dto.getEventId() != null || dto.getUserId() != null) {
+            eventParticipationService.ensureUserHasOrganizerRole(dto.getEventId(), dto.getUserId());
+        }
         Criterion criterion = criterionRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + id));
         criterion.setName(dto.getName());
@@ -61,8 +70,9 @@ public class CriterionService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, Long userId, Long eventId) {
         if (id == null) throw new RuntimeException("El ID del criterio no puede ser nulo");
+        eventParticipationService.ensureUserHasOrganizerRole(eventId, userId);
         if (!criterionRepository.existsById(id)) {
             throw new RuntimeException("Criterio no encontrado con id: " + id);
         }

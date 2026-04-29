@@ -39,8 +39,10 @@ public class CriterionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        criterionService.delete(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id,
+                                       @RequestParam Long userId,
+                                       @RequestParam Long eventId) {
+        criterionService.delete(id, userId, eventId);
         return ResponseEntity.noContent().build();
     }
 }

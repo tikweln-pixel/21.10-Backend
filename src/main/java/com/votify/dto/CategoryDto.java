@@ -19,6 +19,7 @@ public class CategoryDto {
     private Date timeFinal;
 
     private Long eventId;
+    private Long userId;
     private Integer reminderMinutes;
 
     /**
@@ -87,6 +88,14 @@ public class CategoryDto {
 
     public void setEventId(Long eventId) {
         this.eventId = eventId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public Integer getReminderMinutes() {

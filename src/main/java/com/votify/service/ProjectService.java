@@ -173,28 +173,30 @@ public class ProjectService {
                 ? new ArrayList<>()
                 : votingRepository.findByCompetitorIdInAndCategoryId(competitorIds, categoryId);
 
-        Map<Long, Integer> scoresByCriterion = new HashMap<>();
+        Map<Long, Double> scoresByCriterion = new HashMap<>();
         for (Voting v : votings) {
             Long critId = v.getCriterion().getId();
-            int score = v.getScore() != null ? v.getScore() : 0;
-            scoresByCriterion.merge(critId, score, Integer::sum);
+            // Usar weighted_score si está disponible; si no, usar score
+            double score = v.getWeightedScore() != null ? v.getWeightedScore() : 
+                          (v.getScore() != null ? v.getScore().doubleValue() : 0.0);
+            scoresByCriterion.merge(critId, score, Double::sum);
         }
 
-        int finalScore = 0;
+        double finalScore = 0;
         int maxScore = 0;
         List<ProjectFinalScoreDto.CriterionScoreDetail> details = new ArrayList<>();
 
         for (CategoryCriterionPoints ccp : weights) {
             Long critId = ccp.getCriterion().getId();
-            int score = scoresByCriterion.getOrDefault(critId, 0);
+            double score = scoresByCriterion.getOrDefault(critId, 0.0);
             int weight = ccp.getWeightPercent();
             finalScore += score;
             maxScore += weight;
             details.add(new ProjectFinalScoreDto.CriterionScoreDetail(
-                    critId, ccp.getCriterion().getName(), score, weight));
+                    critId, ccp.getCriterion().getName(), (int) score, weight));
         }
 
-        return new ProjectFinalScoreDto(projectId, project.getName(), categoryId, finalScore, maxScore, details);
+        return new ProjectFinalScoreDto(projectId, project.getName(), categoryId, (int) finalScore, maxScore, details);
     }
 
     private ProjectDto toDto(Project project) {

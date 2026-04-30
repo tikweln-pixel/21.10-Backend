@@ -34,6 +34,12 @@ public class CategoryDto {
      */
     private Integer maxVotesPerVoter;
 
+    /**
+     * Política de ponderación: define qué estrategia de weighting aplicar a los votos de esta categoría.
+     * Ejemplos: "categoryFactor", "default", etc.
+     */
+    private String weightingPolicy;
+
     private List<String> criteriaNames = new ArrayList<>();
 
     public CategoryDto() {
@@ -51,6 +57,22 @@ public class CategoryDto {
         this.reminderMinutes = reminderMinutes;
         this.totalPoints = totalPoints;
         this.maxVotesPerVoter = maxVotesPerVoter;
+    }
+
+    public CategoryDto(Long id, String name, VotingType votingType,
+                       Date timeInitial, Date timeFinal,
+                       Long eventId, Integer reminderMinutes, Integer totalPoints, Integer maxVotesPerVoter,
+                       String weightingPolicy) {
+        this.id = id;
+        this.name = name;
+        this.votingType = votingType;
+        this.timeInitial = timeInitial;
+        this.timeFinal = timeFinal;
+        this.eventId = eventId;
+        this.reminderMinutes = reminderMinutes;
+        this.totalPoints = totalPoints;
+        this.maxVotesPerVoter = maxVotesPerVoter;
+        this.weightingPolicy = weightingPolicy;
     }
 
     public Long getId() {
@@ -123,6 +145,14 @@ public class CategoryDto {
 
     public void setMaxVotesPerVoter(Integer maxVotesPerVoter) {
         this.maxVotesPerVoter = maxVotesPerVoter;
+    }
+
+    public String getWeightingPolicy() {
+        return weightingPolicy;
+    }
+
+    public void setWeightingPolicy(String weightingPolicy) {
+        this.weightingPolicy = weightingPolicy;
     }
 
     public List<String> getCriteriaNames() {

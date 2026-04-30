@@ -61,9 +61,10 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
 
     /* ── Ranking de competidores por categoría ── */
 
-    @Query("SELECT v.competitor.id, SUM(v.score) FROM Voting v " +
+    @Query("SELECT v.competitor.id, COALESCE(SUM(CASE WHEN v.weightedScore IS NOT NULL THEN v.weightedScore ELSE CAST(v.score AS DOUBLE) END), 0) " +
+           "FROM Voting v " +
            "WHERE v.category.id = :categoryId " +
            "GROUP BY v.competitor.id " +
-           "ORDER BY SUM(v.score) DESC")
+           "ORDER BY SUM(CASE WHEN v.weightedScore IS NOT NULL THEN v.weightedScore ELSE CAST(v.score AS DOUBLE) END) DESC")
     List<Object[]> findCompetitorScoresByCategoryId(@Param("categoryId") Long categoryId);
 }

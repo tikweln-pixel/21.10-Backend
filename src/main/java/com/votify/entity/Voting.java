@@ -34,6 +34,12 @@ public class Voting {
     @Column(nullable = false)
     private Integer score;
 
+    @Column(name = "weighted_score")
+    private Double weightedScore;
+
+    @Column(name = "weighting_strategy")
+    private String weightingStrategy;
+
     @Column(name = "manually_modified")
     private Boolean manuallyModified;
 
@@ -48,6 +54,22 @@ public class Voting {
         this.competitor = competitor; 
         this.criterion = criterion;
         this.score = score;
+    }
+
+    public Double getWeightedScore() {
+        return weightedScore;
+    }
+
+    public void setWeightedScore(Double weightedScore) {
+        this.weightedScore = weightedScore;
+    }
+
+    public String getWeightingStrategy() {
+        return weightingStrategy;
+    }
+
+    public void setWeightingStrategy(String weightingStrategy) {
+        this.weightingStrategy = weightingStrategy;
     }
 
     public Long getId() {

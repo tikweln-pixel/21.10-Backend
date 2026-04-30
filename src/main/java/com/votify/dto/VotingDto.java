@@ -11,6 +11,8 @@ public class VotingDto {
     private Long categoryId;
     private Boolean manuallyModified;
     private String comentario;
+    private Double weightedScore;
+    private String weightingStrategy;
 
     public VotingDto() {
     }
@@ -104,6 +106,22 @@ public class VotingDto {
 
     public void setComentario(String comentario) {
         this.comentario = comentario;
+    }
+
+    public Double getWeightedScore() {
+        return weightedScore;
+    }
+
+    public void setWeightedScore(Double weightedScore) {
+        this.weightedScore = weightedScore;
+    }
+
+    public String getWeightingStrategy() {
+        return weightingStrategy;
+    }
+
+    public void setWeightingStrategy(String weightingStrategy) {
+        this.weightingStrategy = weightingStrategy;
     }
 }
 

@@ -23,19 +23,22 @@ public class VotingService {
     private final CategoryRepository categoryRepository;
     private final CategoryCriterionPointsRepository criterionPointsRepository;
     private final ProjectRepository projectRepository;
+    private final CriterionService criterionService;
 
     public VotingService(VotingRepository votingRepository,
                          UserRepository userRepository,
                          CriterionRepository criterionRepository,
                          CategoryRepository categoryRepository,
                          CategoryCriterionPointsRepository criterionPointsRepository,
-                         ProjectRepository projectRepository) {
+                         ProjectRepository projectRepository,
+                         CriterionService criterionService) {
         this.votingRepository = votingRepository;
         this.userRepository = userRepository;
         this.criterionRepository = criterionRepository;
         this.categoryRepository = categoryRepository;
         this.criterionPointsRepository = criterionPointsRepository;
         this.projectRepository = projectRepository;
+        this.criterionService = criterionService;
     }
 
     public List<VotingDto> findAll() {
@@ -105,6 +108,17 @@ public class VotingService {
         Voting voting = new Voting(voter, competitor, criterion, dto.getScore());
         if (category != null) {
             voting.setCategory(category);
+        }
+        // Aplicar estrategia de ponderación si está disponible
+        try {
+            com.votify.application.strategy.VoteWeightingStrategy strat = criterionService.getStrategyForCategory(category);
+            if (strat != null) {
+                double weighted = strat.applyWeight(voting, category);
+                voting.setWeightedScore(weighted);
+                voting.setWeightingStrategy(strat.key());
+            }
+        } catch (Exception ex) {
+            // no bloquear la creación de votos si falla la selección de estrategia
         }
         voting.setComentario(normalizeComment(dto.getComentario()));
         evaluateVote(voting);
@@ -258,17 +272,19 @@ public class VotingService {
 
     @Transactional(readOnly = true)
     public List<ProjectRankingDto> getProjectRanking(Long categoryId) {
-        Map<Long, Long> competitorScores = new HashMap<>();
+        Map<Long, Double> competitorScores = new HashMap<>();
         for (Object[] row : votingRepository.findCompetitorScoresByCategoryId(categoryId)) {
-            competitorScores.put((Long) row[0], (Long) row[1]);
+            Long competitorId = (Long) row[0];
+            Double score = ((Number) row[1]).doubleValue();
+            competitorScores.put(competitorId, score);
         }
 
         List<ProjectRankingDto> ranking = new ArrayList<>();
         for (Project p : projectRepository.findByCategoryId(categoryId)) {
-            long totalScore = p.getCompetitors().stream()
-                    .mapToLong(c -> competitorScores.getOrDefault(c.getId(), 0L))
+            double totalScore = p.getCompetitors().stream()
+                    .mapToDouble(c -> competitorScores.getOrDefault(c.getId(), 0.0))
                     .sum();
-            ranking.add(new ProjectRankingDto(p.getId(), p.getName(), totalScore));
+            ranking.add(new ProjectRankingDto(p.getId(), p.getName(), (long) totalScore));
         }
         ranking.sort((a, b) -> Long.compare(b.getTotalScore(), a.getTotalScore()));
         return ranking;
@@ -289,6 +305,8 @@ public class VotingService {
                 voting.getManuallyModified()
         );
         dto.setComentario(voting.getComentario());
+        dto.setWeightedScore(voting.getWeightedScore());
+        dto.setWeightingStrategy(voting.getWeightingStrategy());
         return dto;
     }
 

@@ -40,6 +40,9 @@ public class Category {
     @Column(name = "max_votes_per_voter")
     private Integer maxVotesPerVoter;
 
+    @Column(name = "weighting_policy")
+    private String weightingPolicy;
+
     public Category() {}
 
     public Category(String name, Event event) {
@@ -119,6 +122,14 @@ public class Category {
 
     public void setMaxVotesPerVoter(Integer maxVotesPerVoter) {
         this.maxVotesPerVoter = maxVotesPerVoter;
+    }
+
+    public String getWeightingPolicy() {
+        return weightingPolicy;
+    }
+
+    public void setWeightingPolicy(String weightingPolicy) {
+        this.weightingPolicy = weightingPolicy;
     }
 
     // ── Identidad ──

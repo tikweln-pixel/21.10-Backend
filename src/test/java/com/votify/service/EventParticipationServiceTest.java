@@ -117,7 +117,6 @@ class EventParticipationServiceTest {
         when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
         when(userRepository.findById(2L)).thenReturn(Optional.of(user));
         when(categoryRepository.findById(10L)).thenReturn(Optional.of(wrongCategory));
-        // No stubbing de existsBy porque la excepción se lanza antes de llegar a esa comprobación
 
         assertThatThrownBy(() -> service.registerParticipation(1L, 2L, 10L, ParticipationRole.COMPETITOR))
                 .isInstanceOf(RuntimeException.class)
@@ -164,8 +163,11 @@ class EventParticipationServiceTest {
         assertThatThrownBy(() -> service.removeParticipation(1L, 2L, 10L))
                 .isInstanceOf(RuntimeException.class);
     }
+
+    // ── ensureSpectatorRegistrationInAllCategories ─────────────────────────
+
     @Test
-    @DisplayName("ensureSpectatorRegistrationInAllCategories â†’ crea spectator en todas las categorÃ­as faltantes")
+    @DisplayName("ensureSpectatorRegistrationInAllCategories → crea spectator en todas las categorías faltantes")
     void ensureSpectatorRegistrationInAllCategories_createsMissingSpectators() {
         Category category2 = new Category("Publico", event);
         category2.setId(11L);
@@ -187,7 +189,7 @@ class EventParticipationServiceTest {
     }
 
     @Test
-    @DisplayName("ensureSpectatorRegistrationInAllCategories â†’ conserva roles existentes y crea solo las faltantes")
+    @DisplayName("ensureSpectatorRegistrationInAllCategories → conserva roles existentes y crea solo las faltantes")
     void ensureSpectatorRegistrationInAllCategories_keepsExistingRoles() {
         Category category2 = new Category("Publico", event);
         category2.setId(11L);
@@ -211,5 +213,117 @@ class EventParticipationServiceTest {
         assertThat(result.get(0).getRole()).isEqualTo(ParticipationRole.COMPETITOR);
         assertThat(result.get(1).getRole()).isEqualTo(ParticipationRole.SPECTATOR);
         verify(eventParticipationRepository, times(1)).save(any(EventParticipation.class));
+    }
+
+    // ── registerAnonymousSpectator ─────────────────────────────────────────
+
+    @Test
+    @DisplayName("registerAnonymousSpectator → crea usuario nuevo y lo registra como SPECTATOR")
+    void registerAnonymousSpectator_createsNewUserAndRegisters() {
+        User newUser = new User("Espectador Anónimo", "anon_1@votify.local", "");
+        newUser.setId(5L);
+
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        when(userRepository.findByEmail("anon_1@votify.local")).thenReturn(null);
+        when(userRepository.save(any(User.class))).thenReturn(newUser);
+        when(eventParticipationRepository.findByEventIdAndUserIdAndCategoryId(1L, 5L, 10L))
+                .thenReturn(Optional.empty());
+        when(eventParticipationRepository.save(any(EventParticipation.class)))
+                .thenAnswer(inv -> {
+                    EventParticipation p = inv.getArgument(0);
+                    p.setId(200L);
+                    return p;
+                });
+
+        EventParticipationDto result = service.registerAnonymousSpectator(1L, "Espectador Anónimo", "anon_1@votify.local", 10L);
+
+        assertThat(result.getRole()).isEqualTo(ParticipationRole.SPECTATOR);
+        assertThat(result.getUserId()).isEqualTo(5L);
+        verify(userRepository, times(1)).save(any(User.class));
+        verify(eventParticipationRepository, times(1)).save(any(EventParticipation.class));
+    }
+
+    @Test
+    @DisplayName("registerAnonymousSpectator → reutiliza usuario existente por email, no lo duplica")
+    void registerAnonymousSpectator_reusesExistingUserByEmail() {
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        when(userRepository.findByEmail("carlos@test.com")).thenReturn(user);
+        when(eventParticipationRepository.findByEventIdAndUserIdAndCategoryId(1L, 2L, 10L))
+                .thenReturn(Optional.empty());
+        when(eventParticipationRepository.save(any(EventParticipation.class)))
+                .thenAnswer(inv -> {
+                    EventParticipation p = inv.getArgument(0);
+                    p.setId(201L);
+                    return p;
+                });
+
+        EventParticipationDto result = service.registerAnonymousSpectator(1L, "Carlos", "carlos@test.com", 10L);
+
+        assertThat(result.getUserId()).isEqualTo(2L);
+        assertThat(result.getRole()).isEqualTo(ParticipationRole.SPECTATOR);
+        verify(userRepository, never()).save(any(User.class));
+        verify(eventParticipationRepository, times(1)).save(any(EventParticipation.class));
+    }
+
+    @Test
+    @DisplayName("registerAnonymousSpectator → idempotente: devuelve participación existente sin duplicar")
+    void registerAnonymousSpectator_isIdempotent_whenAlreadyRegistered() {
+        EventParticipation existing = new EventParticipation(event, user, category, ParticipationRole.SPECTATOR);
+        existing.setId(99L);
+
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(category));
+        when(userRepository.findByEmail("carlos@test.com")).thenReturn(user);
+        when(eventParticipationRepository.findByEventIdAndUserIdAndCategoryId(1L, 2L, 10L))
+                .thenReturn(Optional.of(existing));
+
+        EventParticipationDto result = service.registerAnonymousSpectator(1L, "Carlos", "carlos@test.com", 10L);
+
+        assertThat(result.getId()).isEqualTo(99L);
+        assertThat(result.getRole()).isEqualTo(ParticipationRole.SPECTATOR);
+        verify(eventParticipationRepository, never()).save(any(EventParticipation.class));
+        verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("registerAnonymousSpectator → lanza excepción si eventId es null")
+    void registerAnonymousSpectator_throwsException_whenEventIdIsNull() {
+        assertThatThrownBy(() -> service.registerAnonymousSpectator(null, "Ana", "ana@test.com", 10L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("evento es obligatorio");
+    }
+
+    @Test
+    @DisplayName("registerAnonymousSpectator → lanza excepción si categoryId es null")
+    void registerAnonymousSpectator_throwsException_whenCategoryIdIsNull() {
+        assertThatThrownBy(() -> service.registerAnonymousSpectator(1L, "Ana", "ana@test.com", null))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("categoría es obligatorio");
+    }
+
+    @Test
+    @DisplayName("registerAnonymousSpectator → lanza excepción si email es blank")
+    void registerAnonymousSpectator_throwsException_whenEmailIsBlank() {
+        assertThatThrownBy(() -> service.registerAnonymousSpectator(1L, "Ana", "  ", 10L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("email es obligatorio");
+    }
+
+    @Test
+    @DisplayName("registerAnonymousSpectator → lanza excepción si la categoría no pertenece al evento")
+    void registerAnonymousSpectator_throwsException_whenCategoryDoesNotBelongToEvent() {
+        Event otherEvent = new Event("Otro Evento");
+        otherEvent.setId(99L);
+        Category wrongCategory = new Category("Otra Cat", otherEvent);
+        wrongCategory.setId(10L);
+
+        when(eventRepository.findById(1L)).thenReturn(Optional.of(event));
+        when(categoryRepository.findById(10L)).thenReturn(Optional.of(wrongCategory));
+
+        assertThatThrownBy(() -> service.registerAnonymousSpectator(1L, "Ana", "ana@test.com", 10L))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("no pertenece");
     }
 }

@@ -13,10 +13,22 @@ public class Voting {
     @ManyToOne
     @JoinColumn(name = "voter_id", nullable = false)
     private User voter;
-    
 
+    /**
+     * Proyecto al que pertenece este voto.
+     * Es la referencia principal del voto (el votante vota a un proyecto).
+     */
     @ManyToOne
-    @JoinColumn(name = "competitor_id", nullable = false)
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
+
+    /**
+     * Competitor (User) asociado al proyecto en el momento del voto.
+     * Nullable: el voto se atribuye al proyecto en general, no a un competidor concreto.
+     * Se mantiene para compatibilidad con queries de ranking existentes.
+     */
+    @ManyToOne
+    @JoinColumn(name = "competitor_id")
     private User competitor;
 
     @ManyToOne
@@ -49,27 +61,11 @@ public class Voting {
     public Voting() {
     }
 
-    public Voting(User voter, User competitor, Criterion criterion, Integer score) {
+    public Voting(User voter, Project project, Criterion criterion, Integer score) {
         this.voter = voter;
-        this.competitor = competitor; 
+        this.project = project;
         this.criterion = criterion;
         this.score = score;
-    }
-
-    public Double getWeightedScore() {
-        return weightedScore;
-    }
-
-    public void setWeightedScore(Double weightedScore) {
-        this.weightedScore = weightedScore;
-    }
-
-    public String getWeightingStrategy() {
-        return weightingStrategy;
-    }
-
-    public void setWeightingStrategy(String weightingStrategy) {
-        this.weightingStrategy = weightingStrategy;
     }
 
     public Long getId() {
@@ -86,6 +82,14 @@ public class Voting {
 
     public void setVoter(User voter) {
         this.voter = voter;
+    }
+
+    public Project getProject() {
+        return project;
+    }
+
+    public void setProject(Project project) {
+        this.project = project;
     }
 
     public User getCompetitor() {
@@ -120,6 +124,22 @@ public class Voting {
         this.category = category;
     }
 
+    public Double getWeightedScore() {
+        return weightedScore;
+    }
+
+    public void setWeightedScore(Double weightedScore) {
+        this.weightedScore = weightedScore;
+    }
+
+    public String getWeightingStrategy() {
+        return weightingStrategy;
+    }
+
+    public void setWeightingStrategy(String weightingStrategy) {
+        this.weightingStrategy = weightingStrategy;
+    }
+
     public Boolean getManuallyModified() {
         return manuallyModified;
     }
@@ -136,4 +156,3 @@ public class Voting {
         this.comentario = comentario;
     }
 }
-

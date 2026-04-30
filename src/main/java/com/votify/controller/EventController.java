@@ -121,6 +121,15 @@ public class EventController {
                 .body(eventParticipationService.registerCompetitor(eventId, request.getUserId(), request.getCategoryId()));
     }
 
+    @PostMapping("/{eventId}/spectators/register")
+    public ResponseEntity<EventParticipationDto> registerAnonymousSpectator(
+            @PathVariable Long eventId,
+            @RequestBody RegisterAnonymousSpectatorRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(eventParticipationService.registerAnonymousSpectator(
+                        eventId, request.getName(), request.getEmail(), request.getCategoryId()));
+    }
+
     @PostMapping("/{eventId}/spectators/all-categories")
     public ResponseEntity<List<EventParticipationDto>> registerSpectatorInAllCategories(
             @PathVariable Long eventId,

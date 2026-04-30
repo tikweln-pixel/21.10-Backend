@@ -130,12 +130,23 @@ public class ProjectService {
         if (!projectRepository.existsById(projectId)) {
             throw new RuntimeException("Proyecto no encontrado con id: " + projectId);
         }
-        List<Comment> comments = commentRepository.findByProjectId(projectId);
         List<CommentDto> result = new ArrayList<>();
+
+        // Fuente 1: tabla comments (legacy, actualmente vacía)
+        List<Comment> comments = commentRepository.findByProjectId(projectId);
         for (Comment c : comments) {
             Long voterId = c.getVoter() != null ? c.getVoter().getId() : null;
             result.add(new CommentDto(c.getId(), voterId, c.getText()));
         }
+
+        // Fuente 2: campo comentario en votings (ADR-009 — fuente real de comentarios)
+        List<Voting> votingsWithComment = votingRepository.findByProjectIdAndComentarioIsNotNull(projectId);
+        for (Voting v : votingsWithComment) {
+            Long voterId = v.getVoter() != null ? v.getVoter().getId() : null;
+            // IDs negativos para evitar colisión con IDs de la tabla comments
+            result.add(new CommentDto(-v.getId(), voterId, v.getComentario()));
+        }
+
         return result;
     }
 
@@ -164,14 +175,8 @@ public class ProjectService {
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + projectId));
 
         List<CategoryCriterionPoints> weights = criterionPointsRepository.findByCategoryId(categoryId);
-        // Buscar votos por los user IDs de los competidores del proyecto (Voting.competitor es User, no Project)
-        List<Long> competitorIds = new ArrayList<>();
-        for (User c : project.getCompetitors()) {
-            competitorIds.add(c.getId());
-        }
-        List<Voting> votings = competitorIds.isEmpty()
-                ? new ArrayList<>()
-                : votingRepository.findByCompetitorIdInAndCategoryId(competitorIds, categoryId);
+        // Los votos se vinculan directamente al proyecto (project_id), no a competidores individuales
+        List<Voting> votings = votingRepository.findByProjectIdInAndCategoryId(List.of(projectId), categoryId);
 
         Map<Long, Double> scoresByCriterion = new HashMap<>();
         for (Voting v : votings) {

@@ -130,8 +130,10 @@ public class HojaRutaMejoraService {
     }
 
     /**
-     * Genera el texto del resumen automático a partir de los datos disponibles.
-     * En la implementación parcial no usa IA; simplemente describe el contenido.
+     * Genera el resumen de la hoja de ruta leyendo el contenido real de los comentarios.
+     * Opción B (sin IA): plantilla enriquecida que cita fragmentos de cada evaluador
+     * agrupados por criterio, con aperturas variadas y cierre contextual.
+     * Sustituible por llamada LLM en Sprint 3 sin cambiar la firma ni el contrato.
      */
     private String buildResumenAutomatico(User competitor,
                                            List<AreaMejoraDto> areas,
@@ -139,30 +141,104 @@ public class HojaRutaMejoraService {
         int totalComentarios = areas.stream()
                 .mapToInt(a -> a.getComentarios().size())
                 .sum();
-        int totalCriterios = areas.size();
 
         if (totalComentarios == 0) {
-            return "Aún no hay comentarios de expertos registrados para este competidor"
-                    + (categoryId != null ? " en esta categoría." : ".");
+            return "Aún no hay comentarios de expertos registrados para " + competitor.getName()
+                    + (categoryId != null ? " en esta categoría." : ".")
+                    + " Una vez los expertos evalúen el proyecto, aquí aparecerá el análisis detallado.";
         }
 
-        Set<String> evaluadores = new LinkedHashSet<>();
+        // Aperturas variadas por criterio para evitar repetición mecánica
+        String[] aperturas = {
+                "En el ámbito de",
+                "Respecto a",
+                "En cuanto a",
+                "Sobre el criterio de",
+                "En relación con"
+        };
+
+        // Cierres contextuales según número de criterios con feedback
+        String[] cierres = {
+                "Se recomienda priorizar las áreas con mayor coincidencia entre evaluadores y trabajar iterativamente sobre los puntos señalados.",
+                "El siguiente paso es revisar cada criterio en detalle y definir acciones concretas de mejora antes de la siguiente iteración.",
+                "Con este feedback como base, se pueden establecer objetivos claros de mejora para la próxima fase del proyecto.",
+                "Se sugiere compartir este análisis con el equipo y asignar responsables para cada área de mejora identificada."
+        };
+
+        StringBuilder sb = new StringBuilder();
+
+        // Párrafo de apertura personalizado
+        Set<String> todosEvaluadores = new LinkedHashSet<>();
         for (AreaMejoraDto area : areas) {
             for (ComentarioExpertoDto c : area.getComentarios()) {
-                if (c.getEvaluadorNombre() != null) evaluadores.add(c.getEvaluadorNombre());
+                if (c.getEvaluadorNombre() != null && !c.getEvaluadorNombre().isBlank()) {
+                    todosEvaluadores.add(c.getEvaluadorNombre());
+                }
             }
         }
+        sb.append("A continuación se recoge el análisis del feedback recibido por ")
+          .append(competitor.getName())
+          .append(" a partir de ")
+          .append(totalComentarios == 1 ? "1 comentario" : totalComentarios + " comentarios")
+          .append(" de experto")
+          .append(totalComentarios == 1 ? "" : "s");
+        if (!todosEvaluadores.isEmpty()) {
+            sb.append(" (").append(String.join(", ", todosEvaluadores)).append(")");
+        }
+        sb.append(".\n\n");
 
-        return String.format(
-                "Resumen generado automáticamente. %s ha recibido %d comentario%s de expertos "
-                + "en %d criterio%s%s. Revisa las áreas de mejora para ver el detalle por criterio.",
-                competitor.getName(),
-                totalComentarios,
-                totalComentarios == 1 ? "" : "s",
-                totalCriterios,
-                totalCriterios == 1 ? "" : "s",
-                evaluadores.isEmpty() ? "" : " (evaluadores: " + String.join(", ", evaluadores) + ")"
-        );
+        // Un párrafo por criterio con citas reales
+        int apertura = 0;
+        int criteriosConFeedback = 0;
+        for (AreaMejoraDto area : areas) {
+            List<ComentarioExpertoDto> comentarios = area.getComentarios();
+            if (comentarios.isEmpty()) continue;
+            criteriosConFeedback++;
+
+            sb.append(aperturas[apertura % aperturas.length])
+              .append(" **").append(area.getCriterioNombre()).append("**");
+            apertura++;
+
+            if (comentarios.size() == 1) {
+                ComentarioExpertoDto c = comentarios.get(0);
+                sb.append(", ").append(nombreOExperto(c.getEvaluadorNombre()))
+                  .append(" señala: \"").append(truncar(c.getTexto(), 130)).append("\".");
+            } else {
+                // Varios comentarios: citar el primero y el último como representativos
+                ComentarioExpertoDto primero = comentarios.get(0);
+                ComentarioExpertoDto ultimo  = comentarios.get(comentarios.size() - 1);
+                sb.append(", los evaluadores aportan perspectivas complementarias. ")
+                  .append(nombreOExperto(primero.getEvaluadorNombre()))
+                  .append(" apunta: \"").append(truncar(primero.getTexto(), 110)).append("\"");
+                if (!primero.getEvaluadorNombre().equals(ultimo.getEvaluadorNombre())
+                        || !primero.getTexto().equals(ultimo.getTexto())) {
+                    sb.append("; ")
+                      .append(nombreOExperto(ultimo.getEvaluadorNombre()))
+                      .append(" añade: \"").append(truncar(ultimo.getTexto(), 110)).append("\"");
+                }
+                sb.append(".");
+            }
+            sb.append("\n\n");
+        }
+
+        // Cierre contextual rotativo según número de criterios
+        sb.append(cierres[criteriosConFeedback % cierres.length]);
+
+        return sb.toString();
+    }
+
+    /** Devuelve el nombre del evaluador o "el experto" si está vacío. */
+    private String nombreOExperto(String nombre) {
+        return (nombre != null && !nombre.isBlank()) ? nombre : "el experto";
+    }
+
+    /** Trunca en el último espacio antes de maxLen para no cortar a mitad de palabra. */
+    private String truncar(String texto, int maxLen) {
+        if (texto == null) return "";
+        texto = texto.trim();
+        if (texto.length() <= maxLen) return texto;
+        int corte = texto.lastIndexOf(' ', maxLen);
+        return (corte > maxLen / 2 ? texto.substring(0, corte) : texto.substring(0, maxLen)) + "…";
     }
 
     /**

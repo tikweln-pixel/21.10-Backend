@@ -88,6 +88,46 @@ public class EventParticipationService {
         return toDto(saved);
     }
 
+    /**
+     * Crea un usuario anónimo (o reutiliza uno existente por email) y lo registra
+     * como SPECTATOR en la categoría indicada del evento.
+     * Punto de entrada para votaciones anónimas desde el frontend.
+     */
+    public EventParticipationDto registerAnonymousSpectator(Long eventId, String name, String email, Long categoryId) {
+        if (eventId == null)    throw new RuntimeException("El ID del evento es obligatorio");
+        if (categoryId == null) throw new RuntimeException("El ID de la categoría es obligatorio");
+        if (email == null || email.isBlank()) throw new RuntimeException("El email es obligatorio");
+
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + categoryId));
+
+        if (!category.getEvent().getId().equals(eventId)) {
+            throw new RuntimeException("La categoría no pertenece a este evento");
+        }
+
+        // Reutilizar usuario si ya existe con ese email, o crear uno nuevo
+        User existing_user = userRepository.findByEmail(email);
+        User user;
+        if (existing_user != null) {
+            user = existing_user;
+        } else {
+            String safeName = (name != null && !name.isBlank()) ? name : "Espectador Anónimo";
+            user = userRepository.save(new User(safeName, email, ""));
+        }
+
+        // Si ya está registrado en esta categoría, devolver la participación existente
+        java.util.Optional<EventParticipation> existing =
+                eventParticipationRepository.findByEventIdAndUserIdAndCategoryId(eventId, user.getId(), categoryId);
+        if (existing.isPresent()) {
+            return toDto(existing.get());
+        }
+
+        EventParticipation participation = new EventParticipation(event, user, category, ParticipationRole.SPECTATOR);
+        return toDto(eventParticipationRepository.save(participation));
+    }
+
     //Permite registrar a un usuario como espectador en todas las categorías de un evento
     public List<EventParticipationDto> ensureSpectatorRegistrationInAllCategories(Long eventId, Long userId) {
         if (eventId == null) throw new RuntimeException("El ID del evento es obligatorio");

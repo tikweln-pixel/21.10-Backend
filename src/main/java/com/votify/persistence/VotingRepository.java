@@ -11,9 +11,11 @@ import java.util.Optional;
 
 public interface VotingRepository extends JpaRepository<Voting, Long> {
 
-    @Query("SELECT COUNT(DISTINCT v.competitor.id) FROM Voting v " +
+    // ── Validaciones de restricciones de voto popular ──────────────────────
+
+    @Query("SELECT COUNT(DISTINCT v.project.id) FROM Voting v " +
            "WHERE v.voter.id = :voterId AND v.category.id = :categoryId")
-    long countDistinctCompetitorsByVoterIdAndCategoryId(
+    long countDistinctProjectsByVoterIdAndCategoryId(
             @Param("voterId") Long voterId,
             @Param("categoryId") Long categoryId);
 
@@ -25,14 +27,16 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
 
     List<Voting> findByVoterIdAndCategoryId(Long voterId, Long categoryId);
 
-    @Query("SELECT v FROM Voting v WHERE v.voter.id = :voterId AND v.competitor.id = :competitorId "
+    // ── Deduplicación de votos ─────────────────────────────────────────────
+
+    @Query("SELECT v FROM Voting v WHERE v.voter.id = :voterId AND v.project.id = :projectId "
            + "AND v.criterion.id = :criterionId AND ((:categoryId IS NULL AND v.category IS NULL) OR v.category.id = :categoryId)")
     Optional<Voting> findExistingVote(@Param("voterId") Long voterId,
-                                      @Param("competitorId") Long competitorId,
+                                      @Param("projectId") Long projectId,
                                       @Param("criterionId") Long criterionId,
                                       @Param("categoryId") Long categoryId);
 
-    /* ── Soporte para eliminación en cascada ── */
+    // ── Eliminación en cascada ─────────────────────────────────────────────
 
     @Modifying
     @Query("DELETE FROM Voting v WHERE v.category.id IN :categoryIds")
@@ -46,25 +50,27 @@ public interface VotingRepository extends JpaRepository<Voting, Long> {
     @Query("DELETE FROM Voting v WHERE v.criterion.id = :criterionId")
     void deleteByCriterionId(@Param("criterionId") Long criterionId);
 
-    /* ── Consultas para el frontend ── */
+    // ── Consultas para el frontend ─────────────────────────────────────────
 
-    List<Voting> findByCompetitorIdIn(List<Long> competitorIds);
+    List<Voting> findByProjectIdAndComentarioIsNotNull(Long projectId);
 
-    List<Voting> findByVoterIdAndCompetitorId(Long voterId, Long competitorId);
+    List<Voting> findByProjectIdIn(List<Long> projectIds);
+
+    List<Voting> findByProjectIdInAndCategoryId(List<Long> projectIds, Long categoryId);
+
+    List<Voting> findByVoterIdAndProjectId(Long voterId, Long projectId);
+
+    List<Voting> findByVoterIdAndProjectIdAndCategoryId(Long voterId, Long projectId, Long categoryId);
 
     @Query("SELECT DISTINCT v.voter.id FROM Voting v WHERE v.category.id = :categoryId")
     List<Long> findDistinctVoterIdsByCategoryId(@Param("categoryId") Long categoryId);
 
-    List<Voting> findByVoterIdAndCompetitorIdAndCategoryId(Long voterId, Long competitorId, Long categoryId);
+    // ── Ranking de proyectos por categoría ────────────────────────────────
 
-    List<Voting> findByCompetitorIdInAndCategoryId(List<Long> competitorIds, Long categoryId);
-
-    /* ── Ranking de competidores por categoría ── */
-
-    @Query("SELECT v.competitor.id, COALESCE(SUM(CASE WHEN v.weightedScore IS NOT NULL THEN v.weightedScore ELSE CAST(v.score AS DOUBLE) END), 0) " +
+    @Query("SELECT v.project.id, COALESCE(SUM(CASE WHEN v.weightedScore IS NOT NULL THEN v.weightedScore ELSE CAST(v.score AS DOUBLE) END), 0) " +
            "FROM Voting v " +
            "WHERE v.category.id = :categoryId " +
-           "GROUP BY v.competitor.id " +
+           "GROUP BY v.project.id " +
            "ORDER BY SUM(CASE WHEN v.weightedScore IS NOT NULL THEN v.weightedScore ELSE CAST(v.score AS DOUBLE) END) DESC")
-    List<Object[]> findCompetitorScoresByCategoryId(@Param("categoryId") Long categoryId);
+    List<Object[]> findProjectScoresByCategoryId(@Param("categoryId") Long categoryId);
 }

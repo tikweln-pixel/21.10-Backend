@@ -31,15 +31,24 @@ public class HojaRutaMejoraService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final EvaluacionRepository evaluacionRepository;
+    private final CommentRepository commentRepository;
+    private final EventJuryRepository eventJuryRepository;
+    private final ProjectRepository projectRepository;
 
     public HojaRutaMejoraService(HojaRutaMejoraRepository hojaRutaRepository,
                                   UserRepository userRepository,
                                   CategoryRepository categoryRepository,
-                                  EvaluacionRepository evaluacionRepository) {
+                                  EvaluacionRepository evaluacionRepository,
+                                  CommentRepository commentRepository,
+                                  EventJuryRepository eventJuryRepository,
+                                  ProjectRepository projectRepository) {
         this.hojaRutaRepository = hojaRutaRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.evaluacionRepository = evaluacionRepository;
+        this.commentRepository = commentRepository;
+        this.eventJuryRepository = eventJuryRepository;
+        this.projectRepository = projectRepository;
     }
 
     /**
@@ -78,8 +87,11 @@ public class HojaRutaMejoraService {
         // Recoger y agrupar comentarios de expertos
         List<AreaMejoraDto> areas = buildAreasMejora(competitorId, categoryId);
 
+        // Recoger comentarios de la tabla comments (populares y de jurado)
+        List<ComentarioAdicional> comentariosAdicionales = recogerComentariosAdicionales(competitorId);
+
         // Generar resumen automático
-        String resumen = buildResumenAutomatico(competitor, areas, categoryId);
+        String resumen = buildResumenAutomatico(competitor, areas, categoryId, comentariosAdicionales);
 
         // Borrar hoja de ruta anterior si existe
         deleteExisting(competitorId, categoryId);
@@ -137,15 +149,16 @@ public class HojaRutaMejoraService {
      */
     private String buildResumenAutomatico(User competitor,
                                            List<AreaMejoraDto> areas,
-                                           Long categoryId) {
+                                           Long categoryId,
+                                           List<ComentarioAdicional> adicionales) {
         int totalComentarios = areas.stream()
                 .mapToInt(a -> a.getComentarios().size())
                 .sum();
 
-        if (totalComentarios == 0) {
-            return "Aún no hay comentarios de expertos registrados para " + competitor.getName()
+        if (totalComentarios == 0 && adicionales.isEmpty()) {
+            return "Aún no hay comentarios registrados para " + competitor.getName()
                     + (categoryId != null ? " en esta categoría." : ".")
-                    + " Una vez los expertos evalúen el proyecto, aquí aparecerá el análisis detallado.";
+                    + " Una vez los evaluadores y la comunidad aporten feedback, aquí aparecerá el análisis detallado.";
         }
 
         // Aperturas variadas por criterio para evitar repetición mecánica
@@ -177,15 +190,25 @@ public class HojaRutaMejoraService {
             }
         }
         sb.append("A continuación se recoge el análisis del feedback recibido por ")
-          .append(competitor.getName())
-          .append(" a partir de ")
-          .append(totalComentarios == 1 ? "1 comentario" : totalComentarios + " comentarios")
-          .append(" de experto")
-          .append(totalComentarios == 1 ? "" : "s");
-        if (!todosEvaluadores.isEmpty()) {
-            sb.append(" (").append(String.join(", ", todosEvaluadores)).append(")");
+          .append(competitor.getName()).append(".");
+        if (totalComentarios > 0) {
+            sb.append(" Evaluaciones de expertos: ")
+              .append(totalComentarios == 1 ? "1 comentario" : totalComentarios + " comentarios");
+            if (!todosEvaluadores.isEmpty()) {
+                sb.append(" (").append(String.join(", ", todosEvaluadores)).append(")");
+            }
+            sb.append(".");
         }
-        sb.append(".\n\n");
+        if (!adicionales.isEmpty()) {
+            long populares = adicionales.stream().filter(a -> "Popular".equals(a.origen())).count();
+            long jurado    = adicionales.stream().filter(a -> "Jurado".equals(a.origen())).count();
+            sb.append(" Comentarios adicionales: ");
+            if (populares > 0) sb.append(populares).append(" popular").append(populares > 1 ? "es" : "");
+            if (populares > 0 && jurado > 0) sb.append(", ");
+            if (jurado > 0) sb.append(jurado).append(" de jurado");
+            sb.append(".");
+        }
+        sb.append("\n\n");
 
         // Un párrafo por criterio con citas reales
         int apertura = 0;
@@ -221,11 +244,52 @@ public class HojaRutaMejoraService {
             sb.append("\n\n");
         }
 
+        // Bloque de comentarios adicionales (tabla comments: populares y de jurado)
+        if (!adicionales.isEmpty()) {
+            sb.append("**Comentarios de la comunidad y el jurado:**\n");
+            for (ComentarioAdicional ca : adicionales) {
+                sb.append("- ")
+                  .append(ca.autorNombre() != null && !ca.autorNombre().isBlank()
+                          ? ca.autorNombre() : "Participante")
+                  .append(" [").append(ca.origen()).append("]")
+                  .append(": \"").append(truncar(ca.texto(), 150)).append("\"\n");
+            }
+            sb.append("\n");
+        }
+
         // Cierre contextual rotativo según número de criterios
         sb.append(cierres[criteriosConFeedback % cierres.length]);
 
         return sb.toString();
     }
+
+    /**
+     * Recoge todos los comentarios de la tabla `comments` asociados a los proyectos
+     * del competidor y los etiqueta como [Jurado] o [Popular] según si el voter
+     * pertenece a event_jury del evento correspondiente.
+     */
+    private List<ComentarioAdicional> recogerComentariosAdicionales(Long competitorId) {
+        List<Project> proyectos = projectRepository.findByCompetitorId(competitorId);
+        if (proyectos.isEmpty()) return List.of();
+
+        List<ComentarioAdicional> resultado = new ArrayList<>();
+        for (Project proyecto : proyectos) {
+            Long eventId = proyecto.getEvent() != null ? proyecto.getEvent().getId() : null;
+            List<Comment> comentarios = commentRepository.findByProjectId(proyecto.getId());
+            for (Comment c : comentarios) {
+                Long voterId = c.getVoter() != null ? c.getVoter().getId() : null;
+                String autorNombre = c.getVoter() != null ? c.getVoter().getName() : "Participante";
+                String origen = (eventId != null && voterId != null
+                        && eventJuryRepository.existsByEventIdAndUserId(eventId, voterId))
+                        ? "Jurado" : "Popular";
+                resultado.add(new ComentarioAdicional(c.getText(), autorNombre, origen));
+            }
+        }
+        return resultado;
+    }
+
+    /** Representa un comentario de la tabla comments con su origen etiquetado. */
+    private record ComentarioAdicional(String texto, String autorNombre, String origen) {}
 
     /** Devuelve el nombre del evaluador o "el experto" si está vacío. */
     private String nombreOExperto(String nombre) {

@@ -16,6 +16,7 @@ import java.util.Objects;
 
 @Service
 public class VotingService {
+    private static final double WEIGHT_PERCENT_BASE = 100.0;
 
     private final VotingRepository votingRepository;
     private final UserRepository userRepository;
@@ -112,17 +113,7 @@ public class VotingService {
             voting.setCategory(category);
         }
 
-        // Aplicar estrategia de ponderación si está disponible
-        try {
-            com.votify.application.strategy.VoteWeightingStrategy strat = criterionService.getStrategyForCategory(category);
-            if (strat != null) {
-                double weighted = strat.applyWeight(voting, category);
-                voting.setWeightedScore(weighted);
-                voting.setWeightingStrategy(strat.key());
-            }
-        } catch (Exception ex) {
-            // no bloquear la creación de votos si falla la selección de estrategia
-        }
+        applyWeighting(voting);
 
         voting.setComentario(normalizeComment(dto.getComentario()));
         evaluateVote(voting);
@@ -232,6 +223,7 @@ public class VotingService {
         if (dto.getComentario() != null) {
             voting.setComentario(normalizeComment(dto.getComentario()));
         }
+        applyWeighting(voting);
         return toDto(votingRepository.save(Objects.requireNonNull(voting)));
     }
 
@@ -320,5 +312,55 @@ public class VotingService {
                     + COMENTARIO_MAX_LEN + " caracteres.");
         }
         return trimmed;
+    }
+
+    /**
+     * Calcula y aplica el weightedScore del voto.
+     * Prioriza la ponderación configurada por criterio en la categoría (category_criterion_points).
+     * Si no existe configuración, cae a la estrategia registrada para la categoría.
+     */
+    private void applyWeighting(Voting voting) {
+        if (voting == null) return;
+        Category category = voting.getCategory();
+        Criterion criterion = voting.getCriterion();
+        Integer score = voting.getScore();
+
+        if (score == null) {
+            voting.setWeightedScore(0.0);
+            voting.setWeightingStrategy("none");
+            return;
+        }
+
+        if (category != null && criterion != null) {
+            try {
+                CategoryCriterionPoints points = criterionPointsRepository
+                        .findByCategoryIdAndCriterionId(category.getId(), criterion.getId())
+                        .orElse(null);
+                if (points != null && points.getWeightPercent() != null) {
+                    double weighted = (score.doubleValue() * points.getWeightPercent()) / WEIGHT_PERCENT_BASE;
+                    voting.setWeightedScore(weighted);
+                    voting.setWeightingStrategy("criterionPoints");
+                    return;
+                }
+            } catch (Exception ex) {
+                // fallback a estrategia si falla el acceso a la configuración por criterio
+            }
+        }
+
+        // Fallback histórico: estrategias de ponderación registradas en Spring.
+        try {
+            com.votify.application.strategy.VoteWeightingStrategy strat = criterionService.getStrategyForCategory(category);
+            if (strat != null) {
+                double weighted = strat.applyWeight(voting, category);
+                voting.setWeightedScore(weighted);
+                voting.setWeightingStrategy(strat.key());
+                return;
+            }
+        } catch (Exception ex) {
+            // no bloquear persistencia si falla la selección de estrategia
+        }
+
+        voting.setWeightedScore(score.doubleValue());
+        voting.setWeightingStrategy("rawScore");
     }
 }

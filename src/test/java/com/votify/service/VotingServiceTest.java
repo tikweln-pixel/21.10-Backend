@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
 
 import java.util.HashSet;
 import java.util.List;
@@ -129,6 +130,35 @@ class VotingServiceTest {
     }
 
     @Test
+    @DisplayName("create → aplica ponderación por criterio de categoría para weightedScore")
+    void create_appliesCriterionWeightingForWeightedScore() {
+        Event event = new Event("Hackathon 2026");
+        event.setId(50L);
+        Category category = new Category("Jurado", event);
+        category.setId(20L);
+
+        CategoryCriterionPoints points = new CategoryCriterionPoints(category, criterion, 40);
+
+        Voting persisted = new Voting(voter, project, criterion, 8);
+        persisted.setId(300L);
+        persisted.setCategory(category);
+        persisted.setWeightedScore(3.2);
+        persisted.setWeightingStrategy("criterionPoints");
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
+        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
+        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(categoryRepository.findById(20L)).thenReturn(Optional.of(category));
+        when(criterionPointsRepository.findByCategoryIdAndCriterionId(20L, 3L)).thenReturn(Optional.of(points));
+        when(votingRepository.save(any(Voting.class))).thenReturn(persisted);
+
+        VotingDto result = votingService.create(new VotingDto(null, 1L, 10L, 3L, 8, 20L));
+
+        assertThat(result.getWeightedScore()).isEqualTo(3.2);
+        assertThat(result.getWeightingStrategy()).isEqualTo("criterionPoints");
+    }
+
+    @Test
     @DisplayName("create → lanza excepción si el votante no existe")
     void create_throwsException_whenVoterNotFound() {
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
@@ -206,6 +236,35 @@ class VotingServiceTest {
         VotingDto result = votingService.update(100L, new VotingDto(100L, 1L, 10L, 3L, 30));
 
         assertThat(result.getScore()).isEqualTo(30);
+    }
+
+    @Test
+    @DisplayName("update → recalcula weightedScore con porcentaje de criterio")
+    void update_recalculatesWeightedScoreUsingCriterionPercent() {
+        Event event = new Event("Hackathon 2026");
+        event.setId(50L);
+        Category category = new Category("Jurado", event);
+        category.setId(20L);
+
+        voting.setCategory(category);
+        voting.setScore(5);
+        voting.setWeightedScore(0.0);
+
+        CategoryCriterionPoints points = new CategoryCriterionPoints(category, criterion, 30);
+
+        when(votingRepository.findById(100L)).thenReturn(Optional.of(voting));
+        when(criterionPointsRepository.findByCategoryIdAndCriterionId(20L, 3L)).thenReturn(Optional.of(points));
+        when(votingRepository.save(any(Voting.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        VotingDto result = votingService.update(100L, new VotingDto(100L, null, null, null, 8));
+
+        assertThat(result.getScore()).isEqualTo(8);
+        assertThat(result.getWeightedScore()).isEqualTo(2.4);
+        assertThat(result.getWeightingStrategy()).isEqualTo("criterionPoints");
+
+        ArgumentCaptor<Voting> captor = ArgumentCaptor.forClass(Voting.class);
+        verify(votingRepository).save(captor.capture());
+        assertThat(captor.getValue().getWeightedScore()).isEqualTo(2.4);
     }
 
     // ── delete ─────────────────────────────────────────────────────────────

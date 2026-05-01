@@ -152,4 +152,39 @@ class VotingRepositoryTest {
         assertThat(reloaded.get().getComentario())
                 .isEqualTo("La innovación es el punto más fuerte del proyecto");
     }
+
+    @Test
+    @DisplayName("findProjectScoresByCategoryId → suma weightedScore y usa score como fallback")
+    void findProjectScoresByCategoryId_usesWeightedScoreAndFallbackScore() {
+        Event event = new Event("Evento Ranking");
+        em.persist(event);
+
+        Category category = new Category("Coches", event);
+        em.persist(category);
+
+        Voting weightedVote = new Voting(voter, project1, criterion1, 8);
+        weightedVote.setCategory(category);
+        weightedVote.setWeightedScore(2.4);
+        em.persist(weightedVote);
+
+        Voting fallbackVote = new Voting(voter, project1, criterion2, 5);
+        fallbackVote.setCategory(category);
+        fallbackVote.setWeightedScore(null);
+        em.persist(fallbackVote);
+
+        Voting project2Vote = new Voting(voter, project2, criterion1, 7);
+        project2Vote.setCategory(category);
+        project2Vote.setWeightedScore(2.1);
+        em.persist(project2Vote);
+
+        em.flush();
+
+        List<Object[]> rows = votingRepository.findProjectScoresByCategoryId(category.getId());
+
+        assertThat(rows).hasSize(2);
+        assertThat(((Long) rows.get(0)[0])).isEqualTo(project1.getId());
+        assertThat(((Number) rows.get(0)[1]).doubleValue()).isEqualTo(7.4);
+        assertThat(((Long) rows.get(1)[0])).isEqualTo(project2.getId());
+        assertThat(((Number) rows.get(1)[1]).doubleValue()).isEqualTo(2.1);
+    }
 }

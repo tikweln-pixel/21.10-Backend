@@ -1,5 +1,6 @@
 package com.votify.controller;
 
+import com.votify.advice.ForbiddenException;
 import com.votify.dto.CompetitorCommentDto;
 import com.votify.dto.CompetitorDto;
 import com.votify.dto.HojaRutaMejoraDto;
@@ -9,6 +10,7 @@ import com.votify.entity.Comment;
 import com.votify.entity.Project;
 import com.votify.entity.User;
 import com.votify.persistence.CommentRepository;
+import com.votify.persistence.EventRepository;
 import com.votify.persistence.ProjectRepository;
 import com.votify.persistence.UserRepository;
 import com.votify.service.HojaRutaMejoraService;
@@ -20,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,15 +33,30 @@ public class CompetitorController {
     private final ProjectRepository projectRepository;
     private final CommentRepository commentRepository;
     private final HojaRutaMejoraService hojaRutaService;
+    private final EventRepository eventRepository;
 
     public CompetitorController(UserRepository userRepository,
                                 ProjectRepository projectRepository,
                                 CommentRepository commentRepository,
-                                HojaRutaMejoraService hojaRutaService) {
+                                HojaRutaMejoraService hojaRutaService,
+                                EventRepository eventRepository) {
         this.userRepository = userRepository;
         this.projectRepository = projectRepository;
         this.commentRepository = commentRepository;
         this.hojaRutaService = hojaRutaService;
+        this.eventRepository = eventRepository;
+    }
+
+    /**
+     * Valida que el solicitante (requesterId) puede acceder a los datos del competidor.
+     * Permite acceso si: el solicitante ES el competidor, o es organizador de algún evento.
+     * Si requesterId es null (header ausente), se permite por compatibilidad con herramientas de admin.
+     */
+    private void checkAccess(Long requesterId, Long competitorId) {
+        if (requesterId == null) return;
+        if (requesterId.equals(competitorId)) return;
+        if (eventRepository.existsByOrganizerId(requesterId)) return;
+        throw new ForbiddenException("Acceso denegado: no puedes ver datos de otro competidor");
     }
 
     @GetMapping
@@ -60,7 +76,10 @@ public class CompetitorController {
     }
 
     @GetMapping("/{competitorId}/comments")
-    public ResponseEntity<List<CompetitorCommentDto>> getCommentsByCompetitor(@PathVariable Long competitorId) {
+    public ResponseEntity<List<CompetitorCommentDto>> getCommentsByCompetitor(
+            @PathVariable Long competitorId,
+            @RequestHeader(value = "X-User-Id", required = false) Long requesterId) {
+        checkAccess(requesterId, competitorId);
         List<Project> projects = new ArrayList<>();
         for (Project p : projectRepository.findAll()) {
             for (User c : p.getCompetitors()) {
@@ -83,8 +102,9 @@ public class CompetitorController {
         List<CompetitorCommentDto> comments = new ArrayList<>();
         for (Comment c : commentRepository.findByProjectIdIn(projectIds)) {
             Long voterId = c.getVoter() != null ? c.getVoter().getId() : null;
+            String voterName = c.getVoter() != null ? c.getVoter().getName() : null;
             comments.add(new CompetitorCommentDto(
-                    c.getId(), c.getText(), voterId,
+                    c.getId(), c.getText(), voterId, voterName,
                     c.getProject().getId(), c.getProject().getName()));
         }
 
@@ -101,7 +121,9 @@ public class CompetitorController {
     @GetMapping("/{competitorId}/hoja-ruta")
     public ResponseEntity<HojaRutaMejoraDto> getHojaRuta(
             @PathVariable Long competitorId,
-            @RequestParam(required = false) Long categoryId) {
+            @RequestParam(required = false) Long categoryId,
+            @RequestHeader(value = "X-User-Id", required = false) Long requesterId) {
+        checkAccess(requesterId, competitorId);
         HojaRutaMejoraDto dto = hojaRutaService.getOrGenerar(competitorId, categoryId);
         return ResponseEntity.ok(dto);
     }
@@ -116,7 +138,9 @@ public class CompetitorController {
     @PostMapping("/{competitorId}/hoja-ruta/generar")
     public ResponseEntity<HojaRutaMejoraDto> generarHojaRuta(
             @PathVariable Long competitorId,
-            @RequestParam(required = false) Long categoryId) {
+            @RequestParam(required = false) Long categoryId,
+            @RequestHeader(value = "X-User-Id", required = false) Long requesterId) {
+        checkAccess(requesterId, competitorId);
         HojaRutaMejoraDto dto = hojaRutaService.generar(competitorId, categoryId);
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
@@ -131,8 +155,9 @@ public class CompetitorController {
     @GetMapping("/{competitorId}/hoja-ruta/pdf")
     public ResponseEntity<byte[]> descargarHojaRuta(
             @PathVariable Long competitorId,
-            @RequestParam(required = false) Long categoryId) {
-
+            @RequestParam(required = false) Long categoryId,
+            @RequestHeader(value = "X-User-Id", required = false) Long requesterId) {
+        checkAccess(requesterId, competitorId);
         HojaRutaMejoraDto dto = hojaRutaService.getOrGenerar(competitorId, categoryId);
         byte[] content = buildTextoDescargable(dto).getBytes(StandardCharsets.UTF_8);
 

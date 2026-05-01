@@ -136,15 +136,17 @@ public class ProjectService {
         List<Comment> comments = commentRepository.findByProjectId(projectId);
         for (Comment c : comments) {
             Long voterId = c.getVoter() != null ? c.getVoter().getId() : null;
-            result.add(new CommentDto(c.getId(), voterId, c.getText()));
+            String voterName = c.getVoter() != null ? c.getVoter().getName() : null;
+            result.add(new CommentDto(c.getId(), voterId, voterName, c.getText()));
         }
 
         // Fuente 2: campo comentario en votings (ADR-009 — fuente real de comentarios)
         List<Voting> votingsWithComment = votingRepository.findByProjectIdAndComentarioIsNotNull(projectId);
         for (Voting v : votingsWithComment) {
             Long voterId = v.getVoter() != null ? v.getVoter().getId() : null;
+            String voterName = v.getVoter() != null ? v.getVoter().getName() : null;
             // IDs negativos para evitar colisión con IDs de la tabla comments
-            result.add(new CommentDto(-v.getId(), voterId, v.getComentario()));
+            result.add(new CommentDto(-v.getId(), voterId, voterName, v.getComentario()));
         }
 
         return result;

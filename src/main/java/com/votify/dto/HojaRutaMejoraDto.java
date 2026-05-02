@@ -17,6 +17,7 @@ public class HojaRutaMejoraDto {
     private Long categoryId;       // null si es global (todas las categorías)
     private String resumenGeneral;
     private List<AreaMejoraDto> areasMejora;
+    private List<ComentarioAnalizadoDto> comentariosAdicionales; // clasificados por backend
     private boolean generadoIa;
     private Date fechaGeneracion;
 
@@ -25,12 +26,14 @@ public class HojaRutaMejoraDto {
 
     public HojaRutaMejoraDto(Long id, Long competitorId, Long categoryId,
                               String resumenGeneral, List<AreaMejoraDto> areasMejora,
+                              List<ComentarioAnalizadoDto> comentariosAdicionales,
                               boolean generadoIa, Date fechaGeneracion) {
         this.id = id;
         this.competitorId = competitorId;
         this.categoryId = categoryId;
         this.resumenGeneral = resumenGeneral;
         this.areasMejora = areasMejora;
+        this.comentariosAdicionales = comentariosAdicionales;
         this.generadoIa = generadoIa;
         this.fechaGeneracion = fechaGeneracion;
     }
@@ -49,6 +52,11 @@ public class HojaRutaMejoraDto {
 
     public List<AreaMejoraDto> getAreasMejora() { return areasMejora; }
     public void setAreasMejora(List<AreaMejoraDto> areasMejora) { this.areasMejora = areasMejora; }
+
+    public List<ComentarioAnalizadoDto> getComentariosAdicionales() { return comentariosAdicionales; }
+    public void setComentariosAdicionales(List<ComentarioAnalizadoDto> comentariosAdicionales) {
+        this.comentariosAdicionales = comentariosAdicionales;
+    }
 
     public boolean isGeneradoIa() { return generadoIa; }
     public void setGeneradoIa(boolean generadoIa) { this.generadoIa = generadoIa; }

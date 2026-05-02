@@ -1,6 +1,7 @@
 package com.votify.service;
 
 import com.votify.dto.AreaMejoraDto;
+import com.votify.dto.ComentarioAnalizadoDto;
 import com.votify.dto.ComentarioExpertoDto;
 import com.votify.dto.HojaRutaMejoraDto;
 import com.votify.entity.*;
@@ -34,6 +35,7 @@ public class HojaRutaMejoraService {
     private final CommentRepository commentRepository;
     private final EventJuryRepository eventJuryRepository;
     private final ProjectRepository projectRepository;
+    private final VotingRepository votingRepository;
 
     public HojaRutaMejoraService(HojaRutaMejoraRepository hojaRutaRepository,
                                   UserRepository userRepository,
@@ -41,7 +43,8 @@ public class HojaRutaMejoraService {
                                   EvaluacionRepository evaluacionRepository,
                                   CommentRepository commentRepository,
                                   EventJuryRepository eventJuryRepository,
-                                  ProjectRepository projectRepository) {
+                                  ProjectRepository projectRepository,
+                                  VotingRepository votingRepository) {
         this.hojaRutaRepository = hojaRutaRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
@@ -49,6 +52,7 @@ public class HojaRutaMejoraService {
         this.commentRepository = commentRepository;
         this.eventJuryRepository = eventJuryRepository;
         this.projectRepository = projectRepository;
+        this.votingRepository = votingRepository;
     }
 
     /**
@@ -62,7 +66,9 @@ public class HojaRutaMejoraService {
         if (existing.isPresent()) {
             HojaRutaMejora entidad = existing.get();
             List<AreaMejoraDto> areas = buildAreasMejora(competitorId, categoryId);
-            return toDto(entidad, areas);
+            List<ComentarioAnalizadoDto> analizados =
+                    clasificar(recogerComentariosAdicionales(competitorId));
+            return toDto(entidad, areas, analizados);
         }
         return generar(competitorId, categoryId);
     }
@@ -87,10 +93,13 @@ public class HojaRutaMejoraService {
         // Recoger y agrupar comentarios de expertos
         List<AreaMejoraDto> areas = buildAreasMejora(competitorId, categoryId);
 
-        // Recoger comentarios de la tabla comments (populares y de jurado)
+        // Recoger comentarios adicionales (tabla comments + Voting.comentario)
         List<ComentarioAdicional> comentariosAdicionales = recogerComentariosAdicionales(competitorId);
 
-        // Generar resumen automático
+        // Clasificar para el DTO (positivo / mejora)
+        List<ComentarioAnalizadoDto> analizados = clasificar(comentariosAdicionales);
+
+        // Generar resumen automático (intro + expertos; los adicionales ya van en el DTO)
         String resumen = buildResumenAutomatico(competitor, areas, categoryId, comentariosAdicionales);
 
         // Borrar hoja de ruta anterior si existe
@@ -100,7 +109,7 @@ public class HojaRutaMejoraService {
         HojaRutaMejora entidad = new HojaRutaMejora(competitor, category, resumen, false);
         entidad = hojaRutaRepository.save(entidad);
 
-        return toDto(entidad, areas);
+        return toDto(entidad, areas, analizados);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -264,9 +273,13 @@ public class HojaRutaMejoraService {
     }
 
     /**
-     * Recoge todos los comentarios de la tabla `comments` asociados a los proyectos
-     * del competidor y los etiqueta como [Jurado] o [Popular] según si el voter
-     * pertenece a event_jury del evento correspondiente.
+     * Recoge todos los comentarios asociados a los proyectos del competidor.
+     *
+     * Dos fuentes:
+     *  1. Tabla `comments` (Comment): comentarios largos de jurado/expertos.
+     *     Se etiquetan como [Jurado] o [Popular] según event_jury.
+     *  2. Tabla `votings` (Voting.comentario): comentarios cortos de voto popular
+     *     (los que escribe el espectador al votar). Se etiquetan siempre como [Popular].
      */
     private List<ComentarioAdicional> recogerComentariosAdicionales(Long competitorId) {
         List<Project> proyectos = projectRepository.findByCompetitorId(competitorId);
@@ -275,6 +288,8 @@ public class HojaRutaMejoraService {
         List<ComentarioAdicional> resultado = new ArrayList<>();
         for (Project proyecto : proyectos) {
             Long eventId = proyecto.getEvent() != null ? proyecto.getEvent().getId() : null;
+
+            // Fuente 1: tabla comments (comentarios de texto libre de jurado/expertos)
             List<Comment> comentarios = commentRepository.findByProjectId(proyecto.getId());
             for (Comment c : comentarios) {
                 Long voterId = c.getVoter() != null ? c.getVoter().getId() : null;
@@ -284,8 +299,45 @@ public class HojaRutaMejoraService {
                         ? "Jurado" : "Popular";
                 resultado.add(new ComentarioAdicional(c.getText(), autorNombre, origen));
             }
+
+            // Fuente 2: tabla votings — campo comentario (votos populares con texto)
+            List<Voting> votosConComentario =
+                    votingRepository.findByProjectIdAndComentarioIsNotNull(proyecto.getId());
+            for (Voting v : votosConComentario) {
+                String texto = v.getComentario();
+                if (texto == null || texto.isBlank()) continue;
+                String autorNombre = v.getVoter() != null ? v.getVoter().getName() : "Votante";
+                resultado.add(new ComentarioAdicional(texto, autorNombre, "Popular"));
+            }
         }
         return resultado;
+    }
+
+    /** Palabras clave que indican sugerencia de mejora o crítica constructiva. */
+    private static final List<String> MEJORA_KW = List.of(
+            "pero", "falta", "faltan", "mejorable", "confusa", "confuso",
+            "debería", "podría", "no están", "no está", "añadir", "recomiendo",
+            "mejorar", "difícil", "problema", "mal ", "mala ", "malo");
+
+    /** true si el texto contiene alguna keyword de mejora. */
+    private boolean esMejora(String texto) {
+        if (texto == null || texto.isBlank()) return false;
+        String lower = texto.toLowerCase();
+        return MEJORA_KW.stream().anyMatch(lower::contains);
+    }
+
+    /**
+     * Convierte la lista de comentarios adicionales en DTOs clasificados para el frontend.
+     * La clasificación positivo/mejora se hace aquí (backend) para que el frontend
+     * solo renderice sin lógica de negocio.
+     */
+    private List<ComentarioAnalizadoDto> clasificar(List<ComentarioAdicional> adicionales) {
+        return adicionales.stream()
+                .map(ca -> new ComentarioAnalizadoDto(
+                        ca.autorNombre(),
+                        ca.texto(),
+                        esMejora(ca.texto())))
+                .toList();
     }
 
     /** Representa un comentario de la tabla comments con su origen etiquetado. */
@@ -339,7 +391,9 @@ public class HojaRutaMejoraService {
         }
     }
 
-    private HojaRutaMejoraDto toDto(HojaRutaMejora entidad, List<AreaMejoraDto> areas) {
+    private HojaRutaMejoraDto toDto(HojaRutaMejora entidad,
+                                    List<AreaMejoraDto> areas,
+                                    List<ComentarioAnalizadoDto> analizados) {
         Long categoryId = entidad.getCategory() != null ? entidad.getCategory().getId() : null;
         return new HojaRutaMejoraDto(
                 entidad.getId(),
@@ -347,6 +401,7 @@ public class HojaRutaMejoraService {
                 categoryId,
                 entidad.getResumenGenerado(),
                 areas,
+                analizados,
                 entidad.isGeneradoIa(),
                 entidad.getFechaGeneracion()
         );

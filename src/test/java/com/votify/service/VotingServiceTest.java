@@ -565,4 +565,31 @@ class VotingServiceTest {
 
         assertThat(result.getManuallyModified()).isFalse();
     }
+
+    // ── getActiveVoterIds ───────────────────────────────────────────────────
+    // Método crítico para el endpoint GET /categories/{id}/active-voters 
+    // Verifica la delegación al repositorio y los casos límite.
+
+    @Test
+    @DisplayName("getActiveVoterIds → devuelve los IDs únicos de votantes de la categoría")
+    void getActiveVoterIds_returnsDistinctVoterIds_forCategory() {
+        List<Long> expectedIds = List.of(1L, 2L, 5L);
+        when(votingRepository.findDistinctVoterIdsByCategoryId(10L)).thenReturn(expectedIds);
+
+        List<Long> result = votingService.getActiveVoterIds(10L);
+
+        assertThat(result).containsExactly(1L, 2L, 5L);
+        verify(votingRepository, times(1)).findDistinctVoterIdsByCategoryId(10L);
+    }
+
+    @Test
+    @DisplayName("getActiveVoterIds → devuelve lista vacía cuando no hay votos en la categoría")
+    void getActiveVoterIds_returnsEmpty_whenNoVotesInCategory() {
+        when(votingRepository.findDistinctVoterIdsByCategoryId(99L)).thenReturn(List.of());
+
+        List<Long> result = votingService.getActiveVoterIds(99L);
+
+        assertThat(result).isEmpty();
+        verify(votingRepository, times(1)).findDistinctVoterIdsByCategoryId(99L);
+    }
 }

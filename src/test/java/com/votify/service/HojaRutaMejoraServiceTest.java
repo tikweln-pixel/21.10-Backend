@@ -16,6 +16,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @SuppressWarnings("null")
@@ -27,6 +28,10 @@ class HojaRutaMejoraServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private CategoryRepository categoryRepository;
     @Mock private EvaluacionRepository evaluacionRepository;
+    @Mock private CommentRepository commentRepository;
+    @Mock private EventJuryRepository eventJuryRepository;
+    @Mock private ProjectRepository projectRepository;
+    @Mock private VotingRepository votingRepository;
 
     @InjectMocks
     private HojaRutaMejoraService hojaRutaService;
@@ -48,6 +53,13 @@ class HojaRutaMejoraServiceTest {
 
         criterion = new Criterion("Presentacion");
         criterion.setId(3L);
+
+        // Stubs lenient para los nuevos repos (no todos los tests los usan,
+        // pero el servicio los invoca cuando genera/getOrGenera)
+        lenient().when(projectRepository.findByCompetitorId(anyLong())).thenReturn(List.of());
+        lenient().when(commentRepository.findByProjectId(anyLong())).thenReturn(List.of());
+        lenient().when(votingRepository.findByProjectIdAndComentarioIsNotNull(anyLong()))
+                 .thenReturn(List.of());
     }
 
     // ── getOrGenerar ─────────────────────────────────────────────

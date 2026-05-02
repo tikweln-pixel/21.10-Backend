@@ -24,17 +24,17 @@ public class PopularVoteValidator implements VotingValidator {
 		}
 
 		Long voterId = voting.getVoter().getId();
-		Long competitorId = voting.getCompetitor().getId();
+		Long projectId = voting.getProject().getId();
 		Long categoryId = category.getId();
 
-		// Validar máximo de competidores distintos
+		// Validar máximo de proyectos distintos
 		if (category.getMaxVotesPerVoter() != null) {
-			long distinctCompetitorsCount = votingRepository
-					.countDistinctCompetitorsByVoterIdAndCategoryId(voterId, categoryId);
+			long distinctProjectsCount = votingRepository
+					.countDistinctProjectsByVoterIdAndCategoryId(voterId, categoryId);
 
-			boolean isNewCompetitor = isNewVoteForCompetitor(voterId, competitorId, categoryId);
+			boolean isNewProject = isNewVoteForProject(voterId, projectId, categoryId);
 
-			if (isNewCompetitor && distinctCompetitorsCount >= category.getMaxVotesPerVoter()) {
+			if (isNewProject && distinctProjectsCount >= category.getMaxVotesPerVoter()) {
 				throw new ValidationException("maxVotesPerVoter",
 						String.format(
 								"El votante ya ha alcanzado el límite de %d competidores distintos " +
@@ -67,11 +67,11 @@ public class PopularVoteValidator implements VotingValidator {
 	}
 
 	/**
-	 * Verifica si el voto es para un competidor nuevo (no existe voto previo del votante para este competidor)
+	 * Verifica si el voto es para un proyecto nuevo (no existe voto previo del votante para este proyecto)
 	 */
-	private boolean isNewVoteForCompetitor(Long voterId, Long competitorId, Long categoryId) {
+	private boolean isNewVoteForProject(Long voterId, Long projectId, Long categoryId) {
 		return votingRepository.findByVoterIdAndCategoryId(voterId, categoryId)
 				.stream()
-				.noneMatch(v -> v.getCompetitor().getId().equals(competitorId));
+				.noneMatch(v -> v.getProject().getId().equals(projectId));
 	}
 }

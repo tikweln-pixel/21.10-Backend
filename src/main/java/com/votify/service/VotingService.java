@@ -73,11 +73,15 @@ public class VotingService {
     public VotingDto create(VotingDto dto) {
         // Cargar y validar entidades
         User voter = entityValidator.getUserOrThrow(dto.getVoterId());
-        User competitor = entityValidator.getUserOrThrow(dto.getProjectId());
+        Project project = entityValidator.getProjectOrThrow(dto.getProjectId());
         Criterion criterion = entityValidator.getCriterionOrThrow(dto.getCriterionId());
 
-        // Validar que no sea auto-voto
-        entityValidator.validateNotSelfVote(voter.getId(), competitor.getId());
+        // Validar que no sea auto-voto (el votante no puede ser competidor del proyecto)
+        boolean isSelfVote = project.getCompetitors().stream()
+                .anyMatch(c -> c.getId().equals(voter.getId()));
+        if (isSelfVote) {
+            throw new ValidationException("competitor", "No puedes votarte a ti mismo");
+        }
 
         // Cargar categoría si es proporcionada
         Category category = null;
@@ -88,7 +92,7 @@ public class VotingService {
 
         // Verificar si ya existe un voto para esta combinación
         java.util.Optional<Voting> existingOpt = votingRepository
-                .findExistingVote(voter.getId(), competitor.getId(), criterion.getId(), 
+                .findExistingVote(voter.getId(), project.getId(), criterion.getId(),
                         category != null ? category.getId() : null);
 
         if (existingOpt.isPresent()) {
@@ -96,15 +100,15 @@ public class VotingService {
         }
 
         // Crear nuevo voto
-        Voting voting = createNewVote(voter, competitor, criterion, dto, category);
+        Voting voting = createNewVote(voter, project, criterion, dto, category);
         Voting saved = votingRepository.save(voting);
 
         return votingMapper.toDto(saved);
     }
 
-    private Voting createNewVote(User voter, User competitor, Criterion criterion, 
+    private Voting createNewVote(User voter, Project project, Criterion criterion,
                                  VotingDto dto, Category category) {
-        Voting voting = new Voting(voter, competitor, criterion, dto.getScore());
+        Voting voting = new Voting(voter, project, criterion, dto.getScore());
 
         if (category != null) {
             voting.setCategory(category);
@@ -210,8 +214,8 @@ public class VotingService {
         }
 
         if (dto.getProjectId() != null && dto.getProjectId() > 0) {
-            User competitor = entityValidator.getUserOrThrow(dto.getProjectId());
-            voting.setCompetitor(competitor);
+            Project project = entityValidator.getProjectOrThrow(dto.getProjectId());
+            voting.setProject(project);
         }
 
         if (dto.getCriterionId() != null && dto.getCriterionId() > 0) {
@@ -240,7 +244,7 @@ public class VotingService {
     }
 
     public List<VotingDto> findByProjectIds(List<Long> competitorIds) {
-        return votingRepository.findByCompetitorIdIn(competitorIds)
+        return votingRepository.findByProjectIdIn(competitorIds)
                 .stream()
                 .map(votingMapper::toDto)
                 .collect(Collectors.toList());
@@ -251,14 +255,14 @@ public class VotingService {
     }
 
     public List<VotingDto> findByVoterAndProject(Long voterId, Long competitorId) {
-        return votingRepository.findByVoterIdAndCompetitorId(voterId, competitorId)
+        return votingRepository.findByVoterIdAndProjectId(voterId, competitorId)
                 .stream()
                 .map(votingMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     public List<VotingDto> findByVoterAndProjectAndCategory(Long voterId, Long competitorId, Long categoryId) {
-        return votingRepository.findByVoterIdAndCompetitorIdAndCategoryId(voterId, competitorId, categoryId)
+        return votingRepository.findByVoterIdAndProjectIdAndCategoryId(voterId, competitorId, categoryId)
                 .stream()
                 .map(votingMapper::toDto)
                 .collect(Collectors.toList());
@@ -267,7 +271,7 @@ public class VotingService {
     @Transactional(readOnly = true)
     public List<ProjectRankingDto> getProjectRanking(Long categoryId) {
         Map<Long, Double> competitorScores = new HashMap<>();
-        for (Object[] row : votingRepository.findCompetitorScoresByCategoryId(categoryId)) {
+        for (Object[] row : votingRepository.findProjectScoresByCategoryId(categoryId)) {
             Long competitorId = (Long) row[0];
             Double score = ((Number) row[1]).doubleValue();
             competitorScores.put(competitorId, score);

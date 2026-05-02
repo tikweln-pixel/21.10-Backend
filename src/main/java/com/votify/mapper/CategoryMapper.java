@@ -24,13 +24,13 @@ public class CategoryMapper {
 		CategoryDto dto = new CategoryDto(
 				category.getId(),
 				category.getName(),
-				category.getDescription(),
-				eventId,
 				category.getVotingType(),
 				category.getTimeInitial(),
 				category.getTimeFinal(),
-				category.getMaxVotesPerVoter(),
-				category.getTotalPoints()
+				eventId,
+				category.getReminderMinutes(),
+				category.getTotalPoints(),
+				category.getMaxVotesPerVoter()
 		);
 
 		return dto;
@@ -46,10 +46,6 @@ public class CategoryMapper {
 
 		if (dto.getName() != null && !dto.getName().isEmpty()) {
 			category.setName(dto.getName());
-		}
-
-		if (dto.getDescription() != null) {
-			category.setDescription(dto.getDescription());
 		}
 
 		if (dto.getVotingType() != null) {

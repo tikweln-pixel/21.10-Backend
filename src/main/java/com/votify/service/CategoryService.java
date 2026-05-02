@@ -9,6 +9,9 @@ import com.votify.entity.Event;
 import com.votify.entity.EventParticipation;
 import com.votify.entity.ParticipationRole;
 import com.votify.entity.VotingType;
+import com.votify.exception.EntityNotFoundException;
+import com.votify.exception.ValidationException;
+import com.votify.mapper.CategoryMapper;
 import com.votify.persistence.CategoryCriterionPointsRepository;
 import com.votify.persistence.CategoryRepository;
 import com.votify.persistence.CriterionRepository;
@@ -17,6 +20,7 @@ import com.votify.persistence.EventParticipationRepository;
 import com.votify.persistence.EventRepository;
 import com.votify.persistence.ProjectRepository;
 import com.votify.persistence.VotingRepository;
+import com.votify.validator.EntityValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @SuppressWarnings("null")
 @Service
@@ -39,6 +44,8 @@ public class CategoryService {
     private final EventParticipationRepository eventParticipationRepository;
     private final EvaluacionRepository evaluacionRepository;
     private final ProjectRepository projectRepository;
+    private final CategoryMapper categoryMapper;
+    private final EntityValidator entityValidator;
 
     public CategoryService(CategoryRepository categoryRepository,
                            EventRepository eventRepository,
@@ -47,7 +54,9 @@ public class CategoryService {
                            VotingRepository votingRepository,
                            EventParticipationRepository eventParticipationRepository,
                            EvaluacionRepository evaluacionRepository,
-                           ProjectRepository projectRepository) {
+                           ProjectRepository projectRepository,
+                           CategoryMapper categoryMapper,
+                           EntityValidator entityValidator) {
         this.categoryRepository = categoryRepository;
         this.eventRepository = eventRepository;
         this.criterionRepository = criterionRepository;
@@ -56,48 +65,46 @@ public class CategoryService {
         this.eventParticipationRepository = eventParticipationRepository;
         this.evaluacionRepository = evaluacionRepository;
         this.projectRepository = projectRepository;
+        this.categoryMapper = categoryMapper;
+        this.entityValidator = entityValidator;
     }
 
     public List<CategoryDto> findAll() {
-        List<Category> categories = categoryRepository.findAll();
-        List<CategoryDto> result = new ArrayList<>();
-        for (Category category : categories) {
-            result.add(toDto(category));
-        }
-        return result;
+        return categoryRepository.findAll()
+                .stream()
+                .map(categoryMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     public List<CategoryDto> findByEventId(Long eventId) {
-        List<Category> categories = categoryRepository.findByEventId(eventId);
-        List<CategoryDto> result = new ArrayList<>();
-        for (Category category : categories) {
-            result.add(toDto(category));
-        }
-        return result;
+        return categoryRepository.findByEventId(eventId)
+                .stream()
+                .map(categoryMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     public CategoryDto findById(Long id) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + id));
-        return toDto(category);
+                .orElseThrow(() -> new EntityNotFoundException("Category", id));
+        return categoryMapper.toDto(category);
     }
 
     public CategoryDto createForEvent(Long eventId, CategoryDto dto) {
         Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + eventId));
+                .orElseThrow(() -> new EntityNotFoundException("Event", eventId));
         Category category = new Category(dto.getName(), event);
         category.setVotingType(dto.getVotingType());
         Category savedCategory = categoryRepository.save(category);
         registerExistingEventUsersAsSpectators(savedCategory);
-        return toDto(savedCategory);
+        return categoryMapper.toDto(savedCategory);
     }
 
     public CategoryDto create(CategoryDto dto) {
         if (dto.getEventId() == null) {
-            throw new RuntimeException("Se requiere el evento para crear una categoria");
+            throw new ValidationException("eventId", "Se requiere el evento para crear una categoría");
         }
         Event event = eventRepository.findById(dto.getEventId())
-                .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + dto.getEventId()));
+                .orElseThrow(() -> new EntityNotFoundException("Event", dto.getEventId()));
 
         validateCategoryTimesWithinEvent(event, dto.getTimeInitial(), dto.getTimeFinal());
 
@@ -110,25 +117,26 @@ public class CategoryService {
         registerExistingEventUsersAsSpectators(savedCategory);
 
         if (dto.getCriteriaNames() != null) {
-            for (String criterionName : dto.getCriteriaNames()) {
-                if (criterionName != null && !criterionName.trim().isEmpty()) {
-                    Criterion criterion = new Criterion(criterionName.trim());
-                    criterion.setCategory(savedCategory);
-                    criterionRepository.save(criterion);
-                }
-            }
+            dto.getCriteriaNames()
+                    .stream()
+                    .filter(name -> name != null && !name.trim().isEmpty())
+                    .forEach(criterionName -> {
+                        Criterion criterion = new Criterion(criterionName.trim());
+                        criterion.setCategory(savedCategory);
+                        criterionRepository.save(criterion);
+                    });
         }
 
-        return toDto(savedCategory);
+        return categoryMapper.toDto(savedCategory);
     }
 
     public CategoryDto update(Long id, CategoryDto dto) {
         Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoria no encontrada con id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Category", id));
 
         if (dto.getEventId() != null && (category.getEvent() == null || !dto.getEventId().equals(category.getEvent().getId()))) {
             Event event = eventRepository.findById(dto.getEventId())
-                    .orElseThrow(() -> new RuntimeException("Evento no encontrado con id: " + dto.getEventId()));
+                    .orElseThrow(() -> new EntityNotFoundException("Event", dto.getEventId()));
             category.setEvent(event);
         }
 
@@ -140,7 +148,7 @@ public class CategoryService {
         category.setTimeInitial(dto.getTimeInitial());
         category.setTimeFinal(dto.getTimeFinal());
         category.setReminderMinutes(dto.getReminderMinutes());
-        return toDto(categoryRepository.save(category));
+        return categoryMapper.toDto(categoryRepository.save(category));
     }
 
     @Transactional

@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
 
 @SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
@@ -28,6 +29,10 @@ class HojaRutaMejoraServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private CategoryRepository categoryRepository;
     @Mock private EvaluacionRepository evaluacionRepository;
+    @Mock private CommentRepository commentRepository;
+    @Mock private EventJuryRepository eventJuryRepository;
+    @Mock private ProjectRepository projectRepository;
+    @Mock private VotingRepository votingRepository;
 
     @InjectMocks
     private HojaRutaMejoraService hojaRutaService;
@@ -252,5 +257,88 @@ class HojaRutaMejoraServiceTest {
 
         verify(categoryRepository, never()).findById(any());
         verify(hojaRutaRepository).deleteByCompetitorIdAndCategoryIsNull(1L);
+    }
+
+    // ── clasificar() — Opción C: clasificación backend de comentariosAdicionales ──
+
+    @Test
+    @DisplayName("clasificar: comentario con keyword de mejora → esMejora = true")
+    void clasificar_comentarioConKeywordMejora_esClasificadoComoMejora() {
+        // Preparar un proyecto mock ligado al competidor
+        Project proyecto = mock(Project.class);
+        when(proyecto.getId()).thenReturn(20L);
+        when(proyecto.getEvent()).thenReturn(null); // sin evento → origen siempre Popular
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(competitor));
+        when(categoryRepository.findById(5L)).thenReturn(Optional.of(category));
+        when(evaluacionRepository.findByCategoryIdAndCompetitorId(5L, 1L)).thenReturn(List.of());
+        when(projectRepository.findByCompetitorId(1L)).thenReturn(List.of(proyecto));
+
+        // Comentario con keyword "pero falta" → debe clasificarse como mejora
+        User autor = new User("Jurado1", "j1@test.com", null);
+        Comment comentarioMejora = new Comment(
+                "La presentación estuvo bien, pero falta análisis de mercado.", autor, proyecto);
+        when(commentRepository.findByProjectId(20L)).thenReturn(List.of(comentarioMejora));
+        when(votingRepository.findByProjectIdAndComentarioIsNotNull(20L)).thenReturn(List.of());
+
+        HojaRutaMejora saved = new HojaRutaMejora(competitor, category, "resumen", false);
+        saved.setId(7L);
+        when(hojaRutaRepository.save(any())).thenReturn(saved);
+
+        HojaRutaMejoraDto result = hojaRutaService.generar(1L, 5L);
+
+        assertThat(result.getComentariosAdicionales()).hasSize(1);
+        assertThat(result.getComentariosAdicionales().get(0).esMejora()).isTrue();
+        assertThat(result.getComentariosAdicionales().get(0).autor()).isEqualTo("Jurado1");
+    }
+
+    @Test
+    @DisplayName("clasificar: comentario sin keywords → esMejora = false")
+    void clasificar_comentarioPositivo_esClasificadoComoNoMejora() {
+        Project proyecto = mock(Project.class);
+        when(proyecto.getId()).thenReturn(21L);
+        when(proyecto.getEvent()).thenReturn(null);
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(competitor));
+        when(categoryRepository.findById(5L)).thenReturn(Optional.of(category));
+        when(evaluacionRepository.findByCategoryIdAndCompetitorId(5L, 1L)).thenReturn(List.of());
+        when(projectRepository.findByCompetitorId(1L)).thenReturn(List.of(proyecto));
+
+        // Comentario positivo, sin ninguna keyword negativa
+        User autor = new User("Votante1", "v1@test.com", null);
+        Comment comentarioPositivo = new Comment(
+                "Excelente proyecto, muy bien ejecutado y presentado.", autor, proyecto);
+        when(commentRepository.findByProjectId(21L)).thenReturn(List.of(comentarioPositivo));
+        when(votingRepository.findByProjectIdAndComentarioIsNotNull(21L)).thenReturn(List.of());
+
+        HojaRutaMejora saved = new HojaRutaMejora(competitor, category, "resumen", false);
+        saved.setId(8L);
+        when(hojaRutaRepository.save(any())).thenReturn(saved);
+
+        HojaRutaMejoraDto result = hojaRutaService.generar(1L, 5L);
+
+        assertThat(result.getComentariosAdicionales()).hasSize(1);
+        assertThat(result.getComentariosAdicionales().get(0).esMejora()).isFalse();
+    }
+
+    @Test
+    @DisplayName("clasificar: comentariosAdicionales nunca es null en el DTO")
+    void clasificar_comentariosAdicionales_nuncaEsNullEnDto() {
+        // Sin proyectos → recogerComentariosAdicionales devuelve lista vacía
+        // El DTO debe incluir una lista vacía, nunca null
+        when(userRepository.findById(1L)).thenReturn(Optional.of(competitor));
+        when(categoryRepository.findById(5L)).thenReturn(Optional.of(category));
+        when(evaluacionRepository.findByCategoryIdAndCompetitorId(5L, 1L)).thenReturn(List.of());
+        // projectRepository ya tiene stub lenient en setUp() → devuelve List.of()
+
+        HojaRutaMejora saved = new HojaRutaMejora(competitor, category, "sin datos", false);
+        saved.setId(9L);
+        when(hojaRutaRepository.save(any())).thenReturn(saved);
+
+        HojaRutaMejoraDto result = hojaRutaService.generar(1L, 5L);
+
+        assertThat(result.getComentariosAdicionales())
+                .isNotNull()
+                .isEmpty();
     }
 }

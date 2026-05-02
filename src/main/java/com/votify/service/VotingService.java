@@ -3,7 +3,13 @@ package com.votify.service;
 import com.votify.dto.ProjectRankingDto;
 import com.votify.dto.VotingDto;
 import com.votify.entity.*;
+import com.votify.exception.EntityNotFoundException;
+import com.votify.exception.ValidationException;
+import com.votify.mapper.VotingMapper;
 import com.votify.persistence.*;
+import com.votify.validator.EntityValidator;
+import com.votify.validator.VotingValidator;
+import com.votify.validator.VotingValidatorFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,11 +18,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 
 @Service
 public class VotingService {
-    private static final double WEIGHT_PERCENT_BASE = 100.0;
 
     private final VotingRepository votingRepository;
     private final UserRepository userRepository;
@@ -25,6 +31,9 @@ public class VotingService {
     private final CategoryCriterionPointsRepository criterionPointsRepository;
     private final ProjectRepository projectRepository;
     private final CriterionService criterionService;
+    private final EntityValidator entityValidator;
+    private final VotingValidatorFactory votingValidatorFactory;
+    private final VotingMapper votingMapper;
 
     public VotingService(VotingRepository votingRepository,
                          UserRepository userRepository,
@@ -32,7 +41,10 @@ public class VotingService {
                          CategoryRepository categoryRepository,
                          CategoryCriterionPointsRepository criterionPointsRepository,
                          ProjectRepository projectRepository,
-                         CriterionService criterionService) {
+                         CriterionService criterionService,
+                         EntityValidator entityValidator,
+                         VotingValidatorFactory votingValidatorFactory,
+                         VotingMapper votingMapper) {
         this.votingRepository = votingRepository;
         this.userRepository = userRepository;
         this.criterionRepository = criterionRepository;
@@ -40,84 +52,129 @@ public class VotingService {
         this.criterionPointsRepository = criterionPointsRepository;
         this.projectRepository = projectRepository;
         this.criterionService = criterionService;
+        this.entityValidator = entityValidator;
+        this.votingValidatorFactory = votingValidatorFactory;
+        this.votingMapper = votingMapper;
     }
 
     public List<VotingDto> findAll() {
-        List<Voting> votings = votingRepository.findAll();
-        List<VotingDto> result = new ArrayList<>();
-        for (Voting voting : votings) {
-            result.add(toDto(voting));
-        }
-        return result;
+        return votingRepository.findAll()
+                .stream()
+                .map(votingMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     public VotingDto findById(Long id) {
-        if (id == null) throw new RuntimeException("El ID del voto no puede ser nulo");
         Voting voting = votingRepository.findById(Objects.requireNonNull(id))
-                .orElseThrow(() -> new RuntimeException("Voting not found with id: " + id));
-        return toDto(voting);
+                .orElseThrow(() -> new EntityNotFoundException("Voting", id));
+        return votingMapper.toDto(voting);
     }
 
     public VotingDto create(VotingDto dto) {
-        // ── Validar votante ───────────────────────────────────────────────
-        if (dto.getVoterId() == null) throw new RuntimeException("El ID del votante no puede ser nulo");
-        User voter = userRepository.findById(dto.getVoterId())
-                .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
+        // Cargar y validar entidades
+        User voter = entityValidator.getUserOrThrow(dto.getVoterId());
+        User competitor = entityValidator.getUserOrThrow(dto.getProjectId());
+        Criterion criterion = entityValidator.getCriterionOrThrow(dto.getCriterionId());
 
-        // ── Validar proyecto ──────────────────────────────────────────────
-        if (dto.getProjectId() == null) throw new RuntimeException("El ID del proyecto no puede ser nulo");
-        Project project = projectRepository.findById(dto.getProjectId())
-                .orElseThrow(() -> new RuntimeException("Project not found with id: " + dto.getProjectId()));
+        // Validar que no sea auto-voto
+        entityValidator.validateNotSelfVote(voter.getId(), competitor.getId());
 
-        // ── Validar que el proyecto tiene competidores asignados ──────────
-        if (project.getCompetitors() == null || project.getCompetitors().isEmpty()) {
-            throw new RuntimeException("El proyecto '" + project.getName() + "' no tiene competidores asignados.");
-        }
-
-        // ── Validar auto-voto: el votante no puede ser competidor del proyecto ──
-        boolean isSelfVote = project.getCompetitors().stream()
-                .anyMatch(c -> c.getId().equals(voter.getId()));
-        if (isSelfVote) {
-            throw new RuntimeException("No puedes votar tu propio proyecto.");
-        }
-
-        // ── Validar criterio ──────────────────────────────────────────────
-        if (dto.getCriterionId() == null) throw new RuntimeException("El ID del criterio no puede ser nulo");
-        Criterion criterion = criterionRepository.findById(dto.getCriterionId())
-                .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
-
-        // ── Validar categoría y periodo ───────────────────────────────────
-        Long categoryId = dto.getCategoryId();
+        // Cargar categoría si es proporcionada
         Category category = null;
-        if (categoryId != null) {
-            category = categoryRepository.findById(categoryId)
-                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
-            if (!isPeriodActive(category)) {
-                throw new RuntimeException("El periodo de votación no está activo para la categoría '" + category.getName() + "'.");
-            }
+        if (dto.getCategoryId() != null) {
+            category = entityValidator.getCategoryOrThrow(dto.getCategoryId());
+            validateCategoryVotingPeriod(category);
         }
 
-        // ── PA-1314 Guard Clause — rechazar voto duplicado ───────────────
-        // Si ya existe voto para (voter, project, criterion, category) se lanza
-        // excepción explícita. La actualización intencionada se hace exclusivamente
-        // via PUT /api/votings/{id} (VotingService.update()), que es el usado por
-        // IntervencionManual.tsx con manuallyModified=true.
-        if (votingRepository.findExistingVote(
-                voter.getId(), project.getId(), criterion.getId(), categoryId).isPresent()) {
-            throw new RuntimeException("Ya has votado este proyecto.");
+        // Verificar si ya existe un voto para esta combinación
+        java.util.Optional<Voting> existingOpt = votingRepository
+                .findExistingVote(voter.getId(), competitor.getId(), criterion.getId(), 
+                        category != null ? category.getId() : null);
+
+        if (existingOpt.isPresent()) {
+            return handleExistingVote(existingOpt.get(), dto, category);
         }
 
-        // ── Crear nuevo voto ──────────────────────────────────────────────
-        Voting voting = new Voting(voter, project, criterion, dto.getScore());
+        // Crear nuevo voto
+        Voting voting = createNewVote(voter, competitor, criterion, dto, category);
+        Voting saved = votingRepository.save(voting);
+
+        return votingMapper.toDto(saved);
+    }
+
+    private Voting createNewVote(User voter, User competitor, Criterion criterion, 
+                                 VotingDto dto, Category category) {
+        Voting voting = new Voting(voter, competitor, criterion, dto.getScore());
+
         if (category != null) {
             voting.setCategory(category);
         }
 
-        applyWeighting(voting);
+        // Aplicar estrategia de ponderación si está disponible
+        applyWeightingStrategy(voting, category);
 
+        // Normalizar y establecer comentario
         voting.setComentario(normalizeComment(dto.getComentario()));
+
+        // Validar según el tipo de votación
         evaluateVote(voting);
-        return toDto(votingRepository.save(Objects.requireNonNull(voting)));
+
+        return voting;
+    }
+
+    private VotingDto handleExistingVote(Voting existing, VotingDto dto, Category category) {
+        int add = dto.getScore() != null ? dto.getScore() : 0;
+        Category existingCat = existing.getCategory();
+
+        if (existingCat != null && existingCat.getVotingType() == VotingType.JURY_EXPERT) {
+            existing.setScore(add);
+        } else {
+            int current = existing.getScore() != null ? existing.getScore() : 0;
+            existing.setScore(current + add);
+        }
+
+        if (category != null && existing.getCategory() == null) {
+            existing.setCategory(category);
+        }
+
+        existing.setComentario(normalizeComment(dto.getComentario()));
+        evaluateVote(existing);
+
+        return votingMapper.toDto(votingRepository.save(existing));
+    }
+
+    private void validateCategoryVotingPeriod(Category category) {
+        if (category == null) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+
+        if (category.getTimeInitial() != null && category.getTimeInitial().getTime() > now) {
+            throw new ValidationException("timeInitial",
+                    String.format("El periodo de votación no ha iniciado para la categoría '%s'", 
+                            category.getName()));
+        }
+
+        if (category.getTimeFinal() != null && category.getTimeFinal().getTime() < now) {
+            throw new ValidationException("timeFinal",
+                    String.format("El periodo de votación ha finalizado para la categoría '%s'", 
+                            category.getName()));
+        }
+    }
+
+    private void applyWeightingStrategy(Voting voting, Category category) {
+        try {
+            com.votify.application.strategy.VoteWeightingStrategy strat = 
+                    criterionService.getStrategyForCategory(category);
+            if (strat != null) {
+                double weighted = strat.applyWeight(voting, category);
+                voting.setWeightedScore(weighted);
+                voting.setWeightingStrategy(strat.key());
+            }
+        } catch (Exception ex) {
+            // No bloquear la creación de votos si falla la selección de estrategia
+        }
     }
 
     private boolean isPeriodActive(Category cat) {
@@ -129,152 +186,98 @@ public class VotingService {
     }
 
     private void evaluateVote(Voting voting) {
-        if (voting == null) return;
+        if (voting == null) {
+            return;
+        }
+
         Category category = voting.getCategory();
-        if (category == null) return;
-
-        if (category.getVotingType() == VotingType.POPULAR_VOTE) {
-            validatePopularVoteRestrictions(
-                    voting.getVoter().getId(),
-                    voting.getProject().getId(),
-                    category,
-                    voting.getScore()
-            );
-        } else if (category.getVotingType() == VotingType.JURY_EXPERT) {
-            if (criterionPointsRepository == null) {
-                throw new RuntimeException("CategoryCriterionPointsRepository no disponible para validar el tipo JURY_EXPERT");
-            }
-            Long categoryId = category.getId();
-            Long criterionId = voting.getCriterion().getId();
-            CategoryCriterionPoints points = criterionPointsRepository
-                    .findByCategoryIdAndCriterionId(categoryId, criterionId)
-                    .orElseThrow(() -> new RuntimeException(
-                            "No hay configuración de puntos para el criterio '" + voting.getCriterion().getName()
-                            + "' en la categoría '" + category.getName() + "'."));
-
-            Integer weightPercent = points.getWeightPercent();
-            Integer score = voting.getScore();
-            if (score != null && weightPercent != null && score > weightPercent) {
-                throw new RuntimeException(
-                        "El score (" + score + ") excede los puntos máximos (" + weightPercent + ") para el criterio '"
-                        + voting.getCriterion().getName() + "' en la categoría '" + category.getName() + "'.");
-            }
-        }
-    }
-
-    private void validatePopularVoteRestrictions(Long voterId, Long projectId,
-                                                  Category category, Integer score) {
-        if (category.getMaxVotesPerVoter() != null) {
-            long alreadyVotedCount = votingRepository
-                    .countDistinctProjectsByVoterIdAndCategoryId(voterId, category.getId());
-
-            boolean isNewProject = true;
-            List<Voting> existingVotes = votingRepository.findByVoterIdAndCategoryId(voterId, category.getId());
-            for (Voting v : existingVotes) {
-                if (v.getProject().getId().equals(projectId)) {
-                    isNewProject = false;
-                    break;
-                }
-            }
-
-            if (isNewProject && alreadyVotedCount >= category.getMaxVotesPerVoter()) {
-                throw new RuntimeException(
-                        "El votante ya ha alcanzado el límite de " + category.getMaxVotesPerVoter()
-                        + " proyectos distintos permitidos en la categoría '" + category.getName() + "'.");
-            }
+        if (category == null) {
+            return;
         }
 
-        if (category.getTotalPoints() != null && score != null) {
-            int alreadyUsedPoints = votingRepository.sumScoreByVoterIdAndCategoryId(voterId, category.getId());
-            if (alreadyUsedPoints + score > category.getTotalPoints()) {
-                throw new RuntimeException(
-                        "El votante superaría el total de puntos permitidos (" + category.getTotalPoints()
-                        + ") en la categoría '" + category.getName() + "'. "
-                        + "Puntos ya usados: " + alreadyUsedPoints + ", puntos solicitados: " + score + ".");
-            }
-        }
+        // Usar el validador apropiado según el tipo de votación
+        VotingValidator validator = votingValidatorFactory.getValidator(category);
+        validator.validateVote(voting, category);
     }
 
     public VotingDto update(Long id, VotingDto dto) {
         Voting voting = votingRepository.findById(Objects.requireNonNull(id))
-                .orElseThrow(() -> new RuntimeException("Voting not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Voting", id));
 
         if (dto.getVoterId() != null && dto.getVoterId() > 0) {
-            User voter = userRepository.findById(dto.getVoterId())
-                    .orElseThrow(() -> new RuntimeException("Voter not found with id: " + dto.getVoterId()));
+            User voter = entityValidator.getUserOrThrow(dto.getVoterId());
             voting.setVoter(voter);
         }
+
         if (dto.getProjectId() != null && dto.getProjectId() > 0) {
-            Project project = projectRepository.findById(dto.getProjectId())
-                    .orElseThrow(() -> new RuntimeException("Project not found with id: " + dto.getProjectId()));
-            voting.setProject(project);
+            User competitor = entityValidator.getUserOrThrow(dto.getProjectId());
+            voting.setCompetitor(competitor);
         }
+
         if (dto.getCriterionId() != null && dto.getCriterionId() > 0) {
-            Criterion criterion = criterionRepository.findById(dto.getCriterionId())
-                    .orElseThrow(() -> new RuntimeException("Criterion not found with id: " + dto.getCriterionId()));
+            Criterion criterion = entityValidator.getCriterionOrThrow(dto.getCriterionId());
             voting.setCriterion(criterion);
         }
+
         if (dto.getScore() != null) {
             voting.setScore(dto.getScore());
         }
+
         if (dto.getManuallyModified() != null) {
             voting.setManuallyModified(dto.getManuallyModified());
         }
+
         if (dto.getComentario() != null) {
             voting.setComentario(normalizeComment(dto.getComentario()));
         }
-        applyWeighting(voting);
-        return toDto(votingRepository.save(Objects.requireNonNull(voting)));
+
+        return votingMapper.toDto(votingRepository.save(voting));
     }
 
     public void delete(Long id) {
-        if (id == null) throw new RuntimeException("El ID del voto no puede ser nulo");
-        votingRepository.deleteById(Objects.requireNonNull(id));
+        entityValidator.validateNonNull(id, "id");
+        votingRepository.deleteById(id);
     }
 
-    public List<VotingDto> findByProjectIds(List<Long> projectIds) {
-        List<Voting> votings = votingRepository.findByProjectIdIn(projectIds);
-        List<VotingDto> result = new ArrayList<>();
-        for (Voting voting : votings) {
-            result.add(toDto(voting));
-        }
-        return result;
+    public List<VotingDto> findByProjectIds(List<Long> competitorIds) {
+        return votingRepository.findByCompetitorIdIn(competitorIds)
+                .stream()
+                .map(votingMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     public List<Long> getActiveVoterIds(Long categoryId) {
         return votingRepository.findDistinctVoterIdsByCategoryId(categoryId);
     }
 
-    public List<VotingDto> findByVoterAndProject(Long voterId, Long projectId) {
-        List<Voting> votings = votingRepository.findByVoterIdAndProjectId(voterId, projectId);
-        List<VotingDto> result = new ArrayList<>();
-        for (Voting voting : votings) {
-            result.add(toDto(voting));
-        }
-        return result;
+    public List<VotingDto> findByVoterAndProject(Long voterId, Long competitorId) {
+        return votingRepository.findByVoterIdAndCompetitorId(voterId, competitorId)
+                .stream()
+                .map(votingMapper::toDto)
+                .collect(Collectors.toList());
     }
 
-    public List<VotingDto> findByVoterAndProjectAndCategory(Long voterId, Long projectId, Long categoryId) {
-        List<Voting> votings = votingRepository.findByVoterIdAndProjectIdAndCategoryId(voterId, projectId, categoryId);
-        List<VotingDto> result = new ArrayList<>();
-        for (Voting voting : votings) {
-            result.add(toDto(voting));
-        }
-        return result;
+    public List<VotingDto> findByVoterAndProjectAndCategory(Long voterId, Long competitorId, Long categoryId) {
+        return votingRepository.findByVoterIdAndCompetitorIdAndCategoryId(voterId, competitorId, categoryId)
+                .stream()
+                .map(votingMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<ProjectRankingDto> getProjectRanking(Long categoryId) {
-        Map<Long, Double> projectScores = new HashMap<>();
-        for (Object[] row : votingRepository.findProjectScoresByCategoryId(categoryId)) {
-            Long projectId = (Long) row[0];
+        Map<Long, Double> competitorScores = new HashMap<>();
+        for (Object[] row : votingRepository.findCompetitorScoresByCategoryId(categoryId)) {
+            Long competitorId = (Long) row[0];
             Double score = ((Number) row[1]).doubleValue();
-            projectScores.put(projectId, score);
+            competitorScores.put(competitorId, score);
         }
 
         List<ProjectRankingDto> ranking = new ArrayList<>();
         for (Project p : projectRepository.findByCategoryId(categoryId)) {
-            double totalScore = projectScores.getOrDefault(p.getId(), 0.0);
+            double totalScore = p.getCompetitors().stream()
+                    .mapToDouble(c -> competitorScores.getOrDefault(c.getId(), 0.0))
+                    .sum();
             ranking.add(new ProjectRankingDto(p.getId(), p.getName(), (long) totalScore));
         }
         ranking.sort((a, b) -> Long.compare(b.getTotalScore(), a.getTotalScore()));
@@ -282,23 +285,7 @@ public class VotingService {
     }
 
     private VotingDto toDto(Voting voting) {
-        Long categoryId  = voting.getCategory()  != null ? voting.getCategory().getId()  : null;
-        Long voterId     = voting.getVoter()      != null ? voting.getVoter().getId()     : null;
-        Long projectId   = voting.getProject()    != null ? voting.getProject().getId()   : null;
-        Long criterionId = voting.getCriterion()  != null ? voting.getCriterion().getId() : null;
-        VotingDto dto = new VotingDto(
-                voting.getId(),
-                voterId,
-                projectId,
-                criterionId,
-                voting.getScore(),
-                categoryId,
-                voting.getManuallyModified()
-        );
-        dto.setComentario(voting.getComentario());
-        dto.setWeightedScore(voting.getWeightedScore());
-        dto.setWeightingStrategy(voting.getWeightingStrategy());
-        return dto;
+        return votingMapper.toDto(voting);
     }
 
     private static final int COMENTARIO_MAX_LEN = 500;
@@ -312,55 +299,5 @@ public class VotingService {
                     + COMENTARIO_MAX_LEN + " caracteres.");
         }
         return trimmed;
-    }
-
-    /**
-     * Calcula y aplica el weightedScore del voto.
-     * Prioriza la ponderación configurada por criterio en la categoría (category_criterion_points).
-     * Si no existe configuración, cae a la estrategia registrada para la categoría.
-     */
-    private void applyWeighting(Voting voting) {
-        if (voting == null) return;
-        Category category = voting.getCategory();
-        Criterion criterion = voting.getCriterion();
-        Integer score = voting.getScore();
-
-        if (score == null) {
-            voting.setWeightedScore(0.0);
-            voting.setWeightingStrategy("none");
-            return;
-        }
-
-        if (category != null && criterion != null) {
-            try {
-                CategoryCriterionPoints points = criterionPointsRepository
-                        .findByCategoryIdAndCriterionId(category.getId(), criterion.getId())
-                        .orElse(null);
-                if (points != null && points.getWeightPercent() != null) {
-                    double weighted = (score.doubleValue() * points.getWeightPercent()) / WEIGHT_PERCENT_BASE;
-                    voting.setWeightedScore(weighted);
-                    voting.setWeightingStrategy("criterionPoints");
-                    return;
-                }
-            } catch (Exception ex) {
-                // fallback a estrategia si falla el acceso a la configuración por criterio
-            }
-        }
-
-        // Fallback histórico: estrategias de ponderación registradas en Spring.
-        try {
-            com.votify.application.strategy.VoteWeightingStrategy strat = criterionService.getStrategyForCategory(category);
-            if (strat != null) {
-                double weighted = strat.applyWeight(voting, category);
-                voting.setWeightedScore(weighted);
-                voting.setWeightingStrategy(strat.key());
-                return;
-            }
-        } catch (Exception ex) {
-            // no bloquear persistencia si falla la selección de estrategia
-        }
-
-        voting.setWeightedScore(score.doubleValue());
-        voting.setWeightingStrategy("rawScore");
     }
 }

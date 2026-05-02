@@ -28,10 +28,6 @@ class HojaRutaMejoraServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private CategoryRepository categoryRepository;
     @Mock private EvaluacionRepository evaluacionRepository;
-    @Mock private CommentRepository commentRepository;
-    @Mock private EventJuryRepository eventJuryRepository;
-    @Mock private ProjectRepository projectRepository;
-    @Mock private VotingRepository votingRepository;
 
     @InjectMocks
     private HojaRutaMejoraService hojaRutaService;

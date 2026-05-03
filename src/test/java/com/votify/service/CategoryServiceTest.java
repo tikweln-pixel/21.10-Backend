@@ -3,13 +3,16 @@ package com.votify.service;
 import com.votify.dto.CategoryCriterionPointsDto;
 import com.votify.dto.CategoryDto;
 import com.votify.entity.*;
+import com.votify.mapper.CategoryMapper;
 import com.votify.persistence.*;
+import com.votify.validator.EntityValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Date;
@@ -26,14 +29,16 @@ import static org.mockito.Mockito.*;
 @DisplayName("CategoryService — Tests unitarios")
 class CategoryServiceTest {
 
-    @Mock private CategoryRepository               categoryRepository;
-    @Mock private EventRepository                  eventRepository;
-    @Mock private CriterionRepository              criterionRepository;
+    @Mock private CategoryRepository                categoryRepository;
+    @Mock private EventRepository                   eventRepository;
+    @Mock private CriterionRepository               criterionRepository;
     @Mock private CategoryCriterionPointsRepository criterionPointsRepository;
-    @Mock private VotingRepository                 votingRepository;
-    @Mock private EventParticipationRepository     eventParticipationRepository;
-    @Mock private EvaluacionRepository             evaluacionRepository;
-    @Mock private ProjectRepository                projectRepository;
+    @Mock private VotingRepository                  votingRepository;
+    @Mock private EventParticipationRepository      eventParticipationRepository;
+    @Mock private EvaluacionRepository              evaluacionRepository;
+    @Mock private ProjectRepository                 projectRepository;
+    @Mock private EntityValidator                   entityValidator;
+    @Spy  private CategoryMapper                    categoryMapper = new CategoryMapper();
 
     @InjectMocks
     private CategoryService categoryService;

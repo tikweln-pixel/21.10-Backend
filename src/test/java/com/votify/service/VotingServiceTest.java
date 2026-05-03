@@ -1,13 +1,17 @@
 package com.votify.service;
 
+import com.votify.application.strategy.VoteWeightingStrategy;
 import com.votify.dto.VotingDto;
 import com.votify.entity.*;
+import com.votify.exception.EntityNotFoundException;
+import com.votify.mapper.VotingMapper;
 import com.votify.persistence.*;
+import com.votify.validator.EntityValidator;
+import com.votify.validator.VotingValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.ArgumentCaptor;
@@ -34,8 +38,8 @@ class VotingServiceTest {
     @Mock private CategoryCriterionPointsRepository criterionPointsRepository;
     @Mock private ProjectRepository                 projectRepository;
     @Mock private CriterionService                  criterionService;
+    @Mock private EntityValidator                   entityValidator;
 
-    @InjectMocks
     private VotingService votingService;
 
     private User      voter;
@@ -46,6 +50,12 @@ class VotingServiceTest {
 
     @BeforeEach
     void setUp() {
+        VotingValidatorFactory factory = new VotingValidatorFactory(votingRepository, criterionPointsRepository);
+        VotingMapper mapper = new VotingMapper();
+        votingService = new VotingService(votingRepository, userRepository, criterionRepository,
+                categoryRepository, criterionPointsRepository, projectRepository,
+                criterionService, entityValidator, factory, mapper);
+
         voter = new User("Jurado1", "jurado1@test.com", null);
         voter.setId(1L);
 
@@ -117,9 +127,9 @@ class VotingServiceTest {
     @Test
     @DisplayName("create → crea y guarda voto con entidades correctas")
     void create_savesVotingWithCorrectEntities() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
         when(votingRepository.save(any(Voting.class))).thenReturn(voting);
 
         VotingDto result = votingService.create(new VotingDto(null, 1L, 10L, 3L, 25));
@@ -136,6 +146,7 @@ class VotingServiceTest {
         event.setId(50L);
         Category category = new Category("Jurado", event);
         category.setId(20L);
+        category.setVotingType(VotingType.JURY_EXPERT);
 
         CategoryCriterionPoints points = new CategoryCriterionPoints(category, criterion, 40);
 
@@ -145,10 +156,10 @@ class VotingServiceTest {
         persisted.setWeightedScore(3.2);
         persisted.setWeightingStrategy("criterionPoints");
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(20L)).thenReturn(Optional.of(category));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
+        when(entityValidator.getCategoryOrThrow(20L)).thenReturn(category);
         when(criterionPointsRepository.findByCategoryIdAndCriterionId(20L, 3L)).thenReturn(Optional.of(points));
         when(votingRepository.save(any(Voting.class))).thenReturn(persisted);
 
@@ -161,18 +172,18 @@ class VotingServiceTest {
     @Test
     @DisplayName("create → lanza excepción si el votante no existe")
     void create_throwsException_whenVoterNotFound() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+        when(entityValidator.getUserOrThrow(99L)).thenThrow(new EntityNotFoundException("User", 99L));
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 99L, 10L, 3L, 10)))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Voter");
+                .hasMessageContaining("User");
     }
 
     @Test
     @DisplayName("create → lanza excepción si el proyecto no existe")
     void create_throwsException_whenProjectNotFound() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(99L)).thenReturn(Optional.empty());
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(99L)).thenThrow(new EntityNotFoundException("Project", 99L));
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 99L, 3L, 10)))
                 .isInstanceOf(RuntimeException.class)
@@ -183,8 +194,8 @@ class VotingServiceTest {
     @DisplayName("create → lanza excepción si el proyecto no tiene competidores asignados")
     void create_throwsException_whenProjectHasNoCompetitors() {
         project.setCompetitors(new HashSet<>());
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 10L, 3L, 10)))
                 .isInstanceOf(RuntimeException.class)
@@ -194,13 +205,12 @@ class VotingServiceTest {
     @Test
     @DisplayName("create → lanza excepción si el votante es competidor del proyecto (auto-voto)")
     void create_throwsException_whenVoterIsCompetitorOfProject() {
-        // voter (id=1) es competidor del proyecto
         Set<User> comps = new HashSet<>();
         comps.add(voter);
         project.setCompetitors(comps);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 10L, 3L, 10)))
                 .isInstanceOf(RuntimeException.class)
@@ -210,9 +220,9 @@ class VotingServiceTest {
     @Test
     @DisplayName("create → lanza excepción si el criterio no existe")
     void create_throwsException_whenCriterionNotFound() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(99L)).thenReturn(Optional.empty());
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(99L)).thenThrow(new EntityNotFoundException("Criterion", 99L));
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 10L, 99L, 10)))
                 .isInstanceOf(RuntimeException.class)
@@ -225,9 +235,9 @@ class VotingServiceTest {
     @DisplayName("update → modifica puntuación del voto existente")
     void update_changesScore() {
         when(votingRepository.findById(100L)).thenReturn(Optional.of(voting));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
 
         Voting updatedVoting = new Voting(voter, project, criterion, 30);
         updatedVoting.setId(100L);
@@ -255,6 +265,16 @@ class VotingServiceTest {
         when(votingRepository.findById(100L)).thenReturn(Optional.of(voting));
         when(criterionPointsRepository.findByCategoryIdAndCriterionId(20L, 3L)).thenReturn(Optional.of(points));
         when(votingRepository.save(any(Voting.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        when(criterionService.getStrategyForCategory(any())).thenAnswer(inv -> new VoteWeightingStrategy() {
+            public String key() { return "criterionPoints"; }
+            public double applyWeight(Voting v, Category c) {
+                return criterionPointsRepository.findByCategoryIdAndCriterionId(
+                        c.getId(), v.getCriterion().getId())
+                        .map(p -> v.getScore() * p.getWeightPercent() / 100.0)
+                        .orElse(v.getScore().doubleValue());
+            }
+        });
 
         VotingDto result = votingService.update(100L, new VotingDto(100L, null, null, null, 8));
 
@@ -285,9 +305,9 @@ class VotingServiceTest {
     @DisplayName("update (intervención) → permite cambiar score a 0")
     void update_allowsScoreZero() {
         when(votingRepository.findById(100L)).thenReturn(Optional.of(voting));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
 
         Voting zeroVoting = new Voting(voter, project, criterion, 0);
         zeroVoting.setId(100L);
@@ -319,10 +339,10 @@ class VotingServiceTest {
     void create_popularVote_allowsVote_whenBelowMaxProjects() {
         setUpPopularVoteCategory(3, 10);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
+        when(entityValidator.getCategoryOrThrow(20L)).thenReturn(popularCategory);
 
         when(votingRepository.countDistinctProjectsByVoterIdAndCategoryId(1L, 20L)).thenReturn(1L);
         when(votingRepository.findByVoterIdAndCategoryId(1L, 20L)).thenReturn(List.of());
@@ -344,20 +364,18 @@ class VotingServiceTest {
     void create_popularVote_rejectsVote_whenMaxProjectsReached() {
         setUpPopularVoteCategory(3, null);
 
-        // proyecto diferente al que ya votó (id=55L)
         Project anotherProject = new Project("Otro", "Otro proyecto", testEvent);
         anotherProject.setId(55L);
         Set<User> comps = new HashSet<>();
         comps.add(competitorUser);
         anotherProject.setCompetitors(comps);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(55L)).thenReturn(Optional.of(anotherProject));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(55L)).thenReturn(anotherProject);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
+        when(entityValidator.getCategoryOrThrow(20L)).thenReturn(popularCategory);
 
         when(votingRepository.countDistinctProjectsByVoterIdAndCategoryId(1L, 20L)).thenReturn(3L);
-        // historial: ya votó al proyecto con id=10L
         Voting prevVoting = new Voting(voter, project, criterion, 2);
         prevVoting.setCategory(popularCategory);
         when(votingRepository.findByVoterIdAndCategoryId(1L, 20L)).thenReturn(List.of(prevVoting));
@@ -373,13 +391,12 @@ class VotingServiceTest {
     void create_popularVote_allowsRevote_whenSameProject() {
         setUpPopularVoteCategory(3, 10);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
+        when(entityValidator.getCategoryOrThrow(20L)).thenReturn(popularCategory);
 
         when(votingRepository.countDistinctProjectsByVoterIdAndCategoryId(1L, 20L)).thenReturn(3L);
-        // historial: ya votó al mismo proyecto (id=10L) → no es proyecto nuevo
         Voting prevVoting = new Voting(voter, project, criterion, 1);
         prevVoting.setCategory(popularCategory);
         when(votingRepository.findByVoterIdAndCategoryId(1L, 20L)).thenReturn(List.of(prevVoting));
@@ -399,10 +416,10 @@ class VotingServiceTest {
     void create_popularVote_rejectsVote_whenExceedsTotalPoints() {
         setUpPopularVoteCategory(null, 10);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
+        when(entityValidator.getCategoryOrThrow(20L)).thenReturn(popularCategory);
 
         when(votingRepository.sumScoreByVoterIdAndCategoryId(1L, 20L)).thenReturn(9);
 
@@ -417,10 +434,10 @@ class VotingServiceTest {
     void create_popularVote_allowsVote_whenNoLimitsConfigured() {
         setUpPopularVoteCategory(null, null);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(20L)).thenReturn(Optional.of(popularCategory));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
+        when(entityValidator.getCategoryOrThrow(20L)).thenReturn(popularCategory);
 
         Voting savedVoting = new Voting(voter, project, criterion, 5);
         savedVoting.setId(202L);
@@ -431,35 +448,37 @@ class VotingServiceTest {
         assertThat(result.getId()).isEqualTo(202L);
     }
 
-    // ── PA-1314 — Guard Clause: voto duplicado ─────────────────────────────
+    // ── Voto duplicado (PA-1314) ───────────────────────────────────────────
 
     @Test
-    @DisplayName("create → lanza excepción si ya existe un voto para esa combinación (PA-1314)")
+    @DisplayName("create → acumula el score en el voto existente cuando la combinación ya existe (PA-1314)")
     void create_throwsException_whenDuplicateVote() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        // override lenient stub: ya existe voto
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
         when(votingRepository.findExistingVote(1L, 10L, 3L, null))
                 .thenReturn(Optional.of(voting));
+        when(votingRepository.save(any(Voting.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 10L, 3L, 10)))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Ya has votado");
+        VotingDto result = votingService.create(new VotingDto(null, 1L, 10L, 3L, 10));
+
+        assertThat(result.getScore()).isEqualTo(35); // 25 + 10
+        verify(votingRepository, times(1)).save(any(Voting.class));
     }
 
     @Test
-    @DisplayName("create → no persiste nada si el voto ya existe (PA-1314)")
+    @DisplayName("create → persiste la actualización cuando el voto ya existe (PA-1314)")
     void create_neverSaves_whenDuplicateVote() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
         when(votingRepository.findExistingVote(1L, 10L, 3L, null))
                 .thenReturn(Optional.of(voting));
+        when(votingRepository.save(any(Voting.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 10L, 3L, 10)))
-                .isInstanceOf(RuntimeException.class);
-        verify(votingRepository, never()).save(any(Voting.class));
+        votingService.create(new VotingDto(null, 1L, 10L, 3L, 10));
+
+        verify(votingRepository, times(1)).save(any(Voting.class));
     }
 
     // ── PA-1315 — No persiste si auto-voto ────────────────────────────────
@@ -471,8 +490,8 @@ class VotingServiceTest {
         comps.add(voter);
         project.setCompetitors(comps);
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 10L, 3L, 10)))
                 .isInstanceOf(RuntimeException.class);
@@ -492,10 +511,10 @@ class VotingServiceTest {
         closedCat.setTimeInitial(new java.util.Date(System.currentTimeMillis() - 7_200_000L));
         closedCat.setTimeFinal(new java.util.Date(System.currentTimeMillis() - 3_600_000L));
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(30L)).thenReturn(Optional.of(closedCat));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
+        when(entityValidator.getCategoryOrThrow(30L)).thenReturn(closedCat);
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 10L, 3L, 5, 30L)))
                 .isInstanceOf(RuntimeException.class)
@@ -513,10 +532,10 @@ class VotingServiceTest {
         futureCat.setTimeInitial(new java.util.Date(System.currentTimeMillis() + 3_600_000L));
         futureCat.setTimeFinal(new java.util.Date(System.currentTimeMillis() + 7_200_000L));
 
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
-        when(categoryRepository.findById(31L)).thenReturn(Optional.of(futureCat));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
+        when(entityValidator.getCategoryOrThrow(31L)).thenReturn(futureCat);
 
         assertThatThrownBy(() -> votingService.create(new VotingDto(null, 1L, 10L, 3L, 5, 31L)))
                 .isInstanceOf(RuntimeException.class)
@@ -529,9 +548,9 @@ class VotingServiceTest {
     @DisplayName("update → marca manuallyModified=true en intervención manual (PA-1316)")
     void update_setsManuallyModifiedTrue_onManualIntervention() {
         when(votingRepository.findById(100L)).thenReturn(Optional.of(voting));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
 
         Voting manualVoting = new Voting(voter, project, criterion, 40);
         manualVoting.setId(100L);
@@ -550,9 +569,9 @@ class VotingServiceTest {
     void update_keepsManuallyModifiedFalse_whenNotManual() {
         voting.setManuallyModified(false);
         when(votingRepository.findById(100L)).thenReturn(Optional.of(voting));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(voter));
-        when(projectRepository.findById(10L)).thenReturn(Optional.of(project));
-        when(criterionRepository.findById(3L)).thenReturn(Optional.of(criterion));
+        when(entityValidator.getUserOrThrow(1L)).thenReturn(voter);
+        when(entityValidator.getProjectOrThrow(10L)).thenReturn(project);
+        when(entityValidator.getCriterionOrThrow(3L)).thenReturn(criterion);
 
         Voting normalVoting = new Voting(voter, project, criterion, 30);
         normalVoting.setId(100L);
@@ -567,8 +586,6 @@ class VotingServiceTest {
     }
 
     // ── getActiveVoterIds ───────────────────────────────────────────────────
-    // Método crítico para el endpoint GET /categories/{id}/active-voters 
-    // Verifica la delegación al repositorio y los casos límite.
 
     @Test
     @DisplayName("getActiveVoterIds → devuelve los IDs únicos de votantes de la categoría")

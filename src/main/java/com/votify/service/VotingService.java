@@ -7,6 +7,8 @@ import com.votify.exception.EntityNotFoundException;
 import com.votify.exception.ValidationException;
 import com.votify.mapper.VotingMapper;
 import com.votify.persistence.*;
+import com.votify.service.observer.VotoObserver;
+import com.votify.service.observer.VotoSubject;
 import com.votify.validator.EntityValidator;
 import com.votify.validator.VotingValidator;
 import com.votify.validator.VotingValidatorFactory;
@@ -22,7 +24,9 @@ import java.util.stream.Collectors;
 
 
 @Service
-public class VotingService {
+public class VotingService implements VotoSubject {
+
+    private final List<VotoObserver> observers = new ArrayList<>();
 
     private final VotingRepository votingRepository;
     private final UserRepository userRepository;
@@ -57,6 +61,15 @@ public class VotingService {
         this.votingMapper = votingMapper;
     }
 
+    @Override
+    public void addObserver(VotoObserver observer) { observers.add(observer); }
+
+    @Override
+    public void removeObserver(VotoObserver observer) { observers.remove(observer); }
+
+    @Override
+    public void notifyObservers(Voting voting) { observers.forEach(o -> o.onVotoGuardado(voting)); }
+
     public List<VotingDto> findAll() {
         return votingRepository.findAll()
                 .stream()
@@ -76,11 +89,16 @@ public class VotingService {
         Project project = entityValidator.getProjectOrThrow(dto.getProjectId());
         Criterion criterion = entityValidator.getCriterionOrThrow(dto.getCriterionId());
 
+        // Validar que el proyecto tenga competidores asignados
+        if (project.getCompetitors() == null || project.getCompetitors().isEmpty()) {
+            throw new ValidationException("project", "El proyecto no tiene competidores asignados");
+        }
+
         // Validar que no sea auto-voto (el votante no puede ser competidor del proyecto)
         boolean isSelfVote = project.getCompetitors().stream()
                 .anyMatch(c -> c.getId().equals(voter.getId()));
         if (isSelfVote) {
-            throw new ValidationException("competitor", "No puedes votarte a ti mismo");
+            throw new ValidationException("competitor", "No puedes votar por tu propio proyecto");
         }
 
         // Cargar categoría si es proporcionada
@@ -102,6 +120,7 @@ public class VotingService {
         // Crear nuevo voto
         Voting voting = createNewVote(voter, project, criterion, dto, category);
         Voting saved = votingRepository.save(voting);
+        notifyObservers(saved);
 
         return votingMapper.toDto(saved);
     }
@@ -144,7 +163,9 @@ public class VotingService {
         existing.setComentario(normalizeComment(dto.getComentario()));
         evaluateVote(existing);
 
-        return votingMapper.toDto(votingRepository.save(existing));
+        Voting saved = votingRepository.save(existing);
+        notifyObservers(saved);
+        return votingMapper.toDto(saved);
     }
 
     private void validateCategoryVotingPeriod(Category category) {
@@ -225,6 +246,7 @@ public class VotingService {
 
         if (dto.getScore() != null) {
             voting.setScore(dto.getScore());
+            applyWeightingStrategy(voting, voting.getCategory());
         }
 
         if (dto.getManuallyModified() != null) {
@@ -269,7 +291,7 @@ public class VotingService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProjectRankingDto> getProjectRanking(Long categoryId) {
+    public List<ProjectRankingDto> getProjectsRanking(Long categoryId) {
         Map<Long, Double> competitorScores = new HashMap<>();
         for (Object[] row : votingRepository.findProjectScoresByCategoryId(categoryId)) {
             Long competitorId = (Long) row[0];

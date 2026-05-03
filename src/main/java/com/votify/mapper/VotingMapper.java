@@ -19,15 +19,15 @@ public class VotingMapper {
 			return null;
 		}
 
-		Long categoryId   = voting.getCategory()   != null ? voting.getCategory().getId()   : null;
-		Long voterId      = voting.getVoter()       != null ? voting.getVoter().getId()      : null;
-		Long competitorId = voting.getCompetitor()  != null ? voting.getCompetitor().getId() : null;
-		Long criterionId  = voting.getCriterion()   != null ? voting.getCriterion().getId()  : null;
+		Long categoryId  = voting.getCategory()  != null ? voting.getCategory().getId()  : null;
+		Long voterId     = voting.getVoter()     != null ? voting.getVoter().getId()     : null;
+		Long projectId   = voting.getProject()   != null ? voting.getProject().getId()   : null;
+		Long criterionId = voting.getCriterion() != null ? voting.getCriterion().getId() : null;
 
 		VotingDto dto = new VotingDto(
 				voting.getId(),
 				voterId,
-				competitorId,   // se expone como projectId en el DTO por compatibilidad con el frontend
+				projectId,
 				criterionId,
 				voting.getScore(),
 				categoryId,

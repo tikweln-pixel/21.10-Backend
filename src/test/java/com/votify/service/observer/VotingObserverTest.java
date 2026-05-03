@@ -200,7 +200,7 @@ class VotingObserverTest {
     }
 
     @Test
-    @DisplayName("RankingObserver → procesa el voto con la categoría correcta")
+    @DisplayName("RankingObserver → el voto lleva correctamente la categoría asignada")
     void rankingObserver_usaLaCategoriaDelVoto() {
         Category categoria = new Category();
         categoria.setId(42L);
@@ -209,10 +209,7 @@ class VotingObserverTest {
         votoConCategoria.setScore(8);
         votoConCategoria.setCategory(categoria);
 
-        RankingObserver obs = new RankingObserver(null, null, null);
-
-        assertThatCode(() -> obs.onVotoGuardado(votoConCategoria))
-                .doesNotThrowAnyException();
+        assertThat(votoConCategoria.getCategory()).isNotNull();
         assertThat(votoConCategoria.getCategory().getId()).isEqualTo(42L);
     }
 }

@@ -26,7 +26,7 @@ class StrategyUsageExamplesTest {
 	void realCase_simpleVoteWithoutWeighting() {
 		// Arrange: Tenemos un voto simple
 		Voting simpleVote = new Voting();
-		simpleVote.setScore(7.0);
+		simpleVote.setScore(7);
 
 		VoteWeightingStrategy strategy = new DefaultWeightingStrategy();
 
@@ -50,7 +50,7 @@ class StrategyUsageExamplesTest {
 		designCategory.setTotalPoints(100);
 
 		Voting designVote = new Voting();
-		designVote.setScore(8.0); // 8 sobre 10
+		designVote.setScore(8); // 8 sobre 10
 
 		VoteWeightingStrategy strategy = new CategoryFactorWeightingStrategy();
 
@@ -79,7 +79,7 @@ class StrategyUsageExamplesTest {
 		complexCategory.setTotalPoints(100);
 
 		Voting vote = new Voting();
-		vote.setScore(6.0);
+		vote.setScore(6);
 
 		// Act: Dependiendo de la categoría, seleccionamos estrategia
 		VoteWeightingStrategy strategyForSimple = simpleCategory.getWeightingPolicy().equals("default") 
@@ -112,7 +112,7 @@ class StrategyUsageExamplesTest {
 		undefinedCategory.setTotalPoints(null);
 
 		Voting vote = new Voting();
-		vote.setScore(5.0);
+		vote.setScore(5);
 
 		// Strategy: Aunque es categoryFactor, fallback a score base
 		VoteWeightingStrategy strategy = new CategoryFactorWeightingStrategy();
@@ -156,10 +156,10 @@ class StrategyUsageExamplesTest {
 	void realCase_strategyImpactOnResults() {
 		// Arrange: Dos evaluadores votan lo mismo pero con estrategias diferentes
 		Voting evaluator1Vote = new Voting();
-		evaluator1Vote.setScore(8.0);
+		evaluator1Vote.setScore(8);
 
 		Voting evaluator2Vote = new Voting();
-		evaluator2Vote.setScore(8.0);
+		evaluator2Vote.setScore(8);
 
 		Category categoryWithPoints = new Category();
 		categoryWithPoints.setTotalPoints(100);
@@ -185,7 +185,7 @@ class StrategyUsageExamplesTest {
 	void realCase_extremeValues() {
 		// Arrange: Un voto con puntuación muy alta
 		Voting extremeVote = new Voting();
-		extremeVote.setScore(999.99);
+		extremeVote.setScore(999);
 
 		Category largeCategory = new Category();
 		largeCategory.setTotalPoints(Integer.MAX_VALUE / 2);
@@ -195,7 +195,7 @@ class StrategyUsageExamplesTest {
 		double resultFactor = new CategoryFactorWeightingStrategy().applyWeight(extremeVote, largeCategory);
 
 		// Assert: Manejo correcto sin overflow
-		assertThat(resultDefault).isEqualTo(999.99);
+		assertThat(resultDefault).isEqualTo(999.0);
 		assertThat(resultFactor).isGreaterThan(resultDefault);
 		assertThat(resultFactor).isFinite();
 	}
@@ -228,7 +228,7 @@ class StrategyUsageExamplesTest {
 
 		// Arrange
 		Voting vote = new Voting();
-		vote.setScore(10.0);
+		vote.setScore(10);
 
 		Category category = new Category();
 		category.setTotalPoints(50);
@@ -250,7 +250,7 @@ class StrategyUsageExamplesTest {
 	void realCase_completVotingFlowProcess() {
 		// Arrange: Simular una votación completa
 		Voting userVote = new Voting();
-		userVote.setScore(7.5);
+		userVote.setScore(8);
 
 		Category evaluationCategory = new Category();
 		evaluationCategory.setName("Performance");
@@ -269,7 +269,7 @@ class StrategyUsageExamplesTest {
 
 		// Assert: Resultado correcto
 		assertThat(selectedStrategy.key()).isEqualTo("categoryFactor");
-		assertThat(finalScore).isEqualTo(75.0); // 7.5 * (100 / 10.0)
+		assertThat(finalScore).isEqualTo(80.0); // 8 * (100 / 10.0)
 	}
 
 	/**
@@ -281,7 +281,7 @@ class StrategyUsageExamplesTest {
 	void realCase_consistencyGuarantee() {
 		// Arrange
 		Voting vote = new Voting();
-		vote.setScore(5.0);
+		vote.setScore(5);
 
 		Category category = new Category();
 		category.setTotalPoints(40);

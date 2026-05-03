@@ -25,6 +25,7 @@ class VotingRepositoryTest {
 
     private User      voter;
     private Project   project1, project2;
+    private Category  baseCategory;
     private Criterion criterion1, criterion2;
     private Voting    voting1, voting2;
 
@@ -37,6 +38,9 @@ class VotingRepositoryTest {
         Event event = new Event("Hackathon Test");
         em.persist(event);
 
+        baseCategory = new Category("General", event);
+        em.persist(baseCategory);
+
         project1 = new Project("Proyecto Alpha", "Descripción Alpha", event);
         em.persist(project1);
 
@@ -44,15 +48,19 @@ class VotingRepositoryTest {
         em.persist(project2);
 
         criterion1 = new Criterion("Innovación");
+        criterion1.setCategory(baseCategory);
         em.persist(criterion1);
 
         criterion2 = new Criterion("Presentación");
+        criterion2.setCategory(baseCategory);
         em.persist(criterion2);
 
         voting1 = new Voting(voter, project1, criterion1, 25);
+        voting1.setCategory(baseCategory);
         em.persist(voting1);
 
         voting2 = new Voting(voter, project1, criterion2, 18);
+        voting2.setCategory(baseCategory);
         em.persist(voting2);
 
         em.flush();
@@ -89,6 +97,7 @@ class VotingRepositoryTest {
     @DisplayName("save → persiste nuevo voto con id generado")
     void save_persistsNewVoting() {
         Voting newVoting = new Voting(voter, project2, criterion1, 30);
+        newVoting.setCategory(baseCategory);
         Voting saved = votingRepository.save(newVoting);
 
         assertThat(saved.getId()).isNotNull();
@@ -142,6 +151,7 @@ class VotingRepositoryTest {
     @DisplayName("save → persiste el comentario junto al voto y lo devuelve al releer")
     void saveAndLoad_withComentario_persists() {
         Voting v = new Voting(voter, project2, criterion1, 15);
+        v.setCategory(baseCategory);
         v.setComentario("La innovación es el punto más fuerte del proyecto");
         Voting saved = votingRepository.save(v);
         em.flush(); em.clear();

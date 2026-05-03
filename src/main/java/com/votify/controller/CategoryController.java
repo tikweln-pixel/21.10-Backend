@@ -160,6 +160,7 @@ public class CategoryController {
     }
 
     @GetMapping("/{categoryId}/active-voters")
+    //
     public ResponseEntity<List<UserDto>> getActiveVoters(@PathVariable Long categoryId) {
         List<Long> voterIds = votingService.getActiveVoterIds(categoryId);
         if (voterIds == null || voterIds.isEmpty()) {

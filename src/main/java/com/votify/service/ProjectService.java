@@ -126,7 +126,9 @@ public class ProjectService {
         return new CommentDto(saved.getId(), saved.getVoter().getId(), saved.getText());
     }
 
+    //Listar Comentarios de un Proyecto  
     public List<CommentDto> getCommentsByProject(Long projectId) {
+        // Validar que el proyecto existe
         if (!projectRepository.existsById(projectId)) {
             throw new RuntimeException("Proyecto no encontrado con id: " + projectId);
         }

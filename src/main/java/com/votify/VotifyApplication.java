@@ -5,15 +5,22 @@ import com.votify.dto.CategoryDto;
 import com.votify.entity.Criterion;
 import com.votify.entity.Event;
 import com.votify.entity.VotingType;
+import com.votify.service.observer.RankingObserver;
 import com.votify.persistence.CriterionRepository;
 import com.votify.persistence.EventRepository;
+import com.votify.persistence.ProjectRepository;
+import com.votify.persistence.VotingRepository;
 import com.votify.service.CategoryService;
+import com.votify.service.VotingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 
 import java.util.Date;
@@ -26,6 +33,16 @@ public class VotifyApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(VotifyApplication.class, args);
+    }
+
+    @Bean
+    @ConditionalOnWebApplication
+    public ApplicationRunner registrarObservadores(VotingService votingService,
+                                                    VotingRepository votingRepository,
+                                                    ProjectRepository projectRepository,
+                                                    SimpMessagingTemplate messagingTemplate) {
+        return args -> votingService.addObserver(
+                new RankingObserver(votingRepository, projectRepository, messagingTemplate));
     }
 
     // ------------------------------------------------------------------ //

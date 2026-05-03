@@ -66,7 +66,7 @@ public class VotingController {
 
     @GetMapping("/ranking/by-category/{categoryId}")
     public ResponseEntity<List<ProjectRankingDto>> getRanking(@PathVariable Long categoryId) {
-        return ResponseEntity.ok(votingService.getProjectRanking(categoryId));
+        return ResponseEntity.ok(votingService.getProjectsRanking(categoryId));
     }
 }
 

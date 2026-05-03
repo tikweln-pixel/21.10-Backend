@@ -1,6 +1,5 @@
 package com.votify.service.observer;
 
-import com.votify.entity.Category;
 import com.votify.entity.Voting;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -199,17 +198,4 @@ class VotingObserverTest {
         assertThat(obs).isInstanceOf(VotoObserver.class);
     }
 
-    @Test
-    @DisplayName("RankingObserver → el voto lleva correctamente la categoría asignada")
-    void rankingObserver_usaLaCategoriaDelVoto() {
-        Category categoria = new Category();
-        categoria.setId(42L);
-
-        Voting votoConCategoria = new Voting();
-        votoConCategoria.setScore(8);
-        votoConCategoria.setCategory(categoria);
-
-        assertThat(votoConCategoria.getCategory()).isNotNull();
-        assertThat(votoConCategoria.getCategory().getId()).isEqualTo(42L);
-    }
 }

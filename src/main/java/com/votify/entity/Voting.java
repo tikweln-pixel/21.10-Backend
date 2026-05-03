@@ -32,7 +32,7 @@ public class Voting {
     private User competitor;
 
     @ManyToOne
-    @JoinColumn(name = "criterion_id", nullable = false)
+    @JoinColumn(name = "criterion_id")
     private Criterion criterion;
 
     /**
@@ -40,7 +40,7 @@ public class Voting {
      * Obligatorio en POPULAR_VOTE para poder validar las restricciones de puntos y límite de votos.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
+    @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
     @Column(nullable = false)

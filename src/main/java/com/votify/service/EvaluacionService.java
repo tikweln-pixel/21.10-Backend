@@ -20,17 +20,20 @@ public class EvaluacionService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final CriterionRepository criterionRepository;
+    private final ProjectRepository projectRepository;
 
     private final Map<TipoEvaluacion, EvaluacionCreator> creators;
 
     public EvaluacionService(EvaluacionRepository evaluacionRepository,
                              UserRepository userRepository,
                              CategoryRepository categoryRepository,
-                             CriterionRepository criterionRepository) {
+                             CriterionRepository criterionRepository,
+                             ProjectRepository projectRepository) {
         this.evaluacionRepository = evaluacionRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.criterionRepository = criterionRepository;
+        this.projectRepository = projectRepository;
 
         this.creators = Map.of(
                 TipoEvaluacion.NUMERICA,    new EvaluacionNumericaCreator(),
@@ -84,6 +87,7 @@ public class EvaluacionService {
         Category category = categoryRepository.findById(dto.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("Categoría no encontrada con id: " + dto.getCategoryId()));
         evaluacion.setCategory(category);
+        validateNotEvaluatingOwnProject(evaluador.getId(), competitor.getId(), category);
 
         if (dto.getCriterionId() != null) {
             Criterion criterion = criterionRepository.findById(dto.getCriterionId())
@@ -128,6 +132,14 @@ public class EvaluacionService {
             Criterion criterion = criterionRepository.findById(dto.getCriterionId())
                     .orElseThrow(() -> new RuntimeException("Criterio no encontrado con id: " + dto.getCriterionId()));
             evaluacion.setCriterion(criterion);
+        }
+
+        if (evaluacion.getEvaluador() != null && evaluacion.getCompetitor() != null && evaluacion.getCategory() != null) {
+            validateNotEvaluatingOwnProject(
+                    evaluacion.getEvaluador().getId(),
+                    evaluacion.getCompetitor().getId(),
+                    evaluacion.getCategory()
+            );
         }
 
         return toDto(evaluacionRepository.save(evaluacion));
@@ -190,6 +202,20 @@ public class EvaluacionService {
                 evaluacion.calcularScore(),
                 evaluacion.getCreatedAt()
         );
+    }
+
+    private void validateNotEvaluatingOwnProject(Long evaluadorId, Long competitorId, Category category) {
+        if (category == null || category.getEvent() == null || category.getEvent().getId() == null) {
+            return;
+        }
+        boolean sharedProject = projectRepository.existsSharedProjectInEvent(
+                category.getEvent().getId(),
+                evaluadorId,
+                competitorId
+        );
+        if (sharedProject) {
+            throw new RuntimeException("No puedes evaluar proyectos en los que participas como competidor.");
+        }
     }
 }
 

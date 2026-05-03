@@ -21,17 +21,20 @@ public class VotingService {
     private final CriterionRepository criterionRepository;
     private final CategoryRepository categoryRepository;
     private final CategoryCriterionPointsRepository criterionPointsRepository;
+    private final ProjectRepository projectRepository;
 
     public VotingService(VotingRepository votingRepository,
                          UserRepository userRepository,
                          CriterionRepository criterionRepository,
                          CategoryRepository categoryRepository,
-                         CategoryCriterionPointsRepository criterionPointsRepository) {
+                         CategoryCriterionPointsRepository criterionPointsRepository,
+                         ProjectRepository projectRepository) {
         this.votingRepository = votingRepository;
         this.userRepository = userRepository;
         this.criterionRepository = criterionRepository;
         this.categoryRepository = categoryRepository;
         this.criterionPointsRepository = criterionPointsRepository;
+        this.projectRepository = projectRepository;
     }
 
     public List<VotingDto> findAll() {
@@ -75,6 +78,7 @@ public class VotingService {
             if (!isPeriodActive(category)) {
                 throw new RuntimeException("El periodo de votación no está activo para la categoría '" + category.getName() + "'.");
             }
+            validateNotVotingOwnProject(voter.getId(), competitor.getId(), category);
         }
 
         java.util.Optional<Voting> existingOpt = votingRepository
@@ -179,6 +183,20 @@ public class VotingService {
                         + ") en la categoría '" + category.getName() + "'. "
                         + "Puntos ya usados: " + alreadyUsedPoints + ", puntos solicitados: " + score + ".");
             }
+        }
+    }
+
+    private void validateNotVotingOwnProject(Long voterId, Long competitorId, Category category) {
+        if (category == null || category.getEvent() == null || category.getEvent().getId() == null) {
+            return;
+        }
+        boolean sharedProject = projectRepository.existsSharedProjectInEvent(
+                category.getEvent().getId(),
+                voterId,
+                competitorId
+        );
+        if (sharedProject) {
+            throw new RuntimeException("No puedes evaluar proyectos en los que participas como competidor.");
         }
     }
 

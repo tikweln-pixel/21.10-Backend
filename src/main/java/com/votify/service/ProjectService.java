@@ -78,10 +78,33 @@ public class ProjectService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new RuntimeException("Event not found with id: " + eventId));
         Project project = new Project(dto.getName(), dto.getDescription(), event);
+        Category selectedCategory = null;
         if (dto.getCategoryId() != null) {
-            categoryRepository.findById(dto.getCategoryId()).ifPresent(project::setCategory);
+            selectedCategory = categoryRepository.findById(dto.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + dto.getCategoryId()));
+            if (selectedCategory.getEvent() == null || !eventId.equals(selectedCategory.getEvent().getId())) {
+                throw new RuntimeException("La categoría no pertenece al evento indicado.");
+            }
+            project.setCategory(selectedCategory);
         }
-        return toDto(projectRepository.save(project));
+
+        if (dto.getCreatorUserId() != null) {
+            User creator = userRepository.findById(dto.getCreatorUserId())
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + dto.getCreatorUserId()));
+            project.getCompetitors().add(creator);
+        }
+
+        Project saved = projectRepository.save(project);
+
+        if (dto.getCreatorUserId() != null && selectedCategory != null) {
+            eventParticipationService.ensureCompetitorRegistration(
+                    eventId,
+                    dto.getCreatorUserId(),
+                    selectedCategory.getId()
+            );
+        }
+
+        return toDto(saved);
     }
 
     @Transactional

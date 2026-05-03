@@ -36,6 +36,17 @@ public class EventParticipationService {
     public EventParticipationDto registerParticipation(Long eventId, Long userId, Long categoryId, ParticipationRole role) {
         if (eventId == null) throw new RuntimeException("El ID del evento es obligatorio");
         if (userId == null) throw new RuntimeException("El ID del usuario es obligatorio");
+        if (role == ParticipationRole.SPECTATOR) {
+            List<EventParticipationDto> registrations = ensureSpectatorRegistrationInAllCategories(eventId, userId);
+            if (categoryId != null) {
+                for (EventParticipationDto dto : registrations) {
+                    if (categoryId.equals(dto.getCategoryId())) {
+                        return dto;
+                    }
+                }
+            }
+            return registrations.get(0);
+        }
         if (categoryId == null) throw new RuntimeException("La categoría es obligatoria para la participación");
 
         Event event = eventRepository.findById(eventId)

@@ -292,18 +292,17 @@ public class VotingService implements VotoSubject {
 
     @Transactional(readOnly = true)
     public List<ProjectRankingDto> getProjectsRanking(Long categoryId) {
-        Map<Long, Double> competitorScores = new HashMap<>();
+        // La query agrupa por v.project.id → la clave del map ES el project id
+        Map<Long, Double> projectScores = new HashMap<>();
         for (Object[] row : votingRepository.findProjectScoresByCategoryId(categoryId)) {
-            Long competitorId = (Long) row[0];
+            Long projectId = (Long) row[0];
             Double score = ((Number) row[1]).doubleValue();
-            competitorScores.put(competitorId, score);
+            projectScores.put(projectId, score);
         }
 
         List<ProjectRankingDto> ranking = new ArrayList<>();
         for (Project p : projectRepository.findByCategoryId(categoryId)) {
-            double totalScore = p.getCompetitors().stream()
-                    .mapToDouble(c -> competitorScores.getOrDefault(c.getId(), 0.0))
-                    .sum();
+            double totalScore = projectScores.getOrDefault(p.getId(), 0.0);
             ranking.add(new ProjectRankingDto(p.getId(), p.getName(), (long) totalScore));
         }
         ranking.sort((a, b) -> Long.compare(b.getTotalScore(), a.getTotalScore()));

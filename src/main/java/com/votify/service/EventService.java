@@ -18,6 +18,7 @@ import com.votify.persistence.EventRepository;
 import com.votify.persistence.ProjectRepository;
 import com.votify.persistence.UserRepository;
 import com.votify.persistence.VotingRepository;
+import com.votify.service.notification.NotificationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,7 @@ public class EventService {
     private final CategoryCriterionPointsRepository criterionPointsRepository;
     private final EvaluacionRepository evaluacionRepository;
     private final EventJuryRepository eventJuryRepository;
+    private final NotificationService notificationService;
 
     public EventService(EventRepository eventRepository,
                         EventParticipationService eventParticipationService,
@@ -50,7 +52,8 @@ public class EventService {
                         ProjectRepository projectRepository,
                         CategoryCriterionPointsRepository criterionPointsRepository,
                         EvaluacionRepository evaluacionRepository,
-                        EventJuryRepository eventJuryRepository) {
+                        EventJuryRepository eventJuryRepository,
+                        NotificationService notificationService) {
         this.eventRepository = eventRepository;
         this.eventParticipationService = eventParticipationService;
         this.eventJuryService = eventJuryService;
@@ -62,6 +65,7 @@ public class EventService {
         this.criterionPointsRepository = criterionPointsRepository;
         this.evaluacionRepository = evaluacionRepository;
         this.eventJuryRepository = eventJuryRepository;
+        this.notificationService = notificationService;
     }
 
     public List<EventDto> findAll() {
@@ -134,6 +138,11 @@ public class EventService {
             throw new RuntimeException("Se requiere al menos una categoría con nombre válido");
         }
         eventRepository.save(Objects.requireNonNull(event));
+
+        // Notificar apertura de votaciones para cada categoría
+        for (Category category : event.getCategories()) {
+            notificationService.notifyVotingOpened(event, category);
+        }
 
         Long creatorId = dto.getOrganizerId();
         if (creatorId != null && firstCategory != null) {

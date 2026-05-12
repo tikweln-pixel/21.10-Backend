@@ -39,6 +39,7 @@ class VotingServiceTest {
     @Mock private ProjectRepository                 projectRepository;
     @Mock private CriterionService                  criterionService;
     @Mock private EntityValidator                   entityValidator;
+    @Mock private com.votify.service.notification.NotificationService notificationService;
 
     private VotingService votingService;
 
@@ -54,7 +55,7 @@ class VotingServiceTest {
         VotingMapper mapper = new VotingMapper();
         votingService = new VotingService(votingRepository, userRepository, criterionRepository,
                 categoryRepository, criterionPointsRepository, projectRepository,
-                criterionService, entityValidator, factory, mapper);
+                criterionService, entityValidator, factory, mapper, notificationService);
 
         voter = new User("Jurado1", "jurado1@test.com", null);
         voter.setId(1L);

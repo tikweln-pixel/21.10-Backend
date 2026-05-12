@@ -9,6 +9,7 @@ import com.votify.mapper.VotingMapper;
 import com.votify.persistence.*;
 import com.votify.service.observer.VotoObserver;
 import com.votify.service.observer.VotoSubject;
+import com.votify.service.notification.NotificationService;
 import com.votify.validator.EntityValidator;
 import com.votify.validator.VotingValidator;
 import com.votify.validator.VotingValidatorFactory;
@@ -38,6 +39,7 @@ public class VotingService implements VotoSubject {
     private final EntityValidator entityValidator;
     private final VotingValidatorFactory votingValidatorFactory;
     private final VotingMapper votingMapper;
+    private final NotificationService notificationService;
 
     public VotingService(VotingRepository votingRepository,
                          UserRepository userRepository,
@@ -48,7 +50,8 @@ public class VotingService implements VotoSubject {
                          CriterionService criterionService,
                          EntityValidator entityValidator,
                          VotingValidatorFactory votingValidatorFactory,
-                         VotingMapper votingMapper) {
+                         VotingMapper votingMapper,
+                         NotificationService notificationService) {
         this.votingRepository = votingRepository;
         this.userRepository = userRepository;
         this.criterionRepository = criterionRepository;
@@ -59,6 +62,7 @@ public class VotingService implements VotoSubject {
         this.entityValidator = entityValidator;
         this.votingValidatorFactory = votingValidatorFactory;
         this.votingMapper = votingMapper;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -325,4 +329,21 @@ public class VotingService implements VotoSubject {
         }
         return trimmed;
     }
+
+    /**
+     * Notifica el cierre de votación para una categoría específica.
+     * Se envía un recordatorio a todos los participantes.
+     *
+     * @param categoryId ID de la categoría cuya votación cierra
+     */
+    public void notifyVotingClosed(Long categoryId) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new EntityNotFoundException("Category", categoryId));
+
+        Event event = category.getEvent();
+        if (event != null) {
+            notificationService.notifyVotingClosed(event, category);
+        }
+    }
 }
+

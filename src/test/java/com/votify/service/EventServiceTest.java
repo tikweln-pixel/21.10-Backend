@@ -50,6 +50,7 @@ class EventServiceTest {
     @Mock private EvaluacionRepository evaluacionRepository;
     @Mock private EventJuryRepository eventJuryRepository;
     @Mock private EventJuryService eventJuryService;
+    @Mock private com.votify.service.notification.NotificationService notificationService;
 
     private EventService eventService;
 
@@ -76,7 +77,8 @@ class EventServiceTest {
                 projectRepository,
                 criterionPointsRepository,
                 evaluacionRepository,
-                eventJuryRepository
+                eventJuryRepository,
+                notificationService
         );
 
         event1 = new Event("Hackathon 2026");
